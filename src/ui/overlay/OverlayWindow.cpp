@@ -1,5 +1,7 @@
 #include "OverlayWindow.h"
 #include "core/Logging.h"
+#include <random>
+#include <string>
 
 #ifndef NOMINMAX
 #define NOMINMAX
@@ -177,8 +179,20 @@ static bool HijackWindow() noexcept {
 
 // ── Create: make our own overlay window ──────────────────────────────────────
 
+static std::wstring RandomString(int len) noexcept {
+    static const wchar_t chars[] = L"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+    std::wstring out(len, L'\0');
+    std::mt19937 rng{std::random_device{}()};
+    std::uniform_int_distribution<int> dist(0, sizeof(chars) / sizeof(chars[0]) - 2);
+    for (int i = 0; i < len; ++i) out[i] = chars[dist(rng)];
+    return out;
+}
+
 static bool CreateOverlayWindow() noexcept {
     auto& s = State();
+
+    std::wstring class_name = RandomString(16);
+    std::wstring win_title  = RandomString(12);
 
     WNDCLASSEXW wcex{};
     wcex.cbSize        = sizeof(WNDCLASSEXW);
@@ -191,7 +205,7 @@ static bool CreateOverlayWindow() noexcept {
     wcex.hCursor       = LoadCursor(nullptr, IDC_ARROW);
     wcex.hbrBackground = nullptr;
     wcex.lpszMenuName  = nullptr;
-    wcex.lpszClassName = L"Chrome_WidgetWin_1";
+    wcex.lpszClassName = class_name.c_str();
     wcex.hIconSm       = LoadIcon(nullptr, IDI_APPLICATION);
 
     if (!RegisterClassExW(&wcex)) {
@@ -203,13 +217,13 @@ static bool CreateOverlayWindow() noexcept {
     RECT rect;
     GetWindowRect(GetDesktopWindow(), &rect);
 
-    HWND hwnd = CreateWindowExA(
-        0, kWindowClass, kWindowTitle, WS_POPUP,
+    HWND hwnd = CreateWindowExW(
+        0, class_name.c_str(), win_title.c_str(), WS_POPUP,
         rect.left, rect.top, rect.right, rect.bottom,
         nullptr, nullptr, wcex.hInstance, nullptr);
 
     if (!hwnd) {
-        LOG_ERROR("CreateWindowExA failed");
+        LOG_ERROR("CreateWindowExW failed");
         return false;
     }
 
@@ -279,10 +293,7 @@ void Shutdown() noexcept {
         DestroyWindow(static_cast<HWND>(s.hwnd));
         s.hwnd = nullptr;
     }
-    if (s.hinstance) {
-        UnregisterClassW(L"Chrome_WidgetWin_1", static_cast<HINSTANCE>(s.hinstance));
-        s.hinstance = nullptr;
-    }
+    s.hinstance = nullptr;
 
     s.running     = false;
     s.initialised = false;

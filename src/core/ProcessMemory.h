@@ -28,7 +28,10 @@ public:
         process_id_ = FindProcessId(process_name);
         if (!process_id_) return false;
 
-        handle_ = OpenProcess(PROCESS_ALL_ACCESS, FALSE, process_id_);
+        handle_ = OpenProcess(
+            PROCESS_VM_READ | PROCESS_VM_WRITE | PROCESS_VM_OPERATION |
+            PROCESS_CREATE_THREAD | PROCESS_QUERY_INFORMATION,
+            FALSE, process_id_);
         if (!handle_) return false;
 
         // Cache module bases

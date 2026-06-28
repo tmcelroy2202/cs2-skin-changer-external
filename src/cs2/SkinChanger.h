@@ -6,6 +6,7 @@
 #include "EconSystem.h"
 #include "SkinDatabase.h"
 #include <random>
+#include <chrono>
 
 /* ── CS2 Skin Changer ──────────────────────────────────────────────────────
  *
@@ -25,6 +26,12 @@ public:
 
     /// Called every frame.  Returns true if a skin was applied.
     bool Tick() noexcept {
+        // ── Idle rate limit: full scan at ~20 Hz; immediate on changes ──
+        auto now = std::chrono::steady_clock::now();
+        if (!mgr_.NeedsUpdate() &&
+            now - last_tick_ < std::chrono::milliseconds(50))
+            return false;
+
         u64 local_player = GetLocalPlayer(mem_);
         if (!local_player) return false;
 
@@ -81,40 +88,28 @@ public:
             // Mark as applied
             mem_.Write<u32>(item + Offsets::m_iItemIDHigh, 0xFFFFFFFF);
 
-            // Change knife def index if requested
-            if (is_knife && knife_def > 0 && knife_def != cur_def) {
-                mem_.Write<u16>(item + Offsets::m_iItemDefinitionIndex,
-                                static_cast<u16>(knife_def));
+            // Randomize write order among 3 groups (6 permutations)
+            auto do_paint = [&]() {
+                mem_.Write<u32>(weapon + Offsets::m_nFallbackPaintKit,
+                                static_cast<u32>(skin.Paint));
+                if (is_knife && knife_def > 0 && knife_def != cur_def)
+                    mem_.Write<u16>(item + Offsets::m_iItemDefinitionIndex,
+                                    static_cast<u16>(knife_def));
+            };
+            auto do_mesh = [&]() {
+                u64 n = mem_.Read<u64>(weapon + Offsets::m_pGameSceneNode);
+                if (n) DoMeshMask(weapon, n, skin.bUsesOldModel);
+            };
+            auto do_attrs = [&]() { attr_mgr_.Create(item, skin); };
+
+            switch (std::uniform_int_distribution<int>(0, 5)(rng_)) {
+            case 0: do_paint(); do_mesh();  do_attrs(); break;
+            case 1: do_paint(); do_attrs(); do_mesh();  break;
+            case 2: do_mesh();  do_paint(); do_attrs(); break;
+            case 3: do_mesh();  do_attrs(); do_paint(); break;
+            case 4: do_attrs(); do_paint(); do_mesh();  break;
+            case 5: do_attrs(); do_mesh();  do_paint(); break;
             }
-
-            // Write paint kit
-            mem_.Write<u32>(weapon + Offsets::m_nFallbackPaintKit,
-                            static_cast<u32>(skin.Paint));
-
-            // Set mesh mask for model display
-            u64 node = mem_.Read<u64>(weapon + Offsets::m_pGameSceneNode);
-            if (node) {
-                u64 model = node + Offsets::m_modelState;
-                u64 dirty = mem_.Read<u64>(model + Offsets::m_pDirtyModelData);
-                if (dirty) {
-                    u64 mask = skin.bUsesOldModel ? 2 : 1;
-                    mem_.Write<u64>(dirty + Offsets::m_DirtyMeshGroupMask, mask);
-                    mem_.Write<u64>(model + Offsets::m_MeshGroupMask, mask);
-                }
-
-                // Also update HUD weapon
-                u64 hud = GetHudWeapon(mem_, weapon);
-                if (hud) {
-                    u64 hud_node = mem_.Read<u64>(hud + Offsets::m_pGameSceneNode);
-                    if (hud_node) {
-                        u64 hud_model = hud_node + Offsets::m_modelState;
-                        mem_.Write<u64>(hud_model + Offsets::m_MeshGroupMask, mask);
-                    }
-                }
-            }
-
-            // Write econ attributes
-            attr_mgr_.Create(item, skin);
 
             processed_pairs.push_back({weapon, item});
             applied = true;
@@ -124,12 +119,13 @@ public:
         if (ApplyGloves()) applied = true;
 
         if (applied || mgr_.NeedsUpdate()) {
-            // Call RegenerateWeaponSkins
-            u64 regen_addr = mem_.SigScan(L"client.dll",
+            // Cache RegenerateWeaponSkins address after first scan
+            if (!regen_addr_) {
+                regen_addr_ = mem_.SigScan(L"client.dll",
                                            Offsets::Sigs::RegenerateWeaponSkins);
-            if (regen_addr) {
-                // Fire-and-forget — no blocking, no lag spike
-                mem_.CallRemoteThreadAsync(regen_addr);
+            }
+            if (regen_addr_) {
+                mem_.CallRemoteThreadAsync(regen_addr_);
             }
 
             // Timing jitter: 1–15ms random sleep to avoid fixed patterns
@@ -145,6 +141,7 @@ public:
             }
 
             mgr_.ClearUpdate();
+            last_tick_ = now;
         }
 
         return applied;
@@ -216,7 +213,25 @@ private:
     EconItemAttributeManager attr_mgr_;
     u16                 music_kit_id_ = 0;
     u16                 last_music_kit_id_ = 0;
+    u64                 regen_addr_ = 0;
+    std::chrono::steady_clock::time_point last_tick_{};
     mutable std::mt19937 rng_{std::random_device{}()};
+
+    void DoMeshMask(u64 weapon, u64 node, bool old_model) noexcept {
+        u64 model = node + Offsets::m_modelState;
+        u64 dirty = mem_.Read<u64>(model + Offsets::m_pDirtyModelData);
+        u64 mask = old_model ? 2 : 1;
+        if (dirty) {
+            mem_.Write<u64>(dirty + Offsets::m_DirtyMeshGroupMask, mask);
+            mem_.Write<u64>(model + Offsets::m_MeshGroupMask, mask);
+        }
+        u64 hud = GetHudWeapon(mem_, weapon);
+        if (hud) {
+            u64 hud_node = mem_.Read<u64>(hud + Offsets::m_pGameSceneNode);
+            if (hud_node)
+                mem_.Write<u64>(hud_node + Offsets::m_modelState + Offsets::m_MeshGroupMask, mask);
+        }
+    }
 
     // Override mesh mask with retry (mirrors reference's goto approach)
     void OverrideMeshMask(u64 model, u64 mask) noexcept {
