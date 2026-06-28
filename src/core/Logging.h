@@ -45,4 +45,7 @@ private:
 #define LOG_INFO(...)   Logger::Instance().Info (std::format(__VA_ARGS__))
 #define LOG_WARN(...)   Logger::Instance().Warn (std::format(__VA_ARGS__))
 #define LOG_ERROR(...)  Logger::Instance().Error(std::format(__VA_ARGS__))
-#define LOG_FATAL(...)  Logger::Instance().Fatal(std::format(__VA_ARGS__))
+#define LOG_FATAL(...)  do { \
+    Logger::Instance().Fatal(std::format(__VA_ARGS__)); \
+    std::terminate(); \
+} while (0)

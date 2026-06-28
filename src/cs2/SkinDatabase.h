@@ -3,6 +3,7 @@
 #include "core/Core.h"
 #include "WeaponTypes.h"
 #include <unordered_map>
+#include <unordered_set>
 #include <map>
 #include <vector>
 #include <string>
@@ -39,7 +40,11 @@ public:
         auto it = db_.find(def);
         if (it == db_.end()) return results;
 
+        // Deduplicate by name: keep first occurrence of each skin name
+        std::unordered_set<std::string_view> seen;
         for (auto& entry : it->second) {
+            if (seen.count(entry.name)) continue;
+            seen.insert(entry.name);
             results.push_back({entry.paint_id, 0.01f, 0, entry.legacy_model, entry.name, weapon});
         }
         return results;

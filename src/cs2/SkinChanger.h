@@ -26,28 +26,30 @@ public:
 
     /// Called every frame.  Returns true if a skin was applied.
     bool Tick() noexcept {
-        // ── Idle rate limit: full scan at ~20 Hz; immediate on changes ──
         auto now = std::chrono::steady_clock::now();
         if (!mgr_.NeedsUpdate() &&
             now - last_tick_ < std::chrono::milliseconds(50))
             return false;
 
-        u64 local_player = GetLocalPlayer(mem_);
-        if (!local_player) return false;
+        // Read local player and controller atomically to avoid race
+        auto local_player = mem_.ReadSafe<u64>(mem_.Client() + Offsets::dwLocalPlayerPawn);
+        if (!local_player || !*local_player) return false;
+        auto local_ctrl = mem_.ReadSafe<u64>(mem_.Client() + Offsets::dwLocalPlayerController);
+        if (!local_ctrl || !*local_ctrl) return false;
 
-        u64 local_ctrl = GetLocalController(mem_);
-        if (!local_ctrl) return false;
+        u64 local_player_val = *local_player;
+        u64 local_ctrl_val = *local_ctrl;
 
         // ── Music kit (only write when changed) ──────────────────────────
-        u64 inv = mem_.Read<u64>(local_ctrl + Offsets::m_pInventoryServices);
-        if (inv && music_kit_id_ != last_music_kit_id_) {
-            mem_.Write<u16>(inv + Offsets::m_unMusicID,
+        auto inv = mem_.ReadSafe<u64>(local_ctrl_val + Offsets::m_pInventoryServices);
+        if (inv && *inv && music_kit_id_ != last_music_kit_id_) {
+            mem_.Write<u16>(*inv + Offsets::m_unMusicID,
                             static_cast<u16>(music_kit_id_));
             last_music_kit_id_ = music_kit_id_;
         }
 
         // ── Weapons ───────────────────────────────────────────────────────
-        auto weapons = GetWeapons(mem_, local_player);
+        auto weapons = GetWeapons(mem_, local_player_val);
         bool applied = false;
 
         // Force update prep: reset all weapons so they get re-processed
@@ -64,10 +66,13 @@ public:
             u64 item = weapon + Offsets::m_AttributeManager + Offsets::m_Item;
 
             // Check if already applied
-            if (mem_.Read<u32>(item + Offsets::m_iItemIDHigh) == 0xFFFFFFFF)
+            auto item_id = mem_.ReadSafe<u32>(item + Offsets::m_iItemIDHigh);
+            if (!item_id || *item_id == 0xFFFFFFFF)
                 continue;
 
-            i32 cur_def = mem_.Read<u16>(item + Offsets::m_iItemDefinitionIndex);
+            auto cur_def_raw = mem_.ReadSafe<u16>(item + Offsets::m_iItemDefinitionIndex);
+            if (!cur_def_raw) continue;
+            i32 cur_def = *cur_def_raw;
             WeaponsEnum def = static_cast<WeaponsEnum>(cur_def);
 
             // ── Knife handling ─────────────────────────────────────────────
@@ -97,8 +102,8 @@ public:
                                     static_cast<u16>(knife_def));
             };
             auto do_mesh = [&]() {
-                u64 n = mem_.Read<u64>(weapon + Offsets::m_pGameSceneNode);
-                if (n) DoMeshMask(weapon, n, skin.bUsesOldModel);
+                auto n = mem_.ReadSafe<u64>(weapon + Offsets::m_pGameSceneNode);
+                if (n && *n) DoMeshMask(weapon, *n, skin.bUsesOldModel);
             };
             auto do_attrs = [&]() { attr_mgr_.Create(item, skin); };
 
@@ -124,8 +129,10 @@ public:
                 regen_addr_ = mem_.SigScan(L"client.dll",
                                            Offsets::Sigs::RegenerateWeaponSkins);
             }
-            if (regen_addr_) {
-                mem_.CallRemoteThreadAsync(regen_addr_);
+            if (regen_addr_ && inv && *inv) {
+                // Pass inventory services pointer as this-context
+                mem_.CallRemoteThreadAsync(regen_addr_,
+                    reinterpret_cast<void*>(static_cast<u64>(*inv)));
             }
 
             // Timing jitter: 1–15ms random sleep to avoid fixed patterns
@@ -149,27 +156,25 @@ public:
 
     /// Apply glove skin from the manager.
     bool ApplyGloves() noexcept {
-        u64 local_player = GetLocalPlayer(mem_);
-        if (!local_player) return false;
+        auto local_player = mem_.ReadSafe<u64>(mem_.Client() + Offsets::dwLocalPlayerPawn);
+        if (!local_player || !*local_player) return false;
 
         i32 glove_paint = mgr_.GetGlovePaint();
         if (!glove_paint) return false;
 
-        // Read the glove econ item — m_EconGloves is an embedded C_EconGloves
-        // that contains at least a C_EconItemView (or a handle to one).
-        u64 glove_data = local_player + Offsets::m_EconGloves;
+        u64 glove_data = *local_player + Offsets::m_EconGloves;
 
         // Try to resolve as entity handle first (common approach)
-        u32 handle = mem_.Read<u32>(glove_data);
+        auto handle = mem_.ReadSafe<u32>(glove_data);
         u64 glove_entity = 0;
-        if (handle > 0 && handle < 0x10000)
-            glove_entity = GetEntityByHandle(mem_, handle);
+        if (handle && *handle > 0 && *handle < 0x10000)
+            glove_entity = GetEntityByHandle(mem_, *handle);
 
         // Fallback: direct pointer read
         if (!glove_entity) {
-            glove_entity = mem_.Read<u64>(glove_data);
-            if (glove_entity < 0x10000) // still looks like a handle, skip
-                glove_entity = 0;
+            auto direct = mem_.ReadSafe<u64>(glove_data);
+            if (direct && *direct >= 0x10000)
+                glove_entity = *direct;
         }
 
         if (!glove_entity) return false;
@@ -187,15 +192,15 @@ public:
         // Set mesh mask for HUD arms
         u64 hud_arms = GetHudArms(mem_);
         if (hud_arms) {
-            u64 node = mem_.Read<u64>(hud_arms + Offsets::m_pGameSceneNode);
-            if (node) {
-                u64 model = node + Offsets::m_modelState;
+            auto node = mem_.ReadSafe<u64>(hud_arms + Offsets::m_pGameSceneNode);
+            if (node && *node) {
+                u64 model = *node + Offsets::m_modelState;
                 mem_.Write<u64>(model + Offsets::m_MeshGroupMask, 1);
             }
         }
 
         // Force re-apply
-        mem_.Write<bool>(local_player + Offsets::m_bNeedToReApplyGloves, true);
+        mem_.Write<bool>(*local_player + Offsets::m_bNeedToReApplyGloves, true);
 
         return true;
     }
@@ -219,28 +224,29 @@ private:
 
     void DoMeshMask(u64 weapon, u64 node, bool old_model) noexcept {
         u64 model = node + Offsets::m_modelState;
-        u64 dirty = mem_.Read<u64>(model + Offsets::m_pDirtyModelData);
+        auto dirty = mem_.ReadSafe<u64>(model + Offsets::m_pDirtyModelData);
         u64 mask = old_model ? 2 : 1;
-        if (dirty) {
-            mem_.Write<u64>(dirty + Offsets::m_DirtyMeshGroupMask, mask);
+        if (dirty && *dirty) {
+            mem_.Write<u64>(*dirty + Offsets::m_DirtyMeshGroupMask, mask);
             mem_.Write<u64>(model + Offsets::m_MeshGroupMask, mask);
         }
         u64 hud = GetHudWeapon(mem_, weapon);
         if (hud) {
-            u64 hud_node = mem_.Read<u64>(hud + Offsets::m_pGameSceneNode);
-            if (hud_node)
-                mem_.Write<u64>(hud_node + Offsets::m_modelState + Offsets::m_MeshGroupMask, mask);
+            auto hud_node = mem_.ReadSafe<u64>(hud + Offsets::m_pGameSceneNode);
+            if (hud_node && *hud_node)
+                mem_.Write<u64>(*hud_node + Offsets::m_modelState + Offsets::m_MeshGroupMask, mask);
         }
     }
 
-    // Override mesh mask with retry (mirrors reference's goto approach)
+    // Override mesh mask with retry (limited writes)
     void OverrideMeshMask(u64 model, u64 mask) noexcept {
-        for (int attempt = 0; attempt < 5; ++attempt) {
-            for (int i = 0; i < 700; ++i) {
+        for (int attempt = 0; attempt < 3; ++attempt) {
+            for (int i = 0; i < 20; ++i) {
                 mem_.Write<u64>(model + Offsets::m_MeshGroupMask, mask);
             }
             ::Sleep(5);
-            if (mem_.Read<u64>(model + Offsets::m_MeshGroupMask) == mask)
+            auto current = mem_.ReadSafe<u64>(model + Offsets::m_MeshGroupMask);
+            if (current && *current == mask)
                 break;
         }
     }

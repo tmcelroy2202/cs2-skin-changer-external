@@ -39,41 +39,43 @@ class EconItemAttributeManager {
 public:
     explicit EconItemAttributeManager(ProcessMemory& mem) : mem_(mem) {}
 
-    void Create(u64 item, const SkinInfo_t& skin) noexcept {
+    bool Create(u64 item, const SkinInfo_t& skin) noexcept {
+        if (!skin.Paint) return false;
+
         std::vector<CEconItemAttribute> attrs;
+        attrs.push_back(MakeAttribute(Attr_Paint,   static_cast<f32>(skin.Paint)));
+        attrs.push_back(MakeAttribute(Attr_Pattern, static_cast<f32>(skin.Pattern)));
+        attrs.push_back(MakeAttribute(Attr_Wear,    skin.Wear));
 
-        if (skin.Paint) {
-            attrs.push_back(MakeAttribute(Attr_Paint,   static_cast<f32>(skin.Paint)));
-            attrs.push_back(MakeAttribute(Attr_Pattern, static_cast<f32>(skin.Pattern)));
-            attrs.push_back(MakeAttribute(Attr_Wear,    skin.Wear));
-        }
-
-        CPtrGameVector existing = mem_.Read<CPtrGameVector>(
+        auto existing = mem_.ReadSafe<CPtrGameVector>(
             item + Offsets::m_AttributeList + Offsets::m_Attributes);
-
-        if (attrs.empty() || existing.size || existing.ptr)
-            return;
+        if (!existing) return false;
+        if (existing->size || existing->ptr) return false;
 
         u64 block = mem_.Allocate();
-        if (!block) return;
+        if (!block) return false;
 
         for (usize i = 0; i < attrs.size(); ++i) {
-            mem_.Write(block + i * sizeof(CEconItemAttribute), attrs[i]);
+            if (!mem_.Write(block + i * sizeof(CEconItemAttribute), attrs[i])) {
+                mem_.Free(block);
+                return false;
+            }
         }
 
         CPtrGameVector vec;
         vec.size = attrs.size();
         vec.ptr  = block;
         mem_.Write(item + Offsets::m_AttributeList + Offsets::m_Attributes, vec);
+        return true;
     }
 
     void Remove(u64 item) noexcept {
         u64 attr_addr = item + Offsets::m_AttributeList + Offsets::m_Attributes;
-        CPtrGameVector attrs = mem_.Read<CPtrGameVector>(attr_addr);
-        if (!attrs.size || !attrs.ptr) return;
+        auto attrs = mem_.ReadSafe<CPtrGameVector>(attr_addr);
+        if (!attrs || !attrs->size || !attrs->ptr) return;
 
         mem_.Write(attr_addr, CPtrGameVector{});
-        mem_.Free(attrs.ptr);
+        mem_.Free(attrs->ptr);
     }
 
 private:

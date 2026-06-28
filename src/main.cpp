@@ -40,6 +40,7 @@
 #include "core/ProcessMemory.h"
 #include "cs2/SkinDatabase.h"
 #include "cs2/SkinChanger.h"
+#include "cs2/Offsets.h"
 #include "cs2/ConfigManager.h"
 #include "ui/panels/SkinChangerPanel.h"
 // ──────────────────────────────────────────────────────────────────────────────
@@ -195,6 +196,16 @@ int main() {
     // ── CS2 Skin Changer ────────────────────────────────────────────────────
     if (app.cs2.Open(L"cs2.exe")) {
         LOG_INFO("Connected to cs2.exe");
+
+        // Load offsets from data file (if present); otherwise embedded defaults apply
+        auto off_path = Offsets::DataFilePath();
+        if (Offsets::LoadFromFile(off_path)) {
+            LOG_INFO("Offsets loaded from {}", off_path.string().c_str());
+        } else {
+            // First launch — write the defaults so the user can edit them
+            Offsets::SaveToFile(off_path);
+            LOG_INFO("Default offsets written to {}", off_path.string().c_str());
+        }
 
         app.skin_changer = new SkinChanger(app.cs2, app.skin_db, app.skin_mgr);
         app.skin_panel   = new SkinChangerPanel(app.skin_db, app.skin_mgr,

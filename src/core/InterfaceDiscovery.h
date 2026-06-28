@@ -32,13 +32,6 @@ public:
         return static_cast<T*>(factory(name.data(), nullptr));
     }
 
-    /// Enumerate all interfaces exported by a module.
-    struct InterfaceEntry {
-        std::string name;
-        u64         address;
-    };
-    static std::vector<InterfaceEntry> Enumerate(const Module& mod) noexcept;
-
 private:
     /// Internal struct used by the interface list.
     struct InterfaceReg {

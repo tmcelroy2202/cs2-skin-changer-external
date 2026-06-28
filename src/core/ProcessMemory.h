@@ -8,6 +8,7 @@
 #include <Windows.h>
 #include <TlHelp32.h>
 #include <stdexcept>
+#include <optional>
 
 /* ── ProcessMemory ──────────────────────────────────────────────────────────
  *
@@ -52,12 +53,14 @@ public:
 
     explicit operator bool() const noexcept { return handle_ != nullptr; }
 
+    bool LastOpOk() const noexcept { return last_op_ok_; }
+
     // ── Read ─────────────────────────────────────────────────────────────────
     template <typename T>
     [[nodiscard]] T Read(u64 address) const noexcept {
         T buffer{};
-        ReadProcessMemory(handle_, reinterpret_cast<LPCVOID>(address),
-                          &buffer, sizeof(T), nullptr);
+        last_op_ok_ = ReadProcessMemory(handle_, reinterpret_cast<LPCVOID>(address),
+                                        &buffer, sizeof(T), nullptr) != 0;
         return buffer;
     }
 
@@ -66,11 +69,32 @@ public:
         return Read<T>(base + offset);
     }
 
+    template <typename T>
+    [[nodiscard]] std::optional<T> ReadSafe(u64 address) const noexcept {
+        T buffer{};
+        if (ReadProcessMemory(handle_, reinterpret_cast<LPCVOID>(address),
+                              &buffer, sizeof(T), nullptr)) {
+            return buffer;
+        }
+        return std::nullopt;
+    }
+
+    template <typename T>
+    [[nodiscard]] std::optional<T> ReadSafe(u64 base, i64 offset) const noexcept {
+        return ReadSafe<T>(base + offset);
+    }
+
     // ── Write ────────────────────────────────────────────────────────────────
     template <typename T>
-    void Write(u64 address, const T& value) const noexcept {
-        WriteProcessMemory(handle_, reinterpret_cast<LPVOID>(address),
-                           &value, sizeof(T), nullptr);
+    bool Write(u64 address, const T& value) const noexcept {
+        last_op_ok_ = WriteProcessMemory(handle_, reinterpret_cast<LPVOID>(address),
+                                         &value, sizeof(T), nullptr) != 0;
+        return last_op_ok_;
+    }
+
+    template <typename T>
+    bool Write(u64 base, i64 offset, const T& value) const noexcept {
+        return Write<T>(base + offset, value);
     }
 
     // ── Utilities ────────────────────────────────────────────────────────────
@@ -126,12 +150,16 @@ public:
         if (h) { WaitForSingleObject(h, INFINITE); CloseHandle(h); }
     }
 
-    /// Fire-and-forget remote thread — does NOT block.
+    /// Fire-and-forget remote thread — does NOT block, but keeps handle until thread exits.
     void CallRemoteThreadAsync(u64 func_addr, void* param = nullptr) const noexcept {
         HANDLE h = ::CreateRemoteThread(handle_, nullptr, 0,
             reinterpret_cast<LPTHREAD_START_ROUTINE>(func_addr), param,
             0, nullptr);
-        if (h) CloseHandle(h);
+        if (h) {
+            // Keep handle alive until thread exits to avoid premature termination
+            ::WaitForSingleObject(h, 100);
+            CloseHandle(h);
+        }
     }
 
 private:
@@ -139,6 +167,7 @@ private:
     u64    process_id_  = 0;
     u64    client_      = 0;
     u64    engine_      = 0;
+    mutable bool last_op_ok_ = true;
 
     static u64 FindProcessId(std::wstring_view name) noexcept {
         u64 pid = 0;
@@ -187,13 +216,12 @@ private:
     }
 };
 
-// ── Signature scanning ────────────────────────────────────────────────────────
+// ── Signature scanning (chunked read) ───────────────────────────────────────────
 inline u64 ProcessMemory::SigScan(std::wstring_view module,
                                    std::string_view pattern) const noexcept {
     u64 base = GetModuleBase(module);
     if (!base) return 0;
 
-    // Get module size
     HANDLE snap = CreateToolhelp32Snapshot(TH32CS_SNAPMODULE | TH32CS_SNAPMODULE32,
                                             static_cast<DWORD>(process_id_));
     if (snap == INVALID_HANDLE_VALUE) return 0;
@@ -212,14 +240,7 @@ inline u64 ProcessMemory::SigScan(std::wstring_view module,
     CloseHandle(snap);
     if (!module_size) return 0;
 
-    // Read the full module
-    std::vector<u8> buffer(module_size);
-    SIZE_T bytes_read = 0;
-    if (!ReadProcessMemory(handle_, reinterpret_cast<LPCVOID>(base),
-                           buffer.data(), module_size, &bytes_read))
-        return 0;
-
-    // Parse pattern: "48 83 EC ? E8 ? ? ? ?"
+    // Parse pattern once
     struct PatternByte { u8 byte; bool wildcard; };
     std::vector<PatternByte> sig;
     const char* p = pattern.data();
@@ -236,16 +257,35 @@ inline u64 ProcessMemory::SigScan(std::wstring_view module,
         }
     }
 
-    // Scan
-    for (usize i = 0; i + sig.size() <= buffer.size(); ++i) {
-        bool match = true;
-        for (usize j = 0; j < sig.size(); ++j) {
-            if (!sig[j].wildcard && buffer[i + j] != sig[j].byte) {
-                match = false;
-                break;
+    if (sig.empty()) return 0;
+
+    // Scan in 1MB chunks to avoid massive single allocations
+    constexpr usize kChunkSize = 1 << 20;
+    std::vector<u8> chunk(kChunkSize);
+
+    for (usize offset = 0; offset + sig.size() <= module_size; ) {
+        usize to_read = std::min(kChunkSize, module_size - offset);
+        SIZE_T bytes_read = 0;
+        if (!ReadProcessMemory(handle_, reinterpret_cast<LPCVOID>(base + offset),
+                               chunk.data(), to_read, &bytes_read))
+            return 0;
+        to_read = bytes_read;
+
+        for (usize i = 0; i + sig.size() <= to_read; ++i) {
+            bool match = true;
+            for (usize j = 0; j < sig.size(); ++j) {
+                if (!sig[j].wildcard && chunk[i + j] != sig[j].byte) {
+                    match = false;
+                    break;
+                }
             }
+            if (match) return base + offset + i;
         }
-        if (match) return base + i;
+
+        // Move back by sig.size() - 1 to catch patterns spanning chunk boundaries
+        offset += (to_read >= sig.size() - 1) ? to_read - sig.size() + 1 : to_read;
+        if (offset >= module_size) break;
+        if (offset + sig.size() > module_size) break;
     }
 
     return 0;

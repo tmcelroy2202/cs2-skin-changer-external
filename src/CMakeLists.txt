@@ -8,9 +8,6 @@ add_library(s2rf_core STATIC
     core/OffsetManager.cpp
 )
 target_include_directories(s2rf_core PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
-target_link_libraries(s2rf_core PUBLIC
-    $<$<BOOL:${spdlog_FOUND}>:spdlog::spdlog>
-)
 
 # ── Engine library ────────────────────────────────────────────────────────────
 add_library(s2rf_engine STATIC

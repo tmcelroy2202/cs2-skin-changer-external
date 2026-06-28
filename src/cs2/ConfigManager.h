@@ -14,7 +14,10 @@
  * ──────────────────────────────────────────────────────────────────────────── */
 
 inline std::filesystem::path ConfigPath() {
-    auto path = std::filesystem::path(getenv("APPDATA")) / "cs2-skin-changer";
+    const char* appdata = getenv("APPDATA");
+    if (!appdata) appdata = getenv("HOME");
+    if (!appdata) return "loadout.txt";
+    auto path = std::filesystem::path(appdata) / "cs2-skin-changer";
     std::filesystem::create_directories(path);
     return path / "loadout.txt";
 }

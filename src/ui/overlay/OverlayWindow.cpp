@@ -2,6 +2,9 @@
 #include "core/Logging.h"
 #include <random>
 #include <string>
+#include <thread>
+#include <chrono>
+#include <algorithm>
 
 #ifndef NOMINMAX
 #define NOMINMAX
@@ -19,8 +22,11 @@
 
 namespace {
 
-constexpr const char* kWindowClass = "Chrome_WidgetWin_1";
-constexpr const char* kWindowTitle = "Discord Overlay";
+// Toggle UI visibility from overlay mode (callback set by Framework)
+void ToggleOverlayVisibility() {
+    auto& s = overlay::State();
+    if (s.toggle_callback) s.toggle_callback();
+}
 
 // ── Forward declare the WndProc ──────────────────────────────────────────────
 LRESULT CALLBACK OverlayWndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
@@ -135,48 +141,6 @@ static bool InitD3D11(HWND hwnd) noexcept {
     return true;
 }
 
-// ── Hijack: find existing Discord overlay window ─────────────────────────────
-
-static bool HijackWindow() noexcept {
-    auto& s = State();
-
-    HWND hwnd = FindWindowA(kWindowClass, kWindowTitle);
-    if (!hwnd) {
-        LOG_ERROR("Failed to find '{}' '{}' — is Discord running with overlay enabled?",
-                  kWindowClass, kWindowTitle);
-        return false;
-    }
-
-    LOG_INFO("Hijacked Discord overlay window: 0x{:X}", reinterpret_cast<u64>(hwnd));
-    s.hwnd = hwnd;
-
-    ShowWindow(hwnd, SW_SHOW);
-
-    // Transparent layered window
-    SetWindowLongPtrA(hwnd, GWL_EXSTYLE,
-        WS_EX_TRANSPARENT | WS_EX_TOOLWINDOW | WS_EX_LAYERED);
-
-    // WS_EX_LAYERED + WS_EX_TRANSPARENT for click-through
-    SetWindowLongPtrA(hwnd, GWL_EXSTYLE,
-        static_cast<LONG_PTR>(
-            static_cast<int>(GetWindowLongPtrA(hwnd, GWL_EXSTYLE)) | 0x20));
-
-    // Extend Aero frame into client area (makes the glass effect)
-    MARGINS margin{-1, -1, -1, -1};
-    DwmExtendFrameIntoClientArea(hwnd, &margin);
-
-    // LWA_ALPHA for per-pixel alpha
-    SetLayeredWindowAttributes(hwnd, 0, 0xFF, 0x02);
-
-    // Topmost
-    SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0,
-                 SWP_NOMOVE | SWP_NOSIZE);
-
-    UpdateWindow(hwnd);
-
-    return true;
-}
-
 // ── Create: make our own overlay window ──────────────────────────────────────
 
 static std::wstring RandomString(int len) noexcept {
@@ -251,13 +215,9 @@ bool Init() noexcept {
     auto& s = State();
     if (s.initialised) return true;
 
-    // Try hijack first, fall back to create
-    if (!HijackWindow()) {
-        LOG_WARN("Hijack failed, creating our own overlay window");
-        if (!CreateOverlayWindow()) {
-            LOG_ERROR("Failed to create overlay window");
-            return false;
-        }
+    if (!CreateOverlayWindow()) {
+        LOG_ERROR("Failed to create overlay window");
+        return false;
     }
 
     if (!InitD3D11(static_cast<HWND>(s.hwnd))) {
@@ -305,8 +265,8 @@ void NewFrame() noexcept {
     auto& s = State();
     if (!s.running) return;
 
-    // FPS limiter
-    static auto next_frame = std::chrono::high_resolution_clock::now();
+    // FPS limiter (relative delta, no drift)
+    static auto last_frame = std::chrono::high_resolution_clock::now();
     auto interval = std::chrono::duration_cast<
         std::chrono::high_resolution_clock::duration>(
             std::chrono::duration<double>(1.0 / s.desired_fps));
@@ -322,6 +282,14 @@ void NewFrame() noexcept {
         }
     }
 
+    // Handle Insert key for visibility toggle (edge-triggered)
+    static bool insert_was_down = false;
+    bool insert_down = (GetAsyncKeyState(VK_INSERT) & 0x8000) != 0;
+    if (insert_down && !insert_was_down) {
+        ToggleOverlayVisibility();
+    }
+    insert_was_down = insert_down;
+
     // Manual mouse input (no WndProc needed for click-through)
     POINT pt;
     GetCursorPos(&pt);
@@ -329,14 +297,18 @@ void NewFrame() noexcept {
     io.MousePos      = ImVec2(static_cast<f32>(pt.x), static_cast<f32>(pt.y));
     io.MouseDown[0]  = (GetAsyncKeyState(VK_LBUTTON) & 0x8000) != 0;
     io.MouseDown[1]  = (GetAsyncKeyState(VK_RBUTTON) & 0x8000) != 0;
-    io.DeltaTime     = 1.0f / 60.0f;
 
-    // Sleep until next frame
+    // Compute real delta time for smooth animation
     auto now = std::chrono::high_resolution_clock::now();
-    if (next_frame > now) {
-        std::this_thread::sleep_until(next_frame);
+    f32 dt = std::chrono::duration<f32>(now - last_frame).count();
+    io.DeltaTime = std::max(dt, 1.0f / 120.0f);
+
+    // Sleep to maintain target framerate (relative to last frame)
+    auto elapsed = std::chrono::high_resolution_clock::now() - last_frame;
+    if (elapsed < interval) {
+        std::this_thread::sleep_for(interval - elapsed);
     }
-    next_frame += interval;
+    last_frame = std::chrono::high_resolution_clock::now();
 
     ImGui_ImplDX11_NewFrame();
     ImGui_ImplWin32_NewFrame();

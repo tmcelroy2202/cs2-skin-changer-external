@@ -50,6 +50,8 @@ bool ui::Init(const InitParams& params) noexcept {
             LOG_ERROR("Overlay initialisation failed");
             return false;
         }
+        // Register toggle callback so overlay-mode Insert key can toggle visibility
+        overlay::State().toggle_callback = []() { ToggleVisibility(); };
         d.mode = Mode::Overlay;
 
     } else {

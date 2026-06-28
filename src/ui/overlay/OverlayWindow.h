@@ -6,14 +6,9 @@
  *
  * Transparent click-through overlay window for rendering Dear ImGui.
  *
- * Implements two creation strategies mirroring the reference:
- *   1. Hijack mode — finds an existing "Chrome_WidgetWin_1" (Discord
- *      overlay) window and repurposes it as a transparent render target.
- *   2. Create mode — registers and creates a new topmost layered window
- *      using the same class name for compatibility.
- *
- * The overlay owns its own D3D11 device, swap chain, and render target,
- * completely independent of any game rendering pipeline.
+ * Creates a new topmost layered window with a random class/title to avoid
+ * detection.  The overlay owns its own D3D11 device, swap chain, and render
+ * target, completely independent of any game rendering pipeline.
  * ──────────────────────────────────────────────────────────────────────────── */
 
 struct ID3D11Device;
@@ -39,6 +34,8 @@ struct OverlayState {
     bool            vsync               = false;
     bool            running             = false;
     bool            initialised         = false;
+
+    void (*toggle_callback)() = nullptr;
 };
 
 /// Initialise the overlay window (hijack or create).
