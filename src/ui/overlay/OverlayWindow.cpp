@@ -33,6 +33,9 @@ LRESULT CALLBACK OverlayWndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lPara
 
 } // anonymous namespace
 
+// ── WndProc handler from ImGui backend (copy from imgui_impl_win32.h, intentionally ifdef'd out there) ──
+extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
+
 namespace overlay {
 
 OverlayState& State() noexcept {
