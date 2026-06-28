@@ -158,10 +158,13 @@ if (-not (Test-Path $buildDir)) {
 }
 
 $gen = if ($hasMsBuild -or $hasCl) { "Visual Studio 17 2022" } else { "Ninja" }
-$arch = "x64"
+$cmakeArgs = @("-S", $root, "-B", $buildDir, "-G", $gen, "-DCSC_BUILD_STANDALONE=ON")
+if ($gen -like "Visual Studio*") {
+    $cmakeArgs += @("-A", "x64")
+}
 
 if (-not $NoBuild) {
-    cmake -S $root -B $buildDir -G "$gen" -A $arch -DCSC_BUILD_STANDALONE=ON
+    cmake @cmakeArgs
     if ($LASTEXITCODE -eq 0) {
         Ok "CMake configuration complete"
     } else {

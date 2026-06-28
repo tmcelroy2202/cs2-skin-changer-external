@@ -73,10 +73,10 @@ setup.bat
 git clone --depth 1 --branch v1.91.8 https://github.com/ocornut/imgui.git third_party\imgui
 
 :: Configure (standalone overlay EXE)
-cmake -B build -G "Visual Studio 17 2022" -A x64 -DCSC_BUILD_STANDALONE=ON
+cmake --preset windows-release
 
 :: Build
-cmake --build build --config Release
+cmake --build --preset windows-release
 ```
 
 The binary is written to `build\Release\CS2SkinChanger.exe`.
