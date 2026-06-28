@@ -87,7 +87,7 @@ bool ui::Init(const InitParams& params) noexcept {
         d.mode = Mode::Hook;
     }
 
-    ImGui::StyleColorsDark();
+    overlay::ApplyCustomStyle();
 
     d.initialised = true;
     LOG_INFO("UI Framework initialised");

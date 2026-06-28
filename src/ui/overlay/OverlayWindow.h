@@ -56,4 +56,7 @@ OverlayState& State() noexcept;
 /// Check if the overlay is running.
 bool IsRunning() noexcept;
 
+/// Apply a custom CS2-inspired dark style to ImGui.
+void ApplyCustomStyle() noexcept;
+
 } // namespace overlay
