@@ -21,6 +21,15 @@ public:
     /// Function pointer type for CreateInterface export.
     using CreateInterfaceFn = void* (*)(const char* name, i32* return_code);
 
+    /// Describes a registered interface entry.
+    struct InterfaceEntry {
+        std::string name;
+        u64         address;
+    };
+
+    /// Enumerate all interfaces registered in a module.
+    static std::vector<InterfaceEntry> Enumerate(const Module& mod) noexcept;
+
     /// Retrieve the CreateInterface function from a module.
     static CreateInterfaceFn GetFactory(const Module& mod) noexcept;
 
