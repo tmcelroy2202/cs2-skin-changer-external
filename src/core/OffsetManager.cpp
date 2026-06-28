@@ -46,7 +46,7 @@ std::optional<u64> OffsetManager::Resolve(std::string_view key) {
 
 std::optional<u64> OffsetManager::Get(std::string_view key) {
     auto& cache = Cache();
-    auto it = cache.find(key);
+    auto it = cache.find(std::string(key));
     if (it != cache.end())
         return it->second;
     return std::nullopt;
