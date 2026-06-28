@@ -5,6 +5,7 @@
 #include "EntitySystem.h"
 #include "EconSystem.h"
 #include "SkinDatabase.h"
+#include <random>
 
 /* ── CS2 Skin Changer ──────────────────────────────────────────────────────
  *
@@ -65,7 +66,7 @@ public:
             i32  knife_pnt  = mgr_.GetKnifePaint();
 
             SkinInfo_t skin = is_knife && knife_pnt
-                ? SkinInfo_t{knife_pnt, false, "Knife", WeaponsEnum::None}
+                ? SkinInfo_t{knife_pnt, 0.01f, 0, false, "Knife", WeaponsEnum::None}
                 : mgr_.GetSkin(def);
 
             if (!skin.Paint) continue;
@@ -119,7 +120,14 @@ public:
             u64 regen_addr = mem_.SigScan(L"client.dll",
                                            Offsets::Sigs::RegenerateWeaponSkins);
             if (regen_addr) {
-                mem_.CallRemoteThread(regen_addr);
+                // Fire-and-forget — no blocking, no lag spike
+                mem_.CallRemoteThreadAsync(regen_addr);
+            }
+
+            // Timing jitter: 1–15ms random sleep to avoid fixed patterns
+            {
+                std::uniform_int_distribution<int> dist(1, 15);
+                ::Sleep(dist(rng_));
             }
 
             // Cleanup fallback values
@@ -172,7 +180,7 @@ public:
         mem_.Write<u32>(item + Offsets::m_iItemIDHigh, 0xFFFFFFFF);
 
         // Create econ attributes for paint kit
-        SkinInfo_t glove_skin{glove_paint, false, "Glove", WeaponsEnum::None};
+        SkinInfo_t glove_skin{glove_paint, 0.01f, 0, false, "Glove", WeaponsEnum::None};
         attr_mgr_.Create(item, glove_skin);
 
         // Set mesh mask for HUD arms
@@ -203,6 +211,7 @@ private:
     SkinManager&        mgr_;
     EconItemAttributeManager attr_mgr_;
     u16                 music_kit_id_ = 0;
+    mutable std::mt19937 rng_{std::random_device{}()};
 
     // Override mesh mask with retry (mirrors reference's goto approach)
     void OverrideMeshMask(u64 model, u64 mask) noexcept {

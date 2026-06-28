@@ -137,6 +137,8 @@ enum class CSWeaponType : u32 {
 
 struct SkinInfo_t {
     i32         Paint           = 0;
+    f32         Wear            = 0.01f;
+    i32         Pattern         = 0;
     bool        bUsesOldModel   = false;
     std::string name;
     WeaponsEnum weaponType      = WeaponsEnum::None;

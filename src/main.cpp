@@ -40,6 +40,7 @@
 #include "core/ProcessMemory.h"
 #include "cs2/SkinDatabase.h"
 #include "cs2/SkinChanger.h"
+#include "cs2/ConfigManager.h"
 #include "ui/panels/SkinChangerPanel.h"
 // ──────────────────────────────────────────────────────────────────────────────
 //  STANDALONE OVERLAY MODE
@@ -199,6 +200,12 @@ int main() {
         app.skin_panel   = new SkinChangerPanel(app.skin_db, app.skin_mgr,
                                                  *app.skin_changer);
         app.panels.Register(app.skin_panel);
+
+        // Load saved config (skins, knife, gloves, music kit)
+        u16 saved_music = app.skin_changer->GetMusicKit();
+        LoadConfig(app.skin_mgr, saved_music);
+        app.skin_changer->SetMusicKit(saved_music);
+        LOG_INFO("Config loaded from {}", ConfigPath().string().c_str());
     } else {
         LOG_WARN("CS2 not running — skin changer disabled");
     }

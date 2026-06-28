@@ -33,14 +33,14 @@ public:
     {
         std::vector<SkinInfo_t> results;
         if (include_vanilla)
-            results.push_back({0, false, "Vanilla", WeaponsEnum::None});
+            results.push_back({0, 0.01f, 0, false, "Vanilla", WeaponsEnum::None});
 
         i32 def = static_cast<i32>(weapon);
         auto it = db_.find(def);
         if (it == db_.end()) return results;
 
         for (auto& entry : it->second) {
-            results.push_back({entry.paint_id, entry.legacy_model, entry.name, weapon});
+            results.push_back({entry.paint_id, 0.01f, 0, entry.legacy_model, entry.name, weapon});
         }
         return results;
     }
@@ -53,7 +53,7 @@ public:
 
         for (auto& entry : it->second) {
             if (entry.name.find(name) != std::string_view::npos) {
-                return {entry.paint_id, entry.legacy_model, entry.name, weapon};
+                return {entry.paint_id, 0.01f, 0, entry.legacy_model, entry.name, weapon};
             }
         }
         return {};
@@ -65,13 +65,13 @@ public:
     {
         std::vector<SkinInfo_t> results;
         if (include_default)
-            results.push_back({0, false, "Default", WeaponsEnum::None});
+            results.push_back({0, 0.01f, 0, false, "Default", WeaponsEnum::None});
 
         auto it = gloves_.find(static_cast<i32>(glove));
         if (it == gloves_.end()) return results;
 
         for (auto& entry : it->second) {
-            results.push_back({entry.paint_id, false, entry.name, WeaponsEnum::None});
+            results.push_back({entry.paint_id, 0.01f, 0, false, entry.name, WeaponsEnum::None});
         }
         return results;
     }

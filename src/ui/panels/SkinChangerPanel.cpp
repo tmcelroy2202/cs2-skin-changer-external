@@ -54,6 +54,7 @@ void SkinChangerPanel::DrawSkinsTab() noexcept {
             ImGui::TextColored(ImVec4(0, 1, 0, 1), "Active: %s (Paint #%d)",
                                current.name.c_str(), current.Paint);
         }
+        DrawFloatPatternControls();
     }
 }
 
@@ -132,8 +133,13 @@ void SkinChangerPanel::DrawSkinCombo(WeaponsEnum weapon) noexcept {
                 if (is_knife) {
                     mgr_.SetKnife(weapon, skins[i].Paint);
                 } else {
+                    // Preserve existing wear/pattern when skin selection changes
+                    auto cur = mgr_.GetSkin(weapon);
+                    skins[i].Wear    = cur.Paint ? cur.Wear : 0.01f;
+                    skins[i].Pattern = cur.Paint ? cur.Pattern : 0;
                     mgr_.SetSkin(skins[i]);
                 }
+                SaveAndSync();
             }
             if (sel) ImGui::SetItemDefaultFocus();
         }
@@ -211,8 +217,9 @@ void SkinChangerPanel::DrawGloveSkinCombo(GlovesEnum glove) noexcept {
             if (ImGui::Selectable(label.c_str(), sel)) {
                 selected_glove_skin_idx_ = i;
                 // Store the paint kit in SkinManager with a sentinel weapon type
-                SkinInfo_t glove_skin{skins[i].Paint, false, "Glove", WeaponsEnum::None};
+                SkinInfo_t glove_skin{skins[i].Paint, 0.01f, 0, false, "Glove", WeaponsEnum::None};
                 mgr_.SetGloveSkin(glove_skin);
+                SaveAndSync();
             }
             if (sel) ImGui::SetItemDefaultFocus();
         }
@@ -317,6 +324,7 @@ void SkinChangerPanel::DrawMusicTab() noexcept {
             if (ImGui::Selectable(kits[i].name, sel)) {
                 selected_music_idx_ = i;
                 changer_.SetMusicKit(kits[i].id);
+                SaveAndSync();
             }
             if (sel) ImGui::SetItemDefaultFocus();
         }
@@ -325,4 +333,42 @@ void SkinChangerPanel::DrawMusicTab() noexcept {
 
     ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1), "Music Kit ID: %u",
                        kits[selected_music_idx_].id);
+}
+
+// ── Float & Pattern Controls ──────────────────────────────────────────────────
+
+void SkinChangerPanel::DrawFloatPatternControls() noexcept {
+    if (weapon_list_.empty()) return;
+    WeaponsEnum weapon = weapon_list_[selected_weapon_idx_];
+    auto skin = mgr_.GetSkin(weapon);
+    if (!skin.Paint) return;
+
+    bool changed = false;
+
+    ImGui::Separator();
+    ImGui::Text("Wear (Float)");
+
+    f32 wear = skin.Wear;
+    if (ImGui::SliderFloat("##wear", &wear, 0.0f, 1.0f, "%.4f")) {
+        skin.Wear = wear;
+        changed = true;
+    }
+
+    ImGui::Text("Pattern Seed");
+    i32 pattern = skin.Pattern;
+    if (ImGui::InputInt("##pattern", &pattern, 1, 100)) {
+        skin.Pattern = std::clamp(pattern, 0, 9999);
+        changed = true;
+    }
+
+    if (changed) {
+        mgr_.SetSkin(skin);
+        SaveAndSync();
+    }
+}
+
+// ── Config Persistence ─────────────────────────────────────────────────────────
+
+void SkinChangerPanel::SaveAndSync() noexcept {
+    SaveConfig(mgr_, changer_.GetMusicKit());
 }

@@ -123,6 +123,14 @@ public:
         if (h) { WaitForSingleObject(h, INFINITE); CloseHandle(h); }
     }
 
+    /// Fire-and-forget remote thread — does NOT block.
+    void CallRemoteThreadAsync(u64 func_addr, void* param = nullptr) const noexcept {
+        HANDLE h = ::CreateRemoteThread(handle_, nullptr, 0,
+            reinterpret_cast<LPTHREAD_START_ROUTINE>(func_addr), param,
+            0, nullptr);
+        if (h) CloseHandle(h);
+    }
+
 private:
     HANDLE handle_      = nullptr;
     u64    process_id_  = 0;

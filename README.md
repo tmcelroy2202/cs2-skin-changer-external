@@ -8,6 +8,10 @@ An external skin changer for Counter-Strike 2 using process memory access. Stand
 - **Knives** — Change knife model + finish (all 18 cosmetic knife types, Doppler phases, Fade, Marble Fade, etc.)
 - **Gloves** — Apply glove paint kits across all 8 tradeable glove types
 - **Music Kits** — Select from ~70 music kits
+- **Float & Pattern** — Adjust wear value (0.00–1.00) and pattern seed per weapon
+- **Cloud-Synced Configs** — Loadout auto-saves to `%APPDATA%/cs2-skin-changer/loadout.txt` on every change; persists across restarts
+- **Full-Update Bypass** — Fire-and-forget remote thread; no blocking, no lag stutter
+- **Anti-Detection** — Timing jitter (random 1–15ms) added to avoid fixed API-call patterns
 
 ## How It Works
 

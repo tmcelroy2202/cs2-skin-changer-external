@@ -3,6 +3,7 @@
 #include "ui/Panels.h"
 #include "cs2/SkinDatabase.h"
 #include "cs2/SkinChanger.h"
+#include "cs2/ConfigManager.h"
 
 /* ── SkinChangerPanel ──────────────────────────────────────────────────────
  *
@@ -45,4 +46,6 @@ private:
     void DrawSkinCombo(WeaponsEnum weapon) noexcept;
     void DrawGloveTypeCombo() noexcept;
     void DrawGloveSkinCombo(GlovesEnum glove) noexcept;
+    void DrawFloatPatternControls() noexcept;
+    void SaveAndSync() noexcept;
 };

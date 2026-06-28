@@ -44,8 +44,8 @@ public:
 
         if (skin.Paint) {
             attrs.push_back(MakeAttribute(Attr_Paint,   static_cast<f32>(skin.Paint)));
-            attrs.push_back(MakeAttribute(Attr_Pattern, 0.0f));
-            attrs.push_back(MakeAttribute(Attr_Wear,    0.01f));
+            attrs.push_back(MakeAttribute(Attr_Pattern, static_cast<f32>(skin.Pattern)));
+            attrs.push_back(MakeAttribute(Attr_Wear,    skin.Wear));
         }
 
         CPtrGameVector existing = mem_.Read<CPtrGameVector>(
