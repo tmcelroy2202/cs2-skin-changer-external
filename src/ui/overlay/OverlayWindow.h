@@ -58,6 +58,9 @@ OverlayState& State() noexcept;
 /// Check if the overlay is running.
 bool IsRunning() noexcept;
 
+/// Toggle click-through mode so the overlay captures (or passes) mouse input.
+void SetClickthrough(bool enabled) noexcept;
+
 /// Apply a custom CS2-inspired dark style to ImGui.
 void ApplyCustomStyle() noexcept;
 

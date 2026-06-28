@@ -35,9 +35,19 @@ private:
     i32      selected_glove_type_idx_ = 0;
     i32      selected_glove_skin_idx_ = 0;
 
+    // Currently equipped weapon (set externally from entity system)
+    std::string equipped_weapon_;
+    i32         equipped_weapon_id_ = 0;
+
     // Cached weapon/glove lists for combos
     std::vector<WeaponsEnum> weapon_list_;
     std::vector<GlovesEnum>  glove_list_;
+
+    /// Set the currently equipped weapon (called from main loop).
+    void SetEquippedWeapon(std::string_view name, i32 def_id) noexcept {
+        equipped_weapon_ = name;
+        equipped_weapon_id_ = def_id;
+    }
 
     void DrawSkinsTab() noexcept;
     void DrawMusicTab() noexcept;

@@ -270,6 +270,21 @@ static bool CreateOverlayWindow() noexcept {
     return true;
 }
 
+// ── Click-through toggle ─────────────────────────────────────────────────────
+
+void SetClickthrough(bool enabled) noexcept {
+    auto& s = State();
+    if (!s.hwnd) return;
+    HWND hwnd = static_cast<HWND>(s.hwnd);
+    LONG_PTR ex = GetWindowLongPtrW(hwnd, GWL_EXSTYLE);
+    if (enabled) {
+        ex |= WS_EX_TRANSPARENT;
+    } else {
+        ex &= ~WS_EX_TRANSPARENT;
+    }
+    SetWindowLongPtrW(hwnd, GWL_EXSTYLE, ex);
+}
+
 // ── Init / Shutdown ──────────────────────────────────────────────────────────
 
 bool Init() noexcept {

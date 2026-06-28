@@ -92,6 +92,15 @@ void SkinChangerPanel::Draw() noexcept {
 // ── Skins Tab ─────────────────────────────────────────────────────────────────
 
 void SkinChangerPanel::DrawSkinsTab() noexcept {
+    // Currently equipped weapon display
+    if (!equipped_weapon_.empty()) {
+        ImGui::TextColored(ImVec4(0.92f, 0.35f, 0.14f, 1), "Equipped:");
+        ImGui::SameLine();
+        ImGui::TextColored(ImVec4(0.30f, 0.85f, 0.30f, 1), "%s",
+                           equipped_weapon_.c_str());
+        ImGui::Spacing();
+    }
+
     ImGui::PushStyleColor(ImGuiCol_Separator, ImVec4(0.92f, 0.35f, 0.14f, 0.30f));
     ImGui::SeparatorText("Weapon Selection");
     ImGui::PopStyleColor();

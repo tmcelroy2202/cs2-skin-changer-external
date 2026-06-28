@@ -172,6 +172,9 @@ bool ui::WndProcHandler(void* hwnd, u32 msg, u64 wparam, i64 lparam) noexcept {
 
 void ui::ToggleVisibility() noexcept {
     Data().visible = !Data().visible;
+    // When visible: capture mouse clicks on the overlay.
+    // When hidden:  click-through so CS2 receives all input.
+    overlay::SetClickthrough(!Data().visible);
 }
 
 bool ui::IsVisible() noexcept {

@@ -41,6 +41,7 @@
 #include "core/ProcessMemory.h"
 #include "cs2/SkinDatabase.h"
 #include "cs2/SkinChanger.h"
+#include "cs2/EntitySystem.h"
 #include "cs2/Offsets.h"
 #include "cs2/ConfigManager.h"
 #include "ui/panels/SkinChangerPanel.h"
@@ -141,6 +142,18 @@ void RunFrame(App& app) {
     // ── Skin changer tick ─────────────────────────────────────────────────────
     if (app.skin_changer) {
         app.skin_changer->Tick();
+    }
+
+    // ── Equipped weapon display ───────────────────────────────────────────────
+    if (app.skin_panel && app.cs2) {
+        u64 local = GetLocalPlayer(app.cs2);
+        if (local) {
+            auto def_id = GetActiveWeaponDef(app.cs2, local);
+            auto wep = static_cast<i32>(def_id);
+            // Only update if holding a real weapon (skip in-game menus, dead, etc.)
+            if (wep > 0)
+                app.skin_panel->SetEquippedWeapon(WeaponIdToString(wep), wep);
+        }
     }
 
     ui::Render();
