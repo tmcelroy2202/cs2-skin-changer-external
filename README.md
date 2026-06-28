@@ -40,6 +40,8 @@ Grab the latest `CS2SkinChanger.exe` from [Releases](https://github.com/mrch4n72
 
 All offsets and defaults are embedded — no setup needed. If CS2 updates break skin application, wait for a new release.
 
+> ⚠️ **Windows blocks the download?** See the [troubleshooting guide](#windows-blocks-the-app) below.
+
 ### Option 2: Build from Source (for tinkers)
 
 You get full control: edit the code, change the UI, fix game updates yourself by editing offsets, or add new features.
@@ -122,7 +124,40 @@ Game offsets are stored in `%APPDATA%\cs2-skin-changer\offsets.txt`. Defaults ar
 |---|---|---|
 | `-DCSC_BUILD_STANDALONE=ON` | OFF | Build as standalone overlay EXE (OFF = injected DLL) |
 
-### DLL Mode
+---
+
+## Windows Blocks the App
+
+Windows may block `CS2SkinChanger.exe` with a **"Windows protected your PC"** message because the binary is unsigned and has low download reputation — this is normal for new indie software.
+
+### If SmartScreen blocks it
+
+1. Click **"More info"** on the blue dialog
+2. Click **"Run anyway"**
+
+Each safe execution builds reputation. After enough downloads, the warning stops.
+
+### If Windows Defender removes it
+
+**Step 1 — Restore the file:**
+1. Open **Windows Security** → **Virus & threat protection**
+2. Click **Protection history**
+3. Find the `CS2SkinChanger.exe` entry → click **Actions** → **Restore**
+
+**Step 2 — Add an exclusion (so it won't be removed again):**
+1. **Windows Security** → **Virus & threat protection** → **Manage settings**
+2. Under **Exclusions**, click **Add or remove exclusions**
+3. Click **Add an exclusion** → **File** → select `CS2SkinChanger.exe`
+
+### Report false positive to Microsoft
+
+We proactively submit every release to Microsoft Security Intelligence for review. You can also report it yourself at:
+
+https://www.microsoft.com/en-us/wdsi/filesubmission
+
+Select *"Software Developer"* and explain it's a false positive on a skin changer for CS2.
+
+### Option 2: Build from Source (for tinkers)
 
 To build as an injectable DLL instead:
 

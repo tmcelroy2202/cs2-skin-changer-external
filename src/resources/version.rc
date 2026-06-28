@@ -1,0 +1,30 @@
+#include <windows.h>
+
+VS_VERSION_INFO VERSIONINFO
+FILEVERSION     1,2,1,0
+PRODUCTVERSION  1,2,1,0
+FILEFLAGSMASK   0x3fL
+FILEFLAGS       0
+FILEOS          VOS_NT_WINDOWS32
+FILETYPE        VFT_APP
+FILESUBTYPE     0
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "040904B0"
+        BEGIN
+            VALUE "CompanyName",      "CS2 Skin Changer"
+            VALUE "FileDescription",  "CS2 Skin Changer — External overlay skin changer"
+            VALUE "FileVersion",      "1.2.1.0"
+            VALUE "InternalName",     "CS2SkinChanger"
+            VALUE "LegalCopyright",   "Copyright (C) 2026"
+            VALUE "OriginalFilename", "CS2SkinChanger.exe"
+            VALUE "ProductName",      "CS2 Skin Changer"
+            VALUE "ProductVersion",   "1.2.1.0"
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x409, 1200
+    END
+END
