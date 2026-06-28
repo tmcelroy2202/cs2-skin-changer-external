@@ -24,6 +24,7 @@
 
 #include "ui/Framework.h"
 #include "ui/Panels.h"
+#include "ui/overlay/OverlayWindow.h"
 #include "ui/panels/SchemaBrowserPanel.h"
 #include "ui/panels/EntityBrowserPanel.h"
 #include "ui/panels/ResourceViewerPanel.h"
