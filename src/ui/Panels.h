@@ -25,6 +25,8 @@ public:
     /// Human-readable title.
     [[nodiscard]] std::string_view GetTitle() const noexcept { return title_; }
 
+    [[nodiscard]] bool* OpenPtr() noexcept { return &open_; }
+
     void SetOpen(bool open) noexcept { open_ = open; }
     bool IsOpen() const noexcept { return open_; }
 

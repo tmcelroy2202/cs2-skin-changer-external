@@ -32,7 +32,7 @@ private:
 
     // UI state
     std::string        search_filter_;
-    SchemaClassInfo*   selected_class_{};
+    const SchemaClassInfo*   selected_class_{};
     SchemaSystemTypeScope* selected_scope_{};
     bool               show_internal_{};
 

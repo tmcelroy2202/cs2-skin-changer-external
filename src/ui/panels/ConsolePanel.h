@@ -2,6 +2,7 @@
 
 #include "ui/Panels.h"
 #include "core/Logging.h"
+#include "imgui.h"
 #include <deque>
 
 /* ── ConsolePanel ──────────────────────────────────────────────────────────

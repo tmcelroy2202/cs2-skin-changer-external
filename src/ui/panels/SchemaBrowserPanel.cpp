@@ -157,5 +157,4 @@ void SchemaBrowserPanel::DrawFieldRow(const FieldValue& fv) noexcept {
     // Size (approximate)
     ImGui::TableSetColumnIndex(3);
     // Show size based on type
-    ImGui::EndRow();
 }

@@ -19,7 +19,7 @@ void PanelManager::DrawAll() noexcept {
         if (!panel || !panel->IsOpen()) continue;
         if (!panel->IsVisible()) continue;
 
-        if (ImGui::Begin(panel->GetTitle().data(), &panel->open_,
+        if (ImGui::Begin(panel->GetTitle().data(), panel->OpenPtr(),
                          ImGuiWindowFlags_None)) {
             panel->Draw();
         }
