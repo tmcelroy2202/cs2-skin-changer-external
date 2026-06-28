@@ -13,8 +13,8 @@ endif()
 set(IMGUI_SEARCH_PATHS
     "${ImGui_ROOT}"
     "$ENV{ImGui_ROOT}"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../third_party/imgui"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../extern/imgui"
+    "${CMAKE_CURRENT_SOURCE_DIR}/third_party/imgui"
+    "${CMAKE_CURRENT_SOURCE_DIR}/extern/imgui"
 )
 
 find_path(ImGui_INCLUDE_DIR
