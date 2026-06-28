@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Core.h"
+#include <type_traits>
 
 /* ── Memory ─────────────────────────────────────────────────────────────────
  *
@@ -12,7 +13,8 @@
 namespace memory {
 
 /// Read a value of type T from the given address.
-template <std::trivially_copyable T>
+template <typename T>
+    requires std::is_trivially_copyable_v<T>
 [[nodiscard]] T Read(u64 address) noexcept {
     T val{};
     if (address && address != ~0ull) {
@@ -22,13 +24,15 @@ template <std::trivially_copyable T>
 }
 
 /// Read a value of type T from an address relative to a base.
-template <std::trivially_copyable T>
+template <typename T>
+    requires std::is_trivially_copyable_v<T>
 [[nodiscard]] T Read(u64 base, i64 offset) noexcept {
     return Read<T>(base + offset);
 }
 
 /// Read an array of T from memory.
-template <std::trivially_copyable T>
+template <typename T>
+    requires std::is_trivially_copyable_v<T>
 [[nodiscard]] std::vector<T> ReadArray(u64 address, usize count) noexcept {
     std::vector<T> out(count);
     if (address) {
