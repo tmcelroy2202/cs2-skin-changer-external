@@ -1,0 +1,41 @@
+name: Build Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  build:
+    runs-on: windows-2022
+    defaults:
+      run:
+        shell: cmd
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Clone Dear ImGui
+        run: |
+          if not exist third_party\imgui\imgui.h (
+            git clone --depth 1 --branch v1.91.8 https://github.com/ocornut/imgui.git third_party\imgui
+          )
+
+      - name: Configure CMake
+        run: cmake -B build -G "Visual Studio 17 2022" -A x64 -DS2RF_BUILD_STANDALONE=ON
+
+      - name: Build Release
+        run: cmake --build build --config Release
+
+      - name: Upload binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: S2ResearchFramework.exe
+          path: build\Release\S2ResearchFramework.exe
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: build\Release\S2ResearchFramework.exe
+          generate_release_notes: true

@@ -25,28 +25,46 @@ GetLocalController → GetLocalPlayer → GetWeapons
   → apply glove skin via m_EconGloves
 ```
 
-## Requirements
+---
 
-| Dependency | Version | Purpose |
+## Choose Your Path
+
+### Option 1: Download Pre-Built Binary (easiest)
+
+Grab the latest `S2ResearchFramework.exe` from [Releases](https://github.com/mrch4n725/cs2-skin-changer-external/releases).
+
+1. Download `S2ResearchFramework.exe` (~2 MB)
+2. Launch Counter-Strike 2 and join a game
+3. Run `S2ResearchFramework.exe` **as Administrator**
+4. Press **Insert** to toggle the overlay
+
+All offsets and defaults are embedded — no setup needed. If CS2 updates break skin application, wait for a new release.
+
+### Option 2: Build from Source (for tinkers)
+
+You get full control: edit the code, change the UI, fix game updates yourself by editing offsets, or add new features.
+
+**What you'll need:**
+
+| Dependency | Size | Purpose |
 |---|---|---|
-| Windows 10/11 | x64 | Target OS |
-| Visual Studio 2022 | with "Desktop development with C++" workload | MSVC compiler & Windows SDK |
-| [CMake](https://cmake.org/download/) | 3.20+ | Build system |
-| [Dear ImGui](https://github.com/ocornut/imgui) | 1.91+ (auto-fetched) | UI framework |
+| Windows 10/11 | — | Target OS |
+| [CMake](https://cmake.org/download/) 3.20+ | ~30 MB | Build system |
+| [VS2022 Build Tools](https://visualstudio.microsoft.com/downloads/#build-tools-for-visual-studio-2022) | ~300 MB | C++ compiler, linker, MSVC, Windows SDK |
+| [Git](https://git-scm.com/downloads) | ~50 MB | Clone dependencies |
+| [Dear ImGui](https://github.com/ocornut/imgui) 1.91+ | ~10 MB | UI framework (auto-cloned) |
 
-> **Note:** This project is Windows-only. It builds as either a standalone overlay EXE or an injected DLL — both use Win32/D3D11 APIs not available on Linux.
+> **Note:** Windows-only. Uses Win32/D3D11 APIs not available on Linux.
 
-## Quick Start
+**Quick Setup (recommended):**
 
-Double-click `setup.bat` or run from a terminal:
+Double-click `setup.bat`. It checks for missing tools, installs them if you want, clones ImGui, configures CMake, and builds the Release binary — all in one go.
 
 ```
 setup.bat
 ```
 
-The script checks prerequisites, clones Dear ImGui into `third_party/imgui/`, configures CMake, and builds the Release binary.
-
-## Manual Build
+**Manual Build:**
 
 ```batch
 :: Clone ImGui if not present
@@ -61,12 +79,14 @@ cmake --build build --config Release
 
 The binary is written to `build\Release\S2ResearchFramework.exe`.
 
+---
+
 ## Usage
 
 1. **Launch Counter-Strike 2** and join a game (official or community).
 2. **Run the overlay as Administrator** — required for `OpenProcess` access to `cs2.exe`.
    ```
-   build\Release\S2ResearchFramework.exe
+   S2ResearchFramework.exe
    ```
 3. **Press `Insert`** to toggle the overlay UI on/off (overlay is visible by default).
 4. **Use the overlay window** — three sidebar tabs:
@@ -94,6 +114,8 @@ Your loadout is saved to `%APPDATA%\cs2-skin-changer\loadout.txt` on every chang
 
 Game offsets are stored in `%APPDATA%\cs2-skin-changer\offsets.txt`. Defaults are written automatically on first launch. If a game update breaks skin application, update the offset values here — no recompile needed.
 
+---
+
 ## Build Options
 
 | CMake Flag | Default | Description |
@@ -110,6 +132,8 @@ cmake --build build --config Release
 ```
 
 You will need your own injector to load `S2ResearchFramework.dll` into `cs2.exe`.
+
+---
 
 ## Disclaimer
 
