@@ -100,7 +100,7 @@ if (-not $allOk) {
 }
 
 # Refresh PATH so newly installed tools are visible in this session
-$env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
+$env:Path = [Environment]::GetEnvironmentVariable('Path','Machine') + ';' + [Environment]::GetEnvironmentVariable('Path','User')
 $hasMsBuild = (Get-Command msbuild -ErrorAction SilentlyContinue) -ne $null
 $hasCl      = (Get-Command cl -ErrorAction SilentlyContinue) -ne $null
 
