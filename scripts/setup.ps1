@@ -53,7 +53,7 @@ $hasCl      = (Get-Command cl -ErrorAction SilentlyContinue) -ne $null
 
 if ($hasCMake)   { Ok "CMake 3.20+" } else { Fail "CMake 3.20+" }
 if ($hasGit)     { Ok "Git" } else { Fail "Git" }
-if ($hasMsBuild -or $hasCl) { Ok "Visual Studio 2022 (C++ tools)" } else { Fail "Visual Studio 2022 (C++ tools)" }
+if ($hasMsBuild -or $hasCl) { Ok "Visual Studio 2022 Build Tools (C++ compiler)" } else { Fail "Visual Studio 2022 Build Tools (C++ compiler)" }
 if ($hasWinget)  { Ok "winget package manager" } else { Info "winget not found - manual installs will be needed" }
 Write-Host ""
 
@@ -91,38 +91,31 @@ if ($needed.Count -gt 0) {
     Skip "All dependencies already satisfied"
 }
 
-# Handle Visual Studio separately (complex install)
+# Handle Visual Studio Build Tools separately (no need for the full IDE)
 if (-not ($hasMsBuild -or $hasCl)) {
-    $resp = Read-Host "  Visual Studio 2022 (C++ tools) is missing. Install now? [Y/n]"
+    $resp = Read-Host "  Visual Studio 2022 Build Tools (C++ compiler) is missing. Install now? [Y/n]"
     if ($resp -eq "" -or $resp -eq "y" -or $resp -eq "Y") {
-        if (-not $hasWinget) {
-            Fail "winget not available. Install VS2022 manually: https://visualstudio.microsoft.com/"
+        Write-Host "  >>> Downloading VS2022 Build Tools bootstrapper..." -ForegroundColor Cyan
+        $bootstrapper = "$env:TEMP\vs_BuildTools.exe"
+        try {
+            [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+            Invoke-WebRequest -Uri "https://aka.ms/vs/17/release/vs_BuildTools.exe" -OutFile $bootstrapper -UseBasicParsing
+        } catch {
+            Fail "Failed to download VS bootstrapper: $_"
+            Write-Host "         Install manually: https://visualstudio.microsoft.com/downloads/#build-tools-for-visual-studio-2022" -ForegroundColor Blue
             exit 1
         }
-        Write-Host "  >>> Running: winget install Microsoft.VisualStudio.2022.Community..." -ForegroundColor Cyan
-        & winget install --id Microsoft.VisualStudio.2022.Community --accept-package-agreements 2>&1
-        if ($LASTEXITCODE -eq 0) {
-            Ok "VS2022 Community installed"
-            Info 'Adding "Desktop development with C++" workload...'
-            $vsInstaller = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\setup.exe"
-            if (Test-Path $vsInstaller) {
-                & $vsInstaller modify --installPath "$env:ProgramFiles\Microsoft Visual Studio\2022\Community" --add Microsoft.VisualStudio.Workload.NativeDesktop --includeRecommended --passive --norestart --wait
-                if ($LASTEXITCODE -eq 0 -or $LASTEXITCODE -eq 3010) {
-                    Ok "C++ workload added"
-                } else {
-                    Info "C++ workload may need manual setup (exit $LASTEXITCODE)"
-                }
-            } else {
-                Info "VS installer not found at expected path - add C++ workload manually"
-                Write-Host "         Run: vs_installer.exe modify --add Microsoft.VisualStudio.Workload.NativeDesktop" -ForegroundColor Blue
-            }
+        Write-Host "  >>> Installing C++ build tools (this downloads ~300 MB, may take a few minutes)..." -ForegroundColor Cyan
+        & $bootstrapper --add Microsoft.VisualStudio.Workload.NativeDesktop --includeRecommended --passive --norestart --wait
+        if ($LASTEXITCODE -eq 0 -or $LASTEXITCODE -eq 3010) {
+            Ok "VS2022 Build Tools + C++ workload installed"
         } else {
-            Fail "VS2022 install failed (exit $LASTEXITCODE)"
-            Write-Host "         Install manually from: https://visualstudio.microsoft.com/" -ForegroundColor Blue
+            Fail "VS2022 Build Tools install failed (exit $LASTEXITCODE)"
+            Write-Host "         Install manually: https://visualstudio.microsoft.com/downloads/#build-tools-for-visual-studio-2022" -ForegroundColor Blue
             exit 1
         }
     } else {
-        Skip "Visual Studio - install manually and re-run setup"
+        Skip "Visual Studio Build Tools - install manually and re-run setup"
         exit 1
     }
 } else {
