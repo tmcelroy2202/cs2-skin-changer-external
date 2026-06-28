@@ -3,6 +3,7 @@
 #include "core/Memory.h"
 #include "core/PatternScanner.h"
 #include "core/Logging.h"
+#include "core/InterfaceDiscovery.h"
 
 bool RenderSystem::Init() noexcept {
     // The render system may be accessed through the engine's global state.

@@ -64,7 +64,7 @@ std::vector<FieldValue> SchemaReflection::ReadFields(
     CollectFields(info, fields, false);
 
     for (auto& fv : fields) {
-        auto* field = schema_->GetField(info, fv.name);
+        auto* field = schema_->GetField(const_cast<SchemaClassInfo*>(info), fv.name);
         if (field) {
             fv.value_str = FormatFieldValue(*field, instance);
         }

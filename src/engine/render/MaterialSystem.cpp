@@ -3,6 +3,7 @@
 #include "core/Memory.h"
 #include "core/PatternScanner.h"
 #include "core/Logging.h"
+#include "core/InterfaceDiscovery.h"
 
 bool MaterialSystem::Init() noexcept {
     auto mod = Module::Get("materialsystem2.dll");
