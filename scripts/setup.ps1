@@ -7,35 +7,102 @@ $root = Split-Path -Parent $PSScriptRoot
 Write-Host "=== CS2 Skin Changer - Setup ===" -ForegroundColor Cyan
 Write-Host "Root: $root`n" -ForegroundColor Gray
 
-# ── Prerequisites ──────────────────────────────────────────────────────────────
-function Check-Command($name, $url, $hint) {
-    if (!(Get-Command $name -ErrorAction SilentlyContinue)) {
-        Write-Host "[MISSING] $name" -ForegroundColor Red
-        Write-Host "         $hint" -ForegroundColor Gray
-        Write-Host "         $url" -ForegroundColor Blue
-        return $false
+# ── Helper: prompt yes/no ──────────────────────────────────────────────────────
+function Confirm-Install($name) {
+    $response = Read-Host "`n$name is missing. Install it now? [Y/n]"
+    return ($response -eq "" -or $response -eq "y" -or $response -eq "Y")
+}
+
+# ── winget wrapper ─────────────────────────────────────────────────────────────
+function Install-WithWinget($wingetId, $displayName) {
+    Write-Host "Installing $displayName via winget..." -ForegroundColor Yellow
+    & winget install --id $wingetId --accept-package-agreements --silent 2>&1 | Out-Null
+    if ($LASTEXITCODE -eq 0) {
+        Write-Host "[OK]      $displayName installed" -ForegroundColor Green
+        return $true
     }
-    Write-Host "[OK]      $name" -ForegroundColor Green
-    return $true
+    Write-Host "[FAIL]    $displayName install failed (exit $LASTEXITCODE)" -ForegroundColor Red
+    return $false
+}
+
+# ── Check for winget (Windows 10 1809+) ────────────────────────────────────────
+$hasWinget = (Get-Command winget -ErrorAction SilentlyContinue) -ne $null
+if (-not $hasWinget) {
+    Write-Host "[INFO]    winget not found — installs will fall back to manual guidance" -ForegroundColor Yellow
+}
+
+# ── Prerequisites ──────────────────────────────────────────────────────────────
+function Check-And-Install($name, $wingetId, $url, $hint) {
+    $found = (Get-Command $name -ErrorAction SilentlyContinue) -ne $null
+    if ($found) {
+        Write-Host "[OK]      $name" -ForegroundColor Green
+        return $true
+    }
+    Write-Host "[MISSING] $name" -ForegroundColor Red
+    if ($hasWinget -and $wingetId -and (Confirm-Install $name)) {
+        $ok = Install-WithWinget $wingetId $name
+        if (-not $ok) { return $false }
+        # Re-check (winget may not update PATH for current session)
+        return (Get-Command $name -ErrorAction SilentlyContinue) -ne $null
+    }
+    Write-Host "         $hint" -ForegroundColor Gray
+    Write-Host "         $url" -ForegroundColor Blue
+    return $false
 }
 
 $allOk = $true
-$allOk = (Check-Command cmake "https://cmake.org/download/" `
-    "Download & install CMake 3.20+ (add to PATH)") -and $allOk
 
-$vs = Check-Command msbuild "https://visualstudio.microsoft.com/vs/" `
-    "Install Visual Studio 2022 with 'Desktop development with C++' workload"
-$cl = Check-Command cl "https://visualstudio.microsoft.com/vs/" `
-    "Install Visual Studio 2022 with 'Desktop development with C++' workload"
-if (!$vs -and !$cl) { $allOk = $false }
+$allOk = (Check-And-Install cmake "Kitware.CMake" `
+    "https://cmake.org/download/" `
+    "Download & install CMake 3.20+ (ensure 'Add to PATH' during install)") -and $allOk
 
-$git = Check-Command git "https://git-scm.com/downloads" `
-    "Install Git for Windows"
+$hasMsBuild = (Get-Command msbuild -ErrorAction SilentlyContinue) -ne $null
+$hasCl      = (Get-Command cl -ErrorAction SilentlyContinue) -ne $null
+if ($hasMsBuild -or $hasCl) {
+    Write-Host "[OK]      Visual Studio 2022 (C++ tools)" -ForegroundColor Green
+} else {
+    Write-Host "[MISSING] Visual Studio 2022 with 'Desktop development with C++'" -ForegroundColor Red
+    if ($hasWinget -and (Confirm-Install "Visual Studio 2022 Community")) {
+        Write-Host "Installing Visual Studio 2022 Community via winget..." -ForegroundColor Yellow
+        & winget install --id Microsoft.VisualStudio.2022.Community --accept-package-agreements --silent 2>&1 | Out-Null
+        if ($LASTEXITCODE -eq 0) {
+            Write-Host "[OK]      VS2022 Community installed" -ForegroundColor Green
+            Write-Host "[..]     Adding 'Desktop development with C++' workload..." -ForegroundColor Yellow
+            $vsInstaller = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\setup.exe"
+            if (Test-Path $vsInstaller) {
+                & $vsInstaller modify --installPath "$env:ProgramFiles\Microsoft Visual Studio\2022\Community" --add Microsoft.VisualStudio.Workload.NativeDesktop --includeRecommended --passive --norestart --wait
+                if ($LASTEXITCODE -eq 0 -or $LASTEXITCODE -eq 3010) {
+                    Write-Host "[OK]      C++ workload added" -ForegroundColor Green
+                } else {
+                    Write-Host "[WARN]    C++ workload may need manual setup (exit $LASTEXITCODE)" -ForegroundColor Yellow
+                }
+            } else {
+                Write-Host "[WARN]    VS installer not found at expected path — add C++ workload manually" -ForegroundColor Yellow
+                Write-Host "         Run: 'vs_installer.exe modify --add Microsoft.VisualStudio.Workload.NativeDesktop'" -ForegroundColor Blue
+            }
+        } else {
+            Write-Host "[FAIL]    VS2022 install failed (exit $LASTEXITCODE)" -ForegroundColor Red
+            $allOk = $false
+        }
+    } else {
+        Write-Host "         https://visualstudio.microsoft.com/vs/" -ForegroundColor Blue
+        $allOk = $false
+    }
+}
 
-if (!$allOk) {
-    Write-Host "`nSome prerequisites are missing." -ForegroundColor Yellow
+$allOk = (Check-And-Install git "Git.Git" `
+    "https://git-scm.com/downloads" `
+    "Install Git for Windows") -and $allOk
+
+if (-not $allOk) {
+    Write-Host "`nSome prerequisites are still missing. Resolve them and re-run setup." -ForegroundColor Yellow
     exit 1
 }
+
+# Refresh PATH so newly installed tools are visible in this session
+$env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
+$hasMsBuild = (Get-Command msbuild -ErrorAction SilentlyContinue) -ne $null
+$hasCl      = (Get-Command cl -ErrorAction SilentlyContinue) -ne $null
 
 # ── Dear ImGui ─────────────────────────────────────────────────────────────────
 $imguiDir = "$root\third_party\imgui"
@@ -67,7 +134,7 @@ Write-Host "`n=== Configuration Complete ===" -ForegroundColor Cyan
 # ── CMake configure (opt-out via -NoBuild) ─────────────────────────────────────
 if (!$NoBuild) {
     Write-Host "`n[..]     Running CMake configure..." -ForegroundColor Yellow
-    $gen = if ($cl) { "Visual Studio 17 2022" } else { "Ninja" }
+    $gen = if ($hasMsBuild -or $hasCl) { "Visual Studio 17 2022" } else { "Ninja" }
     $arch = "x64"
 
     cmake -S $root -B $buildDir `
