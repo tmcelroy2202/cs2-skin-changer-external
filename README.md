@@ -135,6 +135,18 @@ You will need your own injector to load `S2ResearchFramework.dll` into `cs2.exe`
 
 ---
 
+## Uninstall
+
+Run `uninstall.bat` to:
+
+1. Delete the `build/` directory and `third_party/imgui`
+2. Delete saved config and offsets (`%APPDATA%\cs2-skin-changer\`)
+3. Optionally uninstall CMake, Git, and VS2022 Build Tools (prompts for each)
+
+To fully remove the project, just delete the repository folder.
+
+---
+
 ## Disclaimer
 
 This project is for educational purposes only. Using it against CS2's Terms of Service may result in a VAC ban. Use at your own risk.
