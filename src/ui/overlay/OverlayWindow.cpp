@@ -39,7 +39,7 @@ extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(
 
 namespace overlay {
 
-OverlayState& State() {
+OverlayState& State() noexcept {
     static OverlayState s;
     return s;
 }
