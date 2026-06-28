@@ -1,8 +1,8 @@
 #include <windows.h>
 
 VS_VERSION_INFO VERSIONINFO
-FILEVERSION     1,2,1,0
-PRODUCTVERSION  1,2,1,0
+FILEVERSION     1,2,2,0
+PRODUCTVERSION  1,2,2,0
 FILEFLAGSMASK   0x3fL
 FILEFLAGS       0
 FILEOS          VOS_NT_WINDOWS32
@@ -15,12 +15,12 @@ BEGIN
         BEGIN
             VALUE "CompanyName",      "CS2 Skin Changer"
             VALUE "FileDescription",  "CS2 Skin Changer — External overlay skin changer"
-            VALUE "FileVersion",      "1.2.1.0"
+            VALUE "FileVersion",      "1.2.2.0"
             VALUE "InternalName",     "CS2SkinChanger"
             VALUE "LegalCopyright",   "Copyright (C) 2026"
             VALUE "OriginalFilename", "CS2SkinChanger.exe"
             VALUE "ProductName",      "CS2 Skin Changer"
-            VALUE "ProductVersion",   "1.2.1.0"
+            VALUE "ProductVersion",   "1.2.2.0"
         END
     END
     BLOCK "VarFileInfo"

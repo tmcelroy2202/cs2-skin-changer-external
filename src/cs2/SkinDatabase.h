@@ -614,7 +614,8 @@ public:
     void SetSkin(const SkinInfo_t& skin) noexcept {
         for (auto& s : active_skins) {
             if (s.weaponType == skin.weaponType) {
-                if (s.Paint == skin.Paint) return;
+                if (s.Paint == skin.Paint && s.Pattern == skin.Pattern &&
+                    s.Wear == skin.Wear) return;
                 s = skin;
                 force_update_ = true;
                 return;

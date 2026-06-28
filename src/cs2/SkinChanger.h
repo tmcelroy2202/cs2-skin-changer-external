@@ -98,6 +98,9 @@ public:
             auto do_paint = [&]() {
                 mem_.Write<u32>(weapon + Offsets::m_nFallbackPaintKit,
                                 static_cast<u32>(skin.Paint));
+                mem_.Write<f32>(weapon + Offsets::m_flFallbackWear, skin.Wear);
+                mem_.Write<u32>(weapon + Offsets::m_nFallbackSeed,
+                                static_cast<u32>(skin.Pattern));
                 if (is_knife && knife_def > 0 && knife_def != cur_def)
                     mem_.Write<u16>(item + Offsets::m_iItemDefinitionIndex,
                                     static_cast<u16>(knife_def));
@@ -147,6 +150,8 @@ public:
             // Cleanup only weapons we actually touched
             for (auto& [weapon_base, item_addr] : processed_pairs) {
                 mem_.Write<u32>(weapon_base + Offsets::m_nFallbackPaintKit, 0xFFFFFFFF);
+                mem_.Write<f32>(weapon_base + Offsets::m_flFallbackWear, 0.0f);
+                mem_.Write<u32>(weapon_base + Offsets::m_nFallbackSeed, 0);
                 attr_mgr_.Remove(item_addr);
             }
 

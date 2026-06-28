@@ -161,6 +161,7 @@ void SkinChangerPanel::DrawWeaponCombo() noexcept {
     std::string preview = WeaponIdToString(static_cast<i32>(current));
 
     ImGui::Text("Weapon");
+    ImGui::SetNextWindowSizeConstraints(ImVec2(-1, -1), ImVec2(-1, 300.0f));
     if (ImGui::BeginCombo("##weapon_sel", preview.c_str())) {
         for (i32 i = 0; i < static_cast<i32>(weapon_list_.size()); ++i) {
             auto def = weapon_list_[i];
@@ -209,6 +210,7 @@ void SkinChangerPanel::DrawSkinCombo(WeaponsEnum weapon) noexcept {
     std::string preview = skins[selected_skin_idx_].name;
 
     ImGui::Text("Skin");
+    ImGui::SetNextWindowSizeConstraints(ImVec2(-1, -1), ImVec2(-1, 300.0f));
     if (ImGui::BeginCombo("##skin_sel", preview.c_str())) {
         for (i32 i = 0; i < static_cast<i32>(skins.size()); ++i) {
             bool sel = (i == selected_skin_idx_);
@@ -278,6 +280,7 @@ void SkinChangerPanel::DrawGloveTypeCombo() noexcept {
     std::string preview = GloveIdToString(static_cast<i32>(current));
 
     ImGui::Text("Glove Type");
+    ImGui::SetNextWindowSizeConstraints(ImVec2(-1, -1), ImVec2(-1, 300.0f));
     if (ImGui::BeginCombo("##glove_type", preview.c_str())) {
         for (i32 i = 0; i < static_cast<i32>(glove_list_.size()); ++i) {
             auto def = glove_list_[i];
@@ -307,6 +310,7 @@ void SkinChangerPanel::DrawGloveSkinCombo(GlovesEnum glove) noexcept {
     std::string preview = skins[selected_glove_skin_idx_].name;
 
     ImGui::Text("Paint Kit");
+    ImGui::SetNextWindowSizeConstraints(ImVec2(-1, -1), ImVec2(-1, 300.0f));
     if (ImGui::BeginCombo("##glove_skin", preview.c_str())) {
         for (i32 i = 0; i < static_cast<i32>(skins.size()); ++i) {
             bool sel = (i == selected_glove_skin_idx_);
@@ -421,6 +425,7 @@ void SkinChangerPanel::DrawMusicTab() noexcept {
     ImGui::SeparatorText("Select Music Kit");
     ImGui::PopStyleColor();
 
+    ImGui::SetNextWindowSizeConstraints(ImVec2(-1, -1), ImVec2(-1, 300.0f));
     if (ImGui::BeginCombo("##musickit", preview.c_str())) {
         for (i32 i = 0; i < kit_count; ++i) {
             bool sel = (i == selected_music_idx_);

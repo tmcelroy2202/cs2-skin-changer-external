@@ -3,7 +3,7 @@
   <assemblyIdentity
     type="win32"
     name="CS2SkinChanger"
-    version="1.2.1.0"
+    version="1.2.2.0"
     processorArchitecture="amd64"/>
   <description>CS2 Skin Changer</description>
   <dependency>
