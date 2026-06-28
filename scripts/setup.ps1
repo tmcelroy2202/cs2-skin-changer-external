@@ -54,31 +54,31 @@ $allOk = $true
 
 $allOk = (Check-And-Install cmake "Kitware.CMake" `
     "https://cmake.org/download/" `
-    "Download & install CMake 3.20+ (ensure 'Add to PATH' during install)") -and $allOk
+    'Download and install CMake 3.20+ (ensure "Add to PATH" during install)') -and $allOk
 
 $hasMsBuild = (Get-Command msbuild -ErrorAction SilentlyContinue) -ne $null
 $hasCl      = (Get-Command cl -ErrorAction SilentlyContinue) -ne $null
 if ($hasMsBuild -or $hasCl) {
-    Write-Host "[OK]      Visual Studio 2022 (C++ tools)" -ForegroundColor Green
+    Write-Host '[OK]      Visual Studio 2022 (C++ tools)' -ForegroundColor Green
 } else {
-    Write-Host "[MISSING] Visual Studio 2022 with 'Desktop development with C++'" -ForegroundColor Red
+    Write-Host '[MISSING] Visual Studio 2022 with "Desktop development with C++"' -ForegroundColor Red
     if ($hasWinget -and (Confirm-Install "Visual Studio 2022 Community")) {
         Write-Host "Installing Visual Studio 2022 Community via winget..." -ForegroundColor Yellow
         & winget install --id Microsoft.VisualStudio.2022.Community --accept-package-agreements --silent 2>&1 | Out-Null
         if ($LASTEXITCODE -eq 0) {
             Write-Host "[OK]      VS2022 Community installed" -ForegroundColor Green
-            Write-Host "[..]     Adding 'Desktop development with C++' workload..." -ForegroundColor Yellow
+            Write-Host '[..]     Adding "Desktop development with C++" workload...' -ForegroundColor Yellow
             $vsInstaller = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\setup.exe"
             if (Test-Path $vsInstaller) {
                 & $vsInstaller modify --installPath "$env:ProgramFiles\Microsoft Visual Studio\2022\Community" --add Microsoft.VisualStudio.Workload.NativeDesktop --includeRecommended --passive --norestart --wait
                 if ($LASTEXITCODE -eq 0 -or $LASTEXITCODE -eq 3010) {
-                    Write-Host "[OK]      C++ workload added" -ForegroundColor Green
+                    Write-Host '[OK]      C++ workload added' -ForegroundColor Green
                 } else {
-                    Write-Host "[WARN]    C++ workload may need manual setup (exit $LASTEXITCODE)" -ForegroundColor Yellow
+                    Write-Host '[WARN]    C++ workload may need manual setup (exit' $LASTEXITCODE ')' -ForegroundColor Yellow
                 }
             } else {
-                Write-Host "[WARN]    VS installer not found at expected path — add C++ workload manually" -ForegroundColor Yellow
-                Write-Host "         Run: 'vs_installer.exe modify --add Microsoft.VisualStudio.Workload.NativeDesktop'" -ForegroundColor Blue
+                Write-Host '[WARN]    VS installer not found at expected path - add C++ workload manually' -ForegroundColor Yellow
+                Write-Host '         Run: "vs_installer.exe modify --add Microsoft.VisualStudio.Workload.NativeDesktop"' -ForegroundColor Blue
             }
         } else {
             Write-Host "[FAIL]    VS2022 install failed (exit $LASTEXITCODE)" -ForegroundColor Red
