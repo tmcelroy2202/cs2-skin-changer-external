@@ -81,6 +81,8 @@ cmake --build --preset windows-release
 
 The binary is written to `build\Release\CS2SkinChanger.exe`.
 
+For release checklist details and the DLL preset, see [BUILD.md](BUILD.md).
+
 ---
 
 ## Usage
