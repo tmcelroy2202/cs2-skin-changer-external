@@ -4,7 +4,7 @@
 #include <mutex>
 
 void OffsetManager::Add(std::string_view key, OffsetEntry entry) {
-    Entries().emplace(key, std::move(entry));
+    Entries().emplace(std::string(key), std::move(entry));
 }
 
 std::optional<u64> OffsetManager::Resolve(std::string_view key) {
@@ -12,7 +12,7 @@ std::optional<u64> OffsetManager::Resolve(std::string_view key) {
     if (auto cached = Get(key)) return cached;
 
     auto& entries = Entries();
-    auto it = entries.find(key);
+    auto it = entries.find(std::string(key));
     if (it == entries.end()) {
         LOG_WARN("Offset '{}' not registered", key);
         return std::nullopt;
@@ -36,7 +36,7 @@ std::optional<u64> OffsetManager::Resolve(std::string_view key) {
 
     auto result = PatternScanner::Find(mod, it->second.signature);
     if (result) {
-        Cache().emplace(key, *result);
+        Cache().emplace(std::string(key), *result);
         LOG_DEBUG("Resolved offset '{}' -> 0x{:X}", key, *result);
     } else {
         LOG_WARN("Failed to resolve offset '{}'", key);
