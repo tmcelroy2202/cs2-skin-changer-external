@@ -15,7 +15,7 @@ An external skin changer for Counter-Strike 2 using process memory access. Stand
 
 ## How It Works
 
-Runs as a standalone transparent overlay (Discord window hijack + D3D11 + ImGui). Reads/writes CS2's process memory externally using `ReadProcessMemory`/`WriteProcessMemory`:
+Runs as a standalone transparent overlay (self-created D3D11 window + ImGui). Reads/writes CS2's process memory externally using `ReadProcessMemory`/`WriteProcessMemory`:
 
 ```
 GetLocalController → GetLocalPlayer → GetWeapons
@@ -68,7 +68,8 @@ The binary is written to `build\Release\S2ResearchFramework.exe`.
    ```
    build\Release\S2ResearchFramework.exe
    ```
-3. **Use the overlay window** — three sidebar tabs:
+3. **Press `Insert`** to toggle the overlay UI on/off (overlay is visible by default).
+4. **Use the overlay window** — three sidebar tabs:
 
    | Tab | What you can do |
    |---|---|
@@ -76,7 +77,7 @@ The binary is written to `build\Release\S2ResearchFramework.exe`.
    | **Gloves** | Choose glove type and paint kit |
    | **Music Kit** | Select from ~70 music kits (applied per-weapon in CS2) |
 
-4. **Changes apply automatically** — every user action saves and syncs. No save button needed.
+5. **Changes apply automatically** — every user action saves and syncs. No save button needed.
 
 ### Knife Skins
 
@@ -88,6 +89,10 @@ The binary is written to `build\Release\S2ResearchFramework.exe`.
 ### Config Persistence
 
 Your loadout is saved to `%APPDATA%\cs2-skin-changer\loadout.txt` on every change and restored on next launch. You can share or back up this file.
+
+### Offsets
+
+Game offsets are stored in `%APPDATA%\cs2-skin-changer\offsets.txt`. Defaults are written automatically on first launch. If a game update breaks skin application, update the offset values here — no recompile needed.
 
 ## Build Options
 
