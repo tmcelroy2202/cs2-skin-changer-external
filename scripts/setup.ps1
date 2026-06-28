@@ -7,13 +7,13 @@ $root = Split-Path -Parent $PSScriptRoot
 Write-Host "=== CS2 Skin Changer - Setup ===" -ForegroundColor Cyan
 Write-Host "Root: $root`n" -ForegroundColor Gray
 
-# ── Helper: prompt yes/no ──────────────────────────────────────────────────────
+# -- Helper: prompt yes/no ------------------------------------------------------
 function Confirm-Install($name) {
     $response = Read-Host "`n$name is missing. Install it now? [Y/n]"
     return ($response -eq "" -or $response -eq "y" -or $response -eq "Y")
 }
 
-# ── winget wrapper ─────────────────────────────────────────────────────────────
+# -- winget wrapper -------------------------------------------------------------
 function Install-WithWinget($wingetId, $displayName) {
     Write-Host "Installing $displayName via winget..." -ForegroundColor Yellow
     & winget install --id $wingetId --accept-package-agreements --silent 2>&1 | Out-Null
@@ -25,13 +25,13 @@ function Install-WithWinget($wingetId, $displayName) {
     return $false
 }
 
-# ── Check for winget (Windows 10 1809+) ────────────────────────────────────────
+# -- Check for winget (Windows 10 1809+) ----------------------------------------
 $hasWinget = (Get-Command winget -ErrorAction SilentlyContinue) -ne $null
 if (-not $hasWinget) {
-    Write-Host "[INFO]    winget not found — installs will fall back to manual guidance" -ForegroundColor Yellow
+    Write-Host "[INFO]    winget not found - installs will fall back to manual guidance" -ForegroundColor Yellow
 }
 
-# ── Prerequisites ──────────────────────────────────────────────────────────────
+# -- Prerequisites --------------------------------------------------------------
 function Check-And-Install($name, $wingetId, $url, $hint) {
     $found = (Get-Command $name -ErrorAction SilentlyContinue) -ne $null
     if ($found) {
@@ -104,7 +104,7 @@ $env:Path = [Environment]::GetEnvironmentVariable('Path','Machine') + ';' + [Env
 $hasMsBuild = (Get-Command msbuild -ErrorAction SilentlyContinue) -ne $null
 $hasCl      = (Get-Command cl -ErrorAction SilentlyContinue) -ne $null
 
-# ── Dear ImGui ─────────────────────────────────────────────────────────────────
+# -- Dear ImGui -----------------------------------------------------------------
 $imguiDir = "$root\third_party\imgui"
 if (!(Test-Path "$imguiDir\imgui.h")) {
     Write-Host "`n[..]     Fetching Dear ImGui..." -ForegroundColor Yellow
@@ -123,7 +123,7 @@ if (!(Test-Path "$imguiDir\imgui.h")) {
     Write-Host "[OK]      Dear ImGui (found in third_party/imgui)" -ForegroundColor Green
 }
 
-# ── Build directory ────────────────────────────────────────────────────────────
+# -- Build directory ------------------------------------------------------------
 $buildDir = "$root\build"
 if (!(Test-Path $buildDir)) {
     New-Item -ItemType Directory -Path $buildDir -Force | Out-Null
@@ -131,7 +131,7 @@ if (!(Test-Path $buildDir)) {
 
 Write-Host "`n=== Configuration Complete ===" -ForegroundColor Cyan
 
-# ── CMake configure (opt-out via -NoBuild) ─────────────────────────────────────
+# -- CMake configure (opt-out via -NoBuild) -------------------------------------
 if (!$NoBuild) {
     Write-Host "`n[..]     Running CMake configure..." -ForegroundColor Yellow
     $gen = if ($hasMsBuild -or $hasCl) { "Visual Studio 17 2022" } else { "Ninja" }
@@ -158,7 +158,7 @@ if (!$NoBuild) {
     Write-Host "[OK]      Build succeeded (Release)" -ForegroundColor Green
 }
 
-# ── Done ───────────────────────────────────────────────────────────────────────
+# -- Done -----------------------------------------------------------------------
 Write-Host @"
 
 ===========================
