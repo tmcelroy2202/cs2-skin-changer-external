@@ -23,7 +23,7 @@ jobs:
           )
 
       - name: Configure CMake
-        run: cmake -B build -G "Visual Studio 17 2022" -A x64 -DS2RF_BUILD_STANDALONE=ON
+        run: cmake -B build -G "Visual Studio 17 2022" -A x64 -DCSC_BUILD_STANDALONE=ON
 
       - name: Build Release
         run: cmake --build build --config Release
@@ -31,11 +31,11 @@ jobs:
       - name: Upload binary
         uses: actions/upload-artifact@v4
         with:
-          name: S2ResearchFramework.exe
-          path: build\Release\S2ResearchFramework.exe
+          name: CS2SkinChanger.exe
+          path: build\Release\CS2SkinChanger.exe
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: build\Release\S2ResearchFramework.exe
+          files: build\Release\CS2SkinChanger.exe
           generate_release_notes: true

@@ -31,11 +31,11 @@ GetLocalController → GetLocalPlayer → GetWeapons
 
 ### Option 1: Download Pre-Built Binary (easiest)
 
-Grab the latest `S2ResearchFramework.exe` from [Releases](https://github.com/mrch4n725/cs2-skin-changer-external/releases).
+Grab the latest `CS2SkinChanger.exe` from [Releases](https://github.com/mrch4n725/cs2-skin-changer-external/releases).
 
-1. Download `S2ResearchFramework.exe` (~2 MB)
+1. Download `CS2SkinChanger.exe` (~2 MB)
 2. Launch Counter-Strike 2 and join a game
-3. Run `S2ResearchFramework.exe` **as Administrator**
+3. Run `CS2SkinChanger.exe` **as Administrator**
 4. Press **Insert** to toggle the overlay
 
 All offsets and defaults are embedded — no setup needed. If CS2 updates break skin application, wait for a new release.
@@ -71,13 +71,13 @@ setup.bat
 git clone --depth 1 --branch v1.91.8 https://github.com/ocornut/imgui.git third_party\imgui
 
 :: Configure (standalone overlay EXE)
-cmake -B build -G "Visual Studio 17 2022" -A x64 -DS2RF_BUILD_STANDALONE=ON
+cmake -B build -G "Visual Studio 17 2022" -A x64 -DCSC_BUILD_STANDALONE=ON
 
 :: Build
 cmake --build build --config Release
 ```
 
-The binary is written to `build\Release\S2ResearchFramework.exe`.
+The binary is written to `build\Release\CS2SkinChanger.exe`.
 
 ---
 
@@ -86,7 +86,7 @@ The binary is written to `build\Release\S2ResearchFramework.exe`.
 1. **Launch Counter-Strike 2** and join a game (official or community).
 2. **Run the overlay as Administrator** — required for `OpenProcess` access to `cs2.exe`.
    ```
-   S2ResearchFramework.exe
+   CS2SkinChanger.exe
    ```
 3. **Press `Insert`** to toggle the overlay UI on/off (overlay is visible by default).
 4. **Use the overlay window** — three sidebar tabs:
@@ -120,18 +120,18 @@ Game offsets are stored in `%APPDATA%\cs2-skin-changer\offsets.txt`. Defaults ar
 
 | CMake Flag | Default | Description |
 |---|---|---|
-| `-DS2RF_BUILD_STANDALONE=ON` | OFF | Build as standalone overlay EXE (OFF = injected DLL) |
+| `-DCSC_BUILD_STANDALONE=ON` | OFF | Build as standalone overlay EXE (OFF = injected DLL) |
 
 ### DLL Mode
 
 To build as an injectable DLL instead:
 
 ```batch
-cmake -B build -G "Visual Studio 17 2022" -A x64 -DS2RF_BUILD_STANDALONE=OFF
+cmake -B build -G "Visual Studio 17 2022" -A x64 -DCSC_BUILD_STANDALONE=OFF
 cmake --build build --config Release
 ```
 
-You will need your own injector to load `S2ResearchFramework.dll` into `cs2.exe`.
+You will need your own injector to load `CS2SkinChanger.dll` into `cs2.exe`.
 
 ---
 

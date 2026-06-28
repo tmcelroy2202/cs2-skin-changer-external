@@ -161,7 +161,7 @@ $gen = if ($hasMsBuild -or $hasCl) { "Visual Studio 17 2022" } else { "Ninja" }
 $arch = "x64"
 
 if (-not $NoBuild) {
-    cmake -S $root -B $buildDir -G "$gen" -A $arch -DS2RF_BUILD_STANDALONE=ON
+    cmake -S $root -B $buildDir -G "$gen" -A $arch -DCSC_BUILD_STANDALONE=ON
     if ($LASTEXITCODE -eq 0) {
         Ok "CMake configuration complete"
     } else {
@@ -194,13 +194,13 @@ Write-Host "===========================================" -ForegroundColor Green
 Write-Host "  Setup Complete" -ForegroundColor Green
 Write-Host "===========================================" -ForegroundColor Green
 Write-Host ""
-Write-Host "  Binary:       $buildDir\Release\S2ResearchFramework.exe" -ForegroundColor White
+Write-Host "  Binary:       $buildDir\Release\CS2SkinChanger.exe" -ForegroundColor White
 Write-Host "  Mode:         Standalone overlay (no injection)" -ForegroundColor White
 Write-Host "  CS2 process:  cs2.exe" -ForegroundColor White
 Write-Host ""
 Write-Host "  Usage:" -ForegroundColor Cyan
 Write-Host "    1. Launch Counter-Strike 2" -ForegroundColor Gray
-Write-Host "    2. Run S2ResearchFramework.exe as Administrator" -ForegroundColor Gray
+Write-Host "    2. Run CS2SkinChanger.exe as Administrator" -ForegroundColor Gray
 Write-Host "    3. Select skins in the overlay window" -ForegroundColor Gray
 Write-Host "    4. Changes apply automatically" -ForegroundColor Gray
 Write-Host ""

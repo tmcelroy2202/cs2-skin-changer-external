@@ -1,7 +1,7 @@
-/* ── S2 Research Framework — Entry Point ────────────────────────────────────
+/* ── CS2 Skin Changer — Entry Point ──────────────────────────────────────────
  *
  * Two build modes:
- *   Standalone (S2RF_BUILD_STANDALONE=ON)
+ *   Standalone (CSC_BUILD_STANDALONE=ON)
  *     Creates/hijacks a transparent overlay window with its own D3D11 device
  *     and runs the full ImGui debug UI in its own render loop.  Mirrors the
  *     reference overlay approach (window class "Chrome_WidgetWin_1", Discord
@@ -34,9 +34,9 @@
 #include "analysis/ObjectInspector.h"
 #include "analysis/AssetAnalyzer.h"
 
-#ifdef S2RF_BUILD_STANDALONE
+#ifdef CSC_BUILD_STANDALONE
 
-// ── CS2 Skin Changer (standalone overlay only) ─────────────────────────────────
+// ── Standalone overlay mode ────────────────────────────────────────────────────
 #include "core/ProcessMemory.h"
 #include "cs2/SkinDatabase.h"
 #include "cs2/SkinChanger.h"
@@ -126,7 +126,7 @@ void RunFrame(App& app) {
                              ImGuiWindowFlags_NoSavedSettings |
                              ImGuiWindowFlags_NoFocusOnAppearing |
                              ImGuiWindowFlags_NoNav)) {
-                ImGui::Text("S2 Research Framework  v1.0");
+                ImGui::Text("CS2 Skin Changer  v1.0");
                 ImGui::Text("Scopes: %zu  Entities: %u",
                             app.schema.GetTypeScopeCount(),
                             app.entities.GetEntityCount());
@@ -148,7 +148,7 @@ void RunFrame(App& app) {
 } // anonymous namespace
 
 int main() {
-    LOG_INFO("S2 Research Framework — Standalone Overlay Mode");
+    LOG_INFO("CS2 Skin Changer — Standalone Overlay Mode");
 
     auto& app = State();
 
@@ -314,7 +314,7 @@ void RenderUI(App& app) {
                          ImGuiWindowFlags_NoSavedSettings |
                          ImGuiWindowFlags_NoFocusOnAppearing |
                          ImGuiWindowFlags_NoNav)) {
-            ImGui::Text("S2 Research Framework  v1.0");
+            ImGui::Text("CS2 Skin Changer  v1.0");
             ImGui::Text("Scopes: %zu  Entities: %u",
                         app.schema.GetTypeScopeCount(),
                         app.entities.GetEntityCount());
@@ -344,7 +344,7 @@ HRESULT STDMETHODCALLTYPE PresentHook(
 DWORD WINAPI InitThread(LPVOID) noexcept {
     auto& app = State();
 
-    LOG_INFO("S2 Research Framework — DLL injection mode");
+    LOG_INFO("CS2 Skin Changer — DLL injection mode");
 
     app.schema.Init();
     app.entities.Init();
@@ -408,4 +408,4 @@ BOOL APIENTRY DllMain(HMODULE module, DWORD reason, LPVOID reserved) {
     return TRUE;
 }
 
-#endif // S2RF_BUILD_STANDALONE
+#endif // CSC_BUILD_STANDALONE

@@ -53,8 +53,8 @@ private:
 
 // ── Convenience macro ────────────────────────────────────────────────────────
 // Allows writing signatures inline:
-//   S2RF_SIG("48 8B 0D ? ? ? ? 48 85 C9");
-#define S2RF_SIG(ida_pattern) \
+//   CSC_SIG("48 8B 0D ? ? ? ? 48 85 C9");
+#define CSC_SIG(ida_pattern) \
     ([] { \
         auto [bytes, mask] = PatternScanner::Parse(ida_pattern); \
         return Signature{ \

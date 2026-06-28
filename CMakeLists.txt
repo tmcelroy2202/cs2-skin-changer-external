@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(S2ResearchFramework VERSION 1.0.0 LANGUAGES CXX)
+project(CS2SkinChanger VERSION 1.0.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -10,29 +10,29 @@ if(NOT CMAKE_SIZEOF_VOID_P EQUAL 8)
 endif()
 
 # ── Build mode ─────────────────────────────────────────────────────────────────
-option(S2RF_BUILD_STANDALONE
+option(CSC_BUILD_STANDALONE
     "Build as standalone overlay EXE (OFF = injected DLL)" OFF)
 
-message(STATUS "Build mode: ${S2RF_BUILD_STANDALONE}"
-               "  (standalone=${S2RF_BUILD_STANDALONE})")
+message(STATUS "Build mode: ${CSC_BUILD_STANDALONE}"
+               "  (standalone=${CSC_BUILD_STANDALONE})")
 
 # ── Dependencies ──────────────────────────────────────────────────────────────
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 find_package(ImGui REQUIRED)
 
 # ── Target ────────────────────────────────────────────────────────────────────
-if(S2RF_BUILD_STANDALONE)
-    add_executable(S2ResearchFramework WIN32)
-    target_compile_definitions(S2ResearchFramework PRIVATE S2RF_BUILD_STANDALONE)
+if(CSC_BUILD_STANDALONE)
+    add_executable(CS2SkinChanger WIN32)
+    target_compile_definitions(CS2SkinChanger PRIVATE CSC_BUILD_STANDALONE)
 else()
-    add_library(S2ResearchFramework SHARED)
+    add_library(CS2SkinChanger SHARED)
 endif()
 
-target_include_directories(S2ResearchFramework PRIVATE
+target_include_directories(CS2SkinChanger PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/src")
 
 # ── System libraries ──────────────────────────────────────────────────────────
-target_link_libraries(S2ResearchFramework PRIVATE
+target_link_libraries(CS2SkinChanger PRIVATE
     D3D11.lib   # Direct3D 11
     DXGI.lib    # DXGI swap chain
     Dwmapi.lib  # Desktop Window Manager (overlay transparency)
@@ -45,8 +45,8 @@ add_subdirectory(src)
 
 # ── Compiler flags ────────────────────────────────────────────────────────────
 if(MSVC)
-    target_compile_options(S2ResearchFramework PRIVATE /W4 /utf-8)
-    target_link_options(S2ResearchFramework PRIVATE /GUARD:CF)
+    target_compile_options(CS2SkinChanger PRIVATE /W4 /utf-8)
+    target_link_options(CS2SkinChanger PRIVATE /GUARD:CF)
 else()
-    target_compile_options(S2ResearchFramework PRIVATE -Wall -Wextra)
+    target_compile_options(CS2SkinChanger PRIVATE -Wall -Wextra)
 endif()
