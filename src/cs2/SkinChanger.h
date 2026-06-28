@@ -31,11 +31,12 @@ public:
         u64 local_ctrl = GetLocalController(mem_);
         if (!local_ctrl) return false;
 
-        // ── Music kit ─────────────────────────────────────────────────────
+        // ── Music kit (only write when changed) ──────────────────────────
         u64 inv = mem_.Read<u64>(local_ctrl + Offsets::m_pInventoryServices);
-        if (inv && music_kit_id_) {
+        if (inv && music_kit_id_ != last_music_kit_id_) {
             mem_.Write<u16>(inv + Offsets::m_unMusicID,
                             static_cast<u16>(music_kit_id_));
+            last_music_kit_id_ = music_kit_id_;
         }
 
         // ── Weapons ───────────────────────────────────────────────────────
@@ -49,6 +50,8 @@ public:
                 mem_.Write<u32>(it + Offsets::m_iItemIDHigh, 0);
             }
         }
+
+        std::vector<std::pair<u64, u64>> processed_pairs;
 
         for (u64 weapon : weapons) {
             u64 item = weapon + Offsets::m_AttributeManager + Offsets::m_Item;
@@ -69,7 +72,11 @@ public:
                 ? SkinInfo_t{knife_pnt, 0.01f, 0, false, "Knife", WeaponsEnum::None}
                 : mgr_.GetSkin(def);
 
-            if (!skin.Paint) continue;
+            // No skin selected for this weapon — mark to prevent re-processing
+            if (!skin.Paint) {
+                mem_.Write<u32>(item + Offsets::m_iItemIDHigh, 0xFFFFFFFF);
+                continue;
+            }
 
             // Mark as applied
             mem_.Write<u32>(item + Offsets::m_iItemIDHigh, 0xFFFFFFFF);
@@ -109,6 +116,7 @@ public:
             // Write econ attributes
             attr_mgr_.Create(item, skin);
 
+            processed_pairs.push_back({weapon, item});
             applied = true;
         }
 
@@ -130,14 +138,10 @@ public:
                 ::Sleep(dist(rng_));
             }
 
-            // Cleanup fallback values
-            for (u64 weapon : weapons) {
-                u64 item = weapon + Offsets::m_AttributeManager + Offsets::m_Item;
-                i32 paint = mem_.Read<i32>(weapon + Offsets::m_nFallbackPaintKit);
-                if (paint == -1) continue;
-                mem_.Write<u32>(weapon + Offsets::m_nFallbackPaintKit, 0xFFFFFFFF);
-                // Remove our econ items to let the game use them
-                attr_mgr_.Remove(item);
+            // Cleanup only weapons we actually touched
+            for (auto& [weapon_base, item_addr] : processed_pairs) {
+                mem_.Write<u32>(weapon_base + Offsets::m_nFallbackPaintKit, 0xFFFFFFFF);
+                attr_mgr_.Remove(item_addr);
             }
 
             mgr_.ClearUpdate();
@@ -211,6 +215,7 @@ private:
     SkinManager&        mgr_;
     EconItemAttributeManager attr_mgr_;
     u16                 music_kit_id_ = 0;
+    u16                 last_music_kit_id_ = 0;
     mutable std::mt19937 rng_{std::random_device{}()};
 
     // Override mesh mask with retry (mirrors reference's goto approach)
