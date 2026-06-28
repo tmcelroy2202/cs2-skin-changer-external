@@ -33,6 +33,7 @@ file(GLOB IMGUI_SOURCES
     "${ImGui_INCLUDE_DIR}/*.cpp"
     "${ImGui_INCLUDE_DIR}/backends/imgui_impl_win32.cpp"
     "${ImGui_INCLUDE_DIR}/backends/imgui_impl_dx11.cpp"
+    "${ImGui_INCLUDE_DIR}/misc/cpp/imgui_stdlib.cpp"
 )
 
 file(GLOB IMGUI_HEADERS

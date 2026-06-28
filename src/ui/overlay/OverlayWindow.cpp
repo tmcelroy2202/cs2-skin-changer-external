@@ -31,10 +31,6 @@ void ToggleOverlayVisibility() {
 // ── Forward declare the WndProc ──────────────────────────────────────────────
 LRESULT CALLBACK OverlayWndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
-// ── Windows procedure for ImGui ──────────────────────────────────────────────
-extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(
-    HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
-
 } // anonymous namespace
 
 namespace overlay {
