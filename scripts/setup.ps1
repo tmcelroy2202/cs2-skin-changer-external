@@ -74,9 +74,8 @@ if ($needed.Count -gt 0) {
     foreach ($dep in $needed) {
         $resp = Read-Host "  $($dep.Name) is missing. Install it now? [Y/n]"
         if ($resp -eq "" -or $resp -eq "y" -or $resp -eq "Y") {
-            Write-Progress -Activity "Installing $($dep.Name)" -Status "winget install..." -PercentComplete 50
+            Write-Host "  >>> Running: winget install $($dep.WingetId)..." -ForegroundColor Cyan
             & winget install --id $dep.WingetId --accept-package-agreements 2>&1
-            Write-Progress -Activity "Installing $($dep.Name)" -Completed
             if ($LASTEXITCODE -eq 0) {
                 Ok "$($dep.Name) installed"
             } else {
@@ -100,9 +99,8 @@ if (-not ($hasMsBuild -or $hasCl)) {
             Fail "winget not available. Install VS2022 manually: https://visualstudio.microsoft.com/"
             exit 1
         }
-        Write-Progress -Activity "Installing Visual Studio 2022 Community" -Status "winget install (large download, 10+ min)..." -PercentComplete 30
+        Write-Host "  >>> Running: winget install Microsoft.VisualStudio.2022.Community..." -ForegroundColor Cyan
         & winget install --id Microsoft.VisualStudio.2022.Community --accept-package-agreements 2>&1
-        Write-Progress -Activity "Installing Visual Studio 2022 Community" -PercentComplete 80
         if ($LASTEXITCODE -eq 0) {
             Ok "VS2022 Community installed"
             Info 'Adding "Desktop development with C++" workload...'
@@ -127,7 +125,6 @@ if (-not ($hasMsBuild -or $hasCl)) {
         Skip "Visual Studio - install manually and re-run setup"
         exit 1
     }
-    Write-Progress -Activity "Installing Visual Studio 2022 Community" -Completed
 } else {
     Skip "Visual Studio C++ tools already present"
 }
@@ -147,9 +144,7 @@ if (-not (Test-Path "$imguiDir\imgui.h")) {
         Fail "Git is required to clone Dear ImGui"
         exit 1
     }
-    Write-Progress -Activity "Fetching Dear ImGui" -Status "git clone..." -PercentComplete 50
     git clone --depth 1 --branch v1.91.8 https://github.com/ocornut/imgui.git "$imguiDir" 2>$null
-    Write-Progress -Activity "Fetching Dear ImGui" -Completed
     if ($LASTEXITCODE -eq 0) {
         Ok "Dear ImGui v1.91.8"
     } else {
@@ -173,13 +168,10 @@ $gen = if ($hasMsBuild -or $hasCl) { "Visual Studio 17 2022" } else { "Ninja" }
 $arch = "x64"
 
 if (-not $NoBuild) {
-    Write-Progress -Activity "CMake configure" -Status "Running cmake..." -PercentComplete 40
     cmake -S $root -B $buildDir -G "$gen" -A $arch -DS2RF_BUILD_STANDALONE=ON
     if ($LASTEXITCODE -eq 0) {
-        Write-Progress -Activity "CMake configure" -Completed
         Ok "CMake configuration complete"
     } else {
-        Write-Progress -Activity "CMake configure" -Completed
         Fail "CMake configuration failed"
         exit 1
     }
@@ -192,13 +184,10 @@ Write-Host ""
 Step "Building"
 
 if (-not $NoBuild) {
-    Write-Progress -Activity "Building" -Status "cmake --build Release..." -PercentComplete 30
     cmake --build $buildDir --config Release
     if ($LASTEXITCODE -eq 0) {
-        Write-Progress -Activity "Building" -Completed
         Ok "Build succeeded (Release)"
     } else {
-        Write-Progress -Activity "Building" -Completed
         Fail "Build failed"
         exit 1
     }
