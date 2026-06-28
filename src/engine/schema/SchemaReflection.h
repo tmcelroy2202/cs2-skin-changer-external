@@ -1,6 +1,7 @@
 #pragma once
 
 #include "engine/Engine.h"
+#include "SchemaSystem.h"
 #include "SchemaTypes.h"
 
 /* ── SchemaReflection ───────────────────────────────────────────────────────
