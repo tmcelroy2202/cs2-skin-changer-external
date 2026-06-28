@@ -3,6 +3,8 @@
 #include "ui/Panels.h"
 #include "engine/entity/EntitySystem.h"
 
+class SchemaSystem;
+
 /* ── EntityBrowserPanel ─────────────────────────────────────────────────────
  *
  * Live entity enumeration and browsing interface.

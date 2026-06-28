@@ -3,6 +3,7 @@
 #include "Core.h"
 #include "Module.h"
 #include "PatternScanner.h"
+#include <unordered_map>
 
 /* ── OffsetManager ──────────────────────────────────────────────────────────
  *

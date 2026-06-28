@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ui/Panels.h"
+#include "core/Logging.h"
 #include <deque>
 
 /* ── ConsolePanel ──────────────────────────────────────────────────────────
