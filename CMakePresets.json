@@ -1,0 +1,52 @@
+{
+  "version": 2,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 20,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "windows-release",
+      "displayName": "Windows Release",
+      "description": "Standalone overlay executable using Visual Studio 2022 x64.",
+      "generator": "Visual Studio 17 2022",
+      "binaryDir": "${sourceDir}/build",
+      "architecture": {
+        "value": "x64",
+        "strategy": "external"
+      },
+      "cacheVariables": {
+        "CMAKE_CONFIGURATION_TYPES": "Debug;Release",
+        "CSC_BUILD_STANDALONE": "ON"
+      }
+    },
+    {
+      "name": "windows-dll",
+      "displayName": "Windows DLL",
+      "description": "DLL build for development parity with the existing build option.",
+      "generator": "Visual Studio 17 2022",
+      "binaryDir": "${sourceDir}/build-dll",
+      "architecture": {
+        "value": "x64",
+        "strategy": "external"
+      },
+      "cacheVariables": {
+        "CMAKE_CONFIGURATION_TYPES": "Debug;Release",
+        "CSC_BUILD_STANDALONE": "OFF"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "windows-release",
+      "configurePreset": "windows-release",
+      "configuration": "Release"
+    },
+    {
+      "name": "windows-dll",
+      "configurePreset": "windows-dll",
+      "configuration": "Release"
+    }
+  ]
+}

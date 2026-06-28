@@ -1,0 +1,43 @@
+name: Build Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  build:
+    runs-on: windows-2022
+    permissions:
+      contents: write
+    defaults:
+      run:
+        shell: cmd
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v5
+
+      - name: Clone Dear ImGui
+        run: |
+          if not exist third_party\imgui\imgui.h (
+            git clone --depth 1 --branch v1.91.8 https://github.com/ocornut/imgui.git third_party\imgui
+          )
+
+      - name: Configure CMake
+        run: cmake --preset windows-release
+
+      - name: Build Release
+        run: cmake --build --preset windows-release
+
+      - name: Upload binary
+        uses: actions/upload-artifact@v5
+        with:
+          name: CS2SkinChanger.exe
+          path: build\Release\CS2SkinChanger.exe
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v3
+        with:
+          files: build\Release\CS2SkinChanger.exe
+          generate_release_notes: true
