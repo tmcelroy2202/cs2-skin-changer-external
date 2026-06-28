@@ -15,8 +15,9 @@ function Confirm-Install($name) {
 
 # -- winget wrapper -------------------------------------------------------------
 function Install-WithWinget($wingetId, $displayName) {
-    Write-Host "Installing $displayName via winget..." -ForegroundColor Yellow
-    & winget install --id $wingetId --accept-package-agreements --silent 2>&1 | Out-Null
+    Write-Host "Installing $displayName via winget (this may take a few minutes)..." -ForegroundColor Yellow
+    Write-Host "         If prompted, accept the UAC elevation." -ForegroundColor Gray
+    & winget install --id $wingetId --accept-package-agreements 2>&1
     if ($LASTEXITCODE -eq 0) {
         Write-Host "[OK]      $displayName installed" -ForegroundColor Green
         return $true
@@ -63,8 +64,8 @@ if ($hasMsBuild -or $hasCl) {
 } else {
     Write-Host '[MISSING] Visual Studio 2022 with "Desktop development with C++"' -ForegroundColor Red
     if ($hasWinget -and (Confirm-Install "Visual Studio 2022 Community")) {
-        Write-Host "Installing Visual Studio 2022 Community via winget..." -ForegroundColor Yellow
-        & winget install --id Microsoft.VisualStudio.2022.Community --accept-package-agreements --silent 2>&1 | Out-Null
+        Write-Host "Installing Visual Studio 2022 Community via winget (large download, may take 10+ minutes)..." -ForegroundColor Yellow
+        & winget install --id Microsoft.VisualStudio.2022.Community --accept-package-agreements 2>&1
         if ($LASTEXITCODE -eq 0) {
             Write-Host "[OK]      VS2022 Community installed" -ForegroundColor Green
             Write-Host '[..]     Adding "Desktop development with C++" workload...' -ForegroundColor Yellow
