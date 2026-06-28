@@ -1,0 +1,8 @@
+build/
+.vs/
+*.user
+*.suo
+*.sdf
+.DS_Store
+Thumbs.db
+*.log
