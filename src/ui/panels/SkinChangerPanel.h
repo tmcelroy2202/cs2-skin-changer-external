@@ -21,6 +21,12 @@ public:
 
     void Draw() noexcept override;
 
+    /// Set the currently equipped weapon (called from main loop).
+    void SetEquippedWeapon(std::string_view name, i32 def_id) noexcept {
+        equipped_weapon_ = name;
+        equipped_weapon_id_ = def_id;
+    }
+
 private:
     SkinDatabase&  db_;
     SkinManager&   mgr_;
@@ -42,12 +48,6 @@ private:
     // Cached weapon/glove lists for combos
     std::vector<WeaponsEnum> weapon_list_;
     std::vector<GlovesEnum>  glove_list_;
-
-    /// Set the currently equipped weapon (called from main loop).
-    void SetEquippedWeapon(std::string_view name, i32 def_id) noexcept {
-        equipped_weapon_ = name;
-        equipped_weapon_id_ = def_id;
-    }
 
     void DrawSkinsTab() noexcept;
     void DrawMusicTab() noexcept;
