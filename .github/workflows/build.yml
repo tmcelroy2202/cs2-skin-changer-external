@@ -16,7 +16,7 @@ jobs:
 
     steps:
       - name: Checkout source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Clone Dear ImGui
         run: |
@@ -31,13 +31,13 @@ jobs:
         run: cmake --build build --config Release
 
       - name: Upload binary
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: CS2SkinChanger.exe
           path: build\Release\CS2SkinChanger.exe
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           files: build\Release\CS2SkinChanger.exe
           generate_release_notes: true
