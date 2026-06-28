@@ -128,34 +128,25 @@ Game offsets are stored in `%APPDATA%\cs2-skin-changer\offsets.txt`. Defaults ar
 
 ## Windows Blocks the App
 
-Windows may block `CS2SkinChanger.exe` with a **"Windows protected your PC"** message because the binary is unsigned and has low download reputation — this is normal for new indie software.
+This is normal — the binary is unsigned and uses memory-editing APIs (`OpenProcess`, `WriteProcessMemory`) which Windows Defender flags heuristically. Every memory editor, mod tool, and game trainer has the same issue.
 
-### If SmartScreen blocks it
+There are two possible symptoms depending on your Windows version:
 
-1. Click **"More info"** on the blue dialog
-2. Click **"Run anyway"**
+- **"Windows protected your PC"** (blue dialog) — SmartScreen reputation. Click *More info → Run anyway* and it works.
+- **"SmartScreen can't be reached right now"** / file vanishes — **Defender already removed the file** in the background. See below.
 
-Each safe execution builds reputation. After enough downloads, the warning stops.
+### Quick fix: add an exclusion before downloading
 
-### If Windows Defender removes it
+1. Open **Windows Security** → **Virus & threat protection** → **Manage settings**
+2. Under **Exclusions**, click **Add or remove exclusions** → **Add an exclusion** → **Folder**
+3. Select the folder where you'll save `CS2SkinChanger.exe` (e.g. Downloads)
+4. Download and run — it will work without interference
 
-**Step 1 — Restore the file:**
-1. Open **Windows Security** → **Virus & threat protection**
-2. Click **Protection history**
-3. Find the `CS2SkinChanger.exe` entry → click **Actions** → **Restore**
+### If Defender already deleted the file
 
-**Step 2 — Add an exclusion (so it won't be removed again):**
-1. **Windows Security** → **Virus & threat protection** → **Manage settings**
-2. Under **Exclusions**, click **Add or remove exclusions**
-3. Click **Add an exclusion** → **File** → select `CS2SkinChanger.exe`
-
-### Report false positive to Microsoft
-
-We proactively submit every release to Microsoft Security Intelligence for review. You can also report it yourself at:
-
-https://www.microsoft.com/en-us/wdsi/filesubmission
-
-Select *"Software Developer"* and explain it's a false positive on a skin changer for CS2.
+1. Open **Windows Security** → **Virus & threat protection** → **Protection history**
+2. Find `CS2SkinChanger.exe` → click **Actions** → **Restore**
+3. Then add the folder exclusion above before running again
 
 ### Option 2: Build from Source (for tinkers)
 
