@@ -9,8 +9,8 @@ $root = Split-Path -Parent $PSScriptRoot
 $isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]"Administrator")
 if (-not $isAdmin) {
     Write-Host "Setup requires Administrator privileges." -ForegroundColor Yellow
-    Write-Host "Rel launching with UAC elevation..." -ForegroundColor Yellow
-    Start-Process powershell -ArgumentList "-NoExit -NoProfile -ExecutionPolicy Bypass -File `"$PSCommandPath`" $($NoBuild ? '-NoBuild' : '')" -Verb RunAs
+    Write-Host "Relaunching with UAC elevation..." -ForegroundColor Yellow
+    Start-Process powershell -ArgumentList "-NoExit -NoProfile -ExecutionPolicy Bypass -File `"$PSCommandPath`" $(if ($NoBuild) { '-NoBuild' })" -Verb RunAs
     exit 0
 }
 
