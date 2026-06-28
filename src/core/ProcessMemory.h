@@ -31,7 +31,7 @@ public:
 
         handle_ = OpenProcess(
             PROCESS_VM_READ | PROCESS_VM_WRITE | PROCESS_VM_OPERATION |
-            PROCESS_CREATE_THREAD | PROCESS_QUERY_INFORMATION,
+            PROCESS_CREATE_THREAD,
             FALSE, process_id_);
         if (!handle_) return false;
 

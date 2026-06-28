@@ -236,6 +236,7 @@ static bool CreateOverlayWindow() noexcept {
         LOG_ERROR("RegisterClassExW failed");
         return false;
     }
+    s.class_name = class_name;
     s.hinstance = wcex.hInstance;
 
     RECT rect;
@@ -312,6 +313,10 @@ void Shutdown() noexcept {
     if (s.hwnd) {
         DestroyWindow(static_cast<HWND>(s.hwnd));
         s.hwnd = nullptr;
+    }
+    if (!s.class_name.empty() && s.hinstance) {
+        UnregisterClassW(s.class_name.c_str(), static_cast<HINSTANCE>(s.hinstance));
+        s.class_name.clear();
     }
     s.hinstance = nullptr;
 

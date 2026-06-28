@@ -1,6 +1,7 @@
 #pragma once
 
 #include "core/ProcessMemory.h"
+#include "core/Logging.h"
 #include "Offsets.h"
 #include "EntitySystem.h"
 #include "EconSystem.h"
@@ -128,6 +129,8 @@ public:
             if (!regen_addr_) {
                 regen_addr_ = mem_.SigScan(L"client.dll",
                                            Offsets::Sigs::RegenerateWeaponSkins);
+                if (!regen_addr_)
+                    LOG_WARN("SigScan for RegenerateWeaponSkins failed");
             }
             if (regen_addr_ && inv && *inv) {
                 // Pass inventory services pointer as this-context
@@ -241,9 +244,7 @@ private:
     // Override mesh mask with retry (limited writes)
     void OverrideMeshMask(u64 model, u64 mask) noexcept {
         for (int attempt = 0; attempt < 3; ++attempt) {
-            for (int i = 0; i < 20; ++i) {
-                mem_.Write<u64>(model + Offsets::m_MeshGroupMask, mask);
-            }
+            mem_.Write<u64>(model + Offsets::m_MeshGroupMask, mask);
             ::Sleep(5);
             auto current = mem_.ReadSafe<u64>(model + Offsets::m_MeshGroupMask);
             if (current && *current == mask)

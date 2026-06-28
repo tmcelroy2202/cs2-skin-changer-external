@@ -28,6 +28,8 @@ struct OverlayState {
     ID3D11RenderTargetView* rt_view     = nullptr;
     ID3D11BlendState* blend_state       = nullptr;
 
+    std::wstring    class_name;                      // Window class (for unregister)
+
     u32             width               = 1920;
     u32             height              = 1080;
     i32             desired_fps         = 120;
