@@ -4,6 +4,16 @@ param(
 
 $ErrorActionPreference = "Stop"
 $root = Split-Path -Parent $PSScriptRoot
+
+# -- Elevate to Admin if not already running as Admin ---------------------------
+$isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]"Administrator")
+if (-not $isAdmin) {
+    Write-Host "Setup requires Administrator privileges." -ForegroundColor Yellow
+    Write-Host "Rel launching with UAC elevation..." -ForegroundColor Yellow
+    Start-Process powershell -ArgumentList "-NoExit -NoProfile -ExecutionPolicy Bypass -File `"$PSCommandPath`" $($NoBuild ? '-NoBuild' : '')" -Verb RunAs
+    exit 0
+}
+
 Write-Host "=== CS2 Skin Changer - Setup ===" -ForegroundColor Cyan
 Write-Host "Root: $root`n" -ForegroundColor Gray
 
