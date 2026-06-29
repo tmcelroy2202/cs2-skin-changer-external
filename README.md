@@ -1,5 +1,8 @@
 <div align="center">
-  <img src="branding/social-preview.png" alt="VeneeR Banner" width="100%">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="branding/banner.svg">
+    <img src="branding/banner.svg" alt="VeneeR Banner" width="100%">
+  </picture>
 </div>
 
 <br>
@@ -32,7 +35,7 @@
 - **Gloves** — Apply glove paint kits across all 8 tradeable glove types
 - **Music Kits** — Select from ~70 music kits
 - **Float & Pattern** — Adjust wear value (0.00–1.00) and pattern seed per weapon
-- **Cloud-Synced Configs** — Loadout auto-saves to `%APPDATA%/cs2-skin-changer/loadout.txt` on every change; persists across restarts
+- **Cloud-Synced Configs** — Loadout auto-saves to `%APPDATA%/veneer/loadout.txt` on every change; persists across restarts
 - **Full-Update Bypass** — Fire-and-forget remote thread; no blocking, no lag stutter
 - **Anti-Detection** — Timing jitter (random 1–15ms), randomized write-order (6 permutations per weapon), idle rate-limiting (~20 Hz), cached sig addresses (no repeated pattern scans), unique random window class/title per launch, minimum-access process handle
 
@@ -116,30 +119,28 @@ For release checklist details and the DLL preset, see [BUILD.md](BUILD.md).
    CS2SkinChanger.exe
    ```
 3. **Press `Insert`** to toggle the overlay UI on/off (overlay is visible by default).
-4. **Use the overlay window** — three sidebar tabs:
+4. **Use the overlay window** — 8 horizontal category tabs across the top:
 
    | Tab | What you can do |
    |---|---|
-   | **Skins** | Select a weapon, pick a paint kit, adjust float (0.00–1.00) and pattern seed |
-   | **Gloves** | Choose glove type and paint kit |
-   | **Music Kit** | Select from ~70 music kits (applied per-weapon in CS2) |
+   | **Pistols / Rifles / SMGs / Snipers / Heavy** | Filter weapons by class, select a weapon chip, pick a skin card, adjust wear & pattern, click **Apply Skin** |
+   | **Knives** | Same card-based UI — select knife type chip, pick finish, apply |
+   | **Gloves** | Pick glove type chip, select skin card, applies immediately |
+   | **Music** | Search and select from ~70 music kits, applies immediately |
 
-5. **Changes apply automatically** — every user action saves and syncs. No save button needed.
+5. **Click "Apply Skin"** to save weapon/knife changes, or select a glove/music kit for immediate apply.
 
 ### Knife Skins
 
-18 cosmetic knife types are listed alongside the weapon combos. To equip a knife:
-1. Select a knife type from the weapon dropdown (e.g. "Talon Knife").
-2. Pick a finish (e.g. "Doppler Phase 1").
-3. The overlay handles def-index swapping and paint kit write automatically.
+Knives live under the **Knives** category tab alongside weapon combos. Select a knife type chip (e.g. "Talon Knife"), then pick a finish card (e.g. "Doppler Phase 1") and click **Apply Skin**.
 
 ### Config Persistence
 
-Your loadout is saved to `%APPDATA%\cs2-skin-changer\loadout.txt` on every change and restored on next launch. You can share or back up this file.
+Your loadout is saved to `%APPDATA%\veneer\loadout.txt` on every change and restored on next launch. You can share or back up this file.
 
 ### Offsets
 
-Game offsets are stored in `%APPDATA%\cs2-skin-changer\offsets.txt`. Defaults are written automatically on first launch. If a game update breaks skin application, update the offset values here — no recompile needed.
+Game offsets are stored in `%APPDATA%\veneer\offsets.txt`. Defaults are written automatically on first launch. If a game update breaks skin application, update the offset values here — no recompile needed.
 
 ---
 
@@ -147,7 +148,7 @@ Game offsets are stored in `%APPDATA%\cs2-skin-changer\offsets.txt`. Defaults ar
 
 | CMake Flag | Default | Description |
 |---|---|---|
-| `-DCSC_BUILD_STANDALONE=ON` | OFF | Build as standalone overlay EXE (OFF = injected DLL) |
+| `-DCSC_BUILD_STANDALONE=ON` | ON | Build as standalone overlay EXE (OFF = injected DLL) |
 
 ---
 
@@ -191,7 +192,7 @@ You will need your own injector to load `CS2SkinChanger.dll` into `cs2.exe`.
 Run `uninstall.bat` to:
 
 1. Delete the `build/` directory and `third_party/imgui`
-2. Delete saved config and offsets (`%APPDATA%\cs2-skin-changer\`)
+2. Delete saved config and offsets (`%APPDATA%\veneer\`)
 3. Optionally uninstall CMake, Git, and VS2022 Build Tools (prompts for each)
 
 To fully remove the project, just delete the repository folder.
