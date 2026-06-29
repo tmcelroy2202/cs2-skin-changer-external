@@ -1,32 +1,11 @@
-<div align="center">
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 640" width="100%" style="max-width:1280px;border-radius:8px">
-    <defs>
-      <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stop-color="#0a0a12"/>
-        <stop offset="100%" stop-color="#0f0f1a"/>
-      </linearGradient>
-      <linearGradient id="line" x1="0%" y1="0%" x2="100%" y2="0%">
-        <stop offset="0%" stop-color="#2D7EE7"/>
-        <stop offset="100%" stop-color="#1a5cb5"/>
-      </linearGradient>
-    </defs>
-    <rect width="1280" height="640" fill="url(#bg)"/>
-    <rect width="1280" height="4" fill="url(#line)"/>
-    <rect y="636" width="1280" height="4" fill="#F59E0B" opacity="0.8"/>
-    <g opacity="0.06">
-      <line x1="180" y1="640" x2="1100" y2="0" stroke="#2D7EE7" stroke-width="1"/>
-      <line x1="240" y1="640" x2="1160" y2="0" stroke="#2D7EE7" stroke-width="1"/>
-    </g>
-    <text x="60" y="230" font-family="-apple-system,'Segoe UI',sans-serif" font-size="100" font-weight="700" fill="#2D7EE7">VeneeR</text>
-    <text x="64" y="290" font-family="-apple-system,'Segoe UI',sans-serif" font-size="22" fill="#b0b0be">External Skin Changer &nbsp;·&nbsp; Counter-Strike 2</text>
-    <text x="64" y="325" font-family="-apple-system,'Segoe UI',sans-serif" font-size="15" fill="#70707e">Standalone overlay &nbsp;·&nbsp; D3D11 &nbsp;·&nbsp; Dear ImGui &nbsp;·&nbsp; No injection</text>
-    <rect x="60" y="355" width="105" height="34" rx="17" ry="17" fill="#F59E0B"/>
-    <text x="112" y="378" font-family="-apple-system,'Segoe UI',sans-serif" font-size="15" font-weight="700" fill="#0a0a12" text-anchor="middle">v1.4.1</text>
-    <text x="60" y="600" font-family="-apple-system,'Segoe UI',sans-serif" font-size="13" fill="#505060">mrch4n725 / cs2-skin-changer-external</text>
-  </svg>
-</div>
-
-<br>
+<h1 align="center">VeneeR</h1>
+<h3 align="center">External Skin Changer &middot; Counter-Strike 2</h3>
+<p align="center">
+  Standalone overlay &middot; D3D11 &middot; Dear ImGui &middot; No injection
+</p>
+<p align="center">
+  <code>mrch4n725/cs2-skin-changer-external</code> &nbsp;&middot;&nbsp; <strong>v1.4.1</strong>
+</p>
 
 <div align="center">
 
@@ -37,9 +16,7 @@
 
 </div>
 
-# cs2-skin-changer-external
-
-**VeneeR** — An external skin changer for Counter-Strike 2 using process memory access. Standalone transparent overlay with Dear ImGui UI — no injection required.
+An external skin changer for Counter-Strike 2 using process memory access. Standalone transparent overlay with Dear ImGui UI — no injection required.
 
 > ⚠️ **Development Status: Pre-v2 Testing Phase**
 >
