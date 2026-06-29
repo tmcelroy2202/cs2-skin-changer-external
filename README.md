@@ -2,6 +2,14 @@
 
 An external skin changer for Counter-Strike 2 using process memory access. Standalone overlay with Dear ImGui UI — no injection required.
 
+> ⚠️ **Development Status: Pre-v2 Testing Phase**
+>
+> All releases under the **v1.\*.\*** umbrella are **developmental builds** — the project is actively being constructed and has not yet reached a stable, fully functional state. These versions serve as the foundational building phase: core systems are being assembled, the codebase is being audited and hardened, and the UI is being refined.
+>
+> Once the skin changer is proven to work reliably across CS2 updates with a polished user experience, the project will graduate to **v2.0.0** and be considered a production-ready release.
+>
+> **Until then, expect bugs, incomplete features, and breaking changes between releases.** Contributions, issue reports, and testing feedback are all welcome and help move the project toward v2.
+
 ## Features
 
 - **Skins** — Apply any paint kit to any weapon (top 5 desirable skins pre-loaded per weapon)
