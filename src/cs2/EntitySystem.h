@@ -14,7 +14,7 @@
 constexpr u32 kChunkSize       = 512;
 constexpr u32 kChunkArraySize  = 3;
 constexpr u32 kMaxEntities     = kChunkArraySize * kChunkSize;
-constexpr u32 kEntityIdentitySize = 0x70;
+constexpr u32 kEntityIdentitySize = 0x78;
 
 /// Resolve an entity handle (CHandle) to its pointer address.
 inline u64 GetEntityByHandle(ProcessMemory& mem, u32 handle) {

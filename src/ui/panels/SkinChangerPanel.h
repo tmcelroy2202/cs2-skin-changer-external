@@ -5,6 +5,7 @@
 #include "cs2/SkinDatabase.h"
 #include "cs2/SkinChanger.h"
 #include "cs2/ConfigManager.h"
+#include "cs2/SkinTextureCache.h"
 
 class SkinChangerPanel final : public Panel {
 public:
@@ -23,6 +24,7 @@ private:
     SkinDatabase&  db_;
     SkinManager&   mgr_;
     SkinChanger&   changer_;
+    SkinTextureCache* tex_cache_ = nullptr;
 
     enum class Category { Pistols, Rifles, Smgs, Snipers, Heavy, Knives, Gloves, Music };
     Category active_cat_ = Category::Rifles;
@@ -52,6 +54,7 @@ private:
     void DrawSkinCards(std::span<const SkinInfo_t> skins) noexcept;
     void DrawSkinCard(i32 idx, const SkinInfo_t& skin, bool selected) noexcept;
     void DrawWearControls(SkinInfo_t& skin, bool& changed) noexcept;
+    void SetTextureCache(SkinTextureCache* cache) noexcept { tex_cache_ = cache; }
     void SaveAndSync() noexcept;
 
     static ImColor PreviewColor(i32 paint_id) noexcept;

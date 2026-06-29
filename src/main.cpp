@@ -41,6 +41,7 @@
 #include "core/ProcessMemory.h"
 #include "cs2/SkinDatabase.h"
 #include "cs2/SkinChanger.h"
+#include "cs2/SkinTextureCache.h"
 #include "cs2/EntitySystem.h"
 #include "cs2/Offsets.h"
 #include "cs2/ConfigManager.h"
@@ -51,6 +52,7 @@
 
 #include <atomic>
 #include <thread>
+#include <objbase.h>
 
 namespace {
 
@@ -78,6 +80,7 @@ struct App {
     SkinManager          skin_mgr;
     SkinChanger*         skin_changer{};
     SkinChangerPanel*    skin_panel{};
+    SkinTextureCache*    skin_tex_cache{};
 
     bool running = false;
 };
@@ -165,6 +168,7 @@ void RunFrame(App& app) {
 } // anonymous namespace
 
 int main() {
+    CoInitializeEx(nullptr, COINIT_MULTITHREADED);
     LOG_INFO("VeneeR — Standalone Overlay Mode");
 
     auto& app = State();
@@ -232,6 +236,17 @@ int main() {
         app.skin_changer = new SkinChanger(app.cs2, app.skin_db, app.skin_mgr);
         app.skin_panel   = new SkinChangerPanel(app.skin_db, app.skin_mgr,
                                                  *app.skin_changer);
+
+        // Texture cache for skin preview images
+        {
+            auto& overlay_state = overlay::State();
+            if (overlay_state.device) {
+                app.skin_tex_cache = new SkinTextureCache(overlay_state.device);
+                app.skin_tex_cache->InitMapping();
+                app.skin_panel->SetTextureCache(app.skin_tex_cache);
+            }
+        }
+
         app.panels.Register(app.skin_panel);
 
         // Load saved config (skins, knife, gloves, music kit)
@@ -259,11 +274,13 @@ int main() {
     delete app.console_panel;
     delete app.skin_changer;
     delete app.skin_panel;
+    delete app.skin_tex_cache;
     delete app.obj_inspector;
     delete app.asset_analyzer;
 
     app.cs2.Close();
     ui::Shutdown();
+    CoUninitialize();
     LOG_INFO("Framework shutdown complete");
     return 0;
 }

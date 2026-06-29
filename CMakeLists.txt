@@ -37,10 +37,12 @@ target_include_directories(CS2SkinChanger PRIVATE
 
 # ── System libraries ──────────────────────────────────────────────────────────
 target_link_libraries(CS2SkinChanger PRIVATE
-    D3D11.lib   # Direct3D 11
-    DXGI.lib    # DXGI swap chain
-    Dwmapi.lib  # Desktop Window Manager (overlay transparency)
-    imm32.lib   # IME support (ImGui)
+    D3D11.lib       # Direct3D 11
+    DXGI.lib        # DXGI swap chain
+    Dwmapi.lib      # Desktop Window Manager (overlay transparency)
+    imm32.lib       # IME support (ImGui)
+    Ole32.lib       # COM (CoInitializeEx for WIC)
+    Windowscodecs.lib  # WIC image decoding
     imgui::imgui
 )
 

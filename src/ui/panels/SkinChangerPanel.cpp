@@ -108,6 +108,7 @@ ImColor SkinChangerPanel::PreviewColor(i32 paint_id) noexcept {
 // ── Draw ──────────────────────────────────────────────────────────────────────
 
 void SkinChangerPanel::Draw() noexcept {
+    if (tex_cache_) tex_cache_->ProcessPending();
     ImGui::SetNextWindowSize(ImVec2(760, 520), ImGuiCond_FirstUseEver);
 
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
@@ -430,17 +431,28 @@ void SkinChangerPanel::DrawSkinCard(i32 idx, const SkinInfo_t& skin, bool select
                              : ImColor(Palette::Card);
     dl->AddRectFilled(pos, ImVec2(pos.x + card_w, pos.y + total_h), card_bg, 6.0f);
 
-    // Preview band
-    dl->AddRectFilled(ImVec2(pos.x + 2, pos.y + 2),
-                      ImVec2(pos.x + card_w - 2, pos.y + preview_h - 2),
-                      preview_col, 4.0f);
+    // Preview band (texture or generated color)
+    ImRect preview_rect(ImVec2(pos.x + 2, pos.y + 2),
+                        ImVec2(pos.x + card_w - 2, pos.y + preview_h - 2));
 
-    // Darken gradient at bottom of preview
-    dl->AddRectFilledMultiColor(
-        ImVec2(pos.x + 2, pos.y + preview_h * 0.5f),
-        ImVec2(pos.x + card_w - 2, pos.y + preview_h - 2),
-        ImColor(0, 0, 0, 0), ImColor(0, 0, 0, 0),
-        ImColor(0, 0, 0, 120), ImColor(0, 0, 0, 120));
+    ImTextureID tex_id = tex_cache_ ? tex_cache_->Get(skin.Paint) : nullptr;
+    if (tex_id) {
+        dl->AddImage(tex_id, preview_rect.Min, preview_rect.Max,
+                     ImVec2(0, 0), ImVec2(1, 1), IM_COL32(255,255,255,255));
+    } else {
+        dl->AddRectFilled(preview_rect.Min, preview_rect.Max, preview_col, 4.0f);
+
+        // Darken gradient at bottom of preview
+        dl->AddRectFilledMultiColor(
+            ImVec2(pos.x + 2, pos.y + preview_h * 0.5f),
+            ImVec2(pos.x + card_w - 2, pos.y + preview_h - 2),
+            ImColor(0, 0, 0, 0), ImColor(0, 0, 0, 0),
+            ImColor(0, 0, 0, 120), ImColor(0, 0, 0, 120));
+    }
+
+    // Request async texture load for unloaded skins
+    if (tex_cache_ && !tex_cache_->IsLoaded(skin.Paint) && skin.weaponType != WeaponsEnum{})
+        tex_cache_->Request(skin.Paint, skin.weaponType);
 
     // Paint ID badge
     float badge_w = ImGui::CalcTextSize("#00").x + 16.0f;
