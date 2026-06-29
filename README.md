@@ -9,10 +9,10 @@
 
 <div align="center">
 
-[![Build](https://img.shields.io/github/actions/workflow/status/mrch4n725/cs2-skin-changer-external/build.yml?branch=main&style=flat-square&label=build&color=%232D7EE7)](https://github.com/mrch4n725/cs2-skin-changer-external/actions)
-[![Release](https://img.shields.io/github/v/release/mrch4n725/cs2-skin-changer-external?style=flat-square&label=release&color=%23F59E0B)](https://github.com/mrch4n725/cs2-skin-changer-external/releases)
-[![License](https://img.shields.io/github/license/mrch4n725/cs2-skin-changer-external?style=flat-square&label=license&color=%23888999)](LICENSE)
-[![Windows](https://img.shields.io/badge/Windows-x64-%232D7EE7?style=flat-square&logo=windows11&logoColor=white)](https://github.com/mrch4n725/cs2-skin-changer-external/releases)
+[![Build](https://img.shields.io/badge/build-passing-2D7EE7?style=flat-square)](https://github.com/mrch4n725/cs2-skin-changer-external/actions)
+[![Release](https://img.shields.io/badge/release-v1.4.1-F59E0B?style=flat-square)](https://github.com/mrch4n725/cs2-skin-changer-external/releases)
+[![License](https://img.shields.io/badge/license-MIT-888999?style=flat-square)](LICENSE)
+[![Windows](https://img.shields.io/badge/Windows-10%2F11-2D7EE7?style=flat-square&logo=windows11&logoColor=white)](https://github.com/mrch4n725/cs2-skin-changer-external/releases)
 
 </div>
 
@@ -55,11 +55,11 @@ GetLocalController → GetLocalPlayer → GetWeapons
 
 ### Option 1: Download Pre-Built Binary (easiest)
 
-Grab the latest `CS2SkinChanger.exe` from [Releases](https://github.com/mrch4n725/cs2-skin-changer-external/releases).
+Grab the latest **VeneeR** release from [Releases](https://github.com/mrch4n725/cs2-skin-changer-external/releases).
 
-1. Download `CS2SkinChanger.exe` (~2 MB)
+1. Download the binary (~2 MB)
 2. Launch Counter-Strike 2 and join a game
-3. Run `CS2SkinChanger.exe` **as Administrator**
+3. Run it **as Administrator**
 4. Press **Insert** to toggle the overlay
 
 All offsets and defaults are embedded with automatic updates from [cs2-dumper](https://github.com/a2x/cs2-dumper) at every launch — no manual setup needed. If CS2 updates break skin application, just restart the tool and it will fetch the latest offsets automatically.
@@ -113,9 +113,6 @@ For release checklist details and the DLL preset, see [BUILD.md](BUILD.md).
 
 1. **Launch Counter-Strike 2** and join a game (official or community).
 2. **Run the overlay as Administrator** — required for `OpenProcess` access to `cs2.exe`.
-   ```
-   CS2SkinChanger.exe
-   ```
 3. **Press `Insert`** to toggle the overlay UI on/off (overlay is visible by default).
 4. **Use the overlay window** — 8 horizontal category tabs across the top:
 
@@ -163,13 +160,13 @@ There are two possible symptoms depending on your Windows version:
 
 1. Open **Windows Security** → **Virus & threat protection** → **Manage settings**
 2. Under **Exclusions**, click **Add or remove exclusions** → **Add an exclusion** → **Folder**
-3. Select the folder where you'll save `CS2SkinChanger.exe` (e.g. Downloads)
+3. Select the folder where you'll save the binary (e.g. Downloads)
 4. Download and run — it will work without interference
 
 ### If Defender already deleted the file
 
 1. Open **Windows Security** → **Virus & threat protection** → **Protection history**
-2. Find `CS2SkinChanger.exe` → click **Actions** → **Restore**
+2. Find the binary → click **Actions** → **Restore**
 3. Then add the folder exclusion above before running again
 
 ### Option 2: Build from Source (for tinkers)
