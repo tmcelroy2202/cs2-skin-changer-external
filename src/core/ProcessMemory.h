@@ -119,6 +119,17 @@ class ProcessMemory {
 public:
     ProcessMemory() = default;
 
+    bool OpenCurrentProcess() noexcept {
+        Close();
+        process_id_ = ::GetCurrentProcessId();
+        handle_ = s_Api.OpenProcess(PROCESS_ALL_ACCESS, FALSE, static_cast<DWORD>(process_id_));
+        if (!handle_) return false;
+
+        client_ = reinterpret_cast<u64>(::GetModuleHandleW(L"client.dll"));
+        engine_ = reinterpret_cast<u64>(::GetModuleHandleW(L"engine2.dll"));
+        return client_ != 0;
+    }
+
     bool Open(std::wstring_view process_name) noexcept {
         Close();
 

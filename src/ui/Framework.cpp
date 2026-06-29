@@ -158,9 +158,12 @@ void ui::Render() noexcept {
 bool ui::WndProcHandler(void* hwnd, u32 msg, u64 wparam, i64 lparam) noexcept {
     if (!Data().initialised) return false;
 
-    if (ImGui_ImplWin32_WndProcHandler(
-            static_cast<HWND>(hwnd), msg, wparam, lparam))
-        return true;
+    // Only let ImGui consume input when the UI overlay is visible
+    if (Data().visible) {
+        if (ImGui_ImplWin32_WndProcHandler(
+                static_cast<HWND>(hwnd), msg, wparam, lparam))
+            return true;
+    }
 
     if (msg == WM_KEYUP && wparam == VK_INSERT) {
         ToggleVisibility();
@@ -173,18 +176,17 @@ bool ui::WndProcHandler(void* hwnd, u32 msg, u64 wparam, i64 lparam) noexcept {
 
 void ui::ToggleVisibility() noexcept {
     Data().visible = !Data().visible;
-    // When visible: capture mouse clicks on the overlay.
-    // When hidden:  click-through so CS2 receives all input.
-    overlay::SetClickthrough(!Data().visible);
-
-    if (Data().visible) {
-        ::ClipCursor(nullptr);
-        HWND hwnd = static_cast<HWND>(overlay::State().hwnd);
-        if (hwnd) {
-            ::SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0,
-                           SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW);
-            ::SetForegroundWindow(hwnd);
-            ::SetFocus(hwnd);
+    if (Data().mode == Mode::Overlay) {
+        overlay::SetClickthrough(!Data().visible);
+        if (Data().visible) {
+            ::ClipCursor(nullptr);
+            HWND hwnd = static_cast<HWND>(overlay::State().hwnd);
+            if (hwnd) {
+                ::SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0,
+                               SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW);
+                ::SetForegroundWindow(hwnd);
+                ::SetFocus(hwnd);
+            }
         }
     }
 }

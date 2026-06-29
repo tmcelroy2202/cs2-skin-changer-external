@@ -3,6 +3,7 @@
 #include "core/ProcessMemory.h"
 #include "Offsets.h"
 #include "WeaponTypes.h"
+#include "EntitySystem.h"
 
 /* ── CS2 Econ System ────────────────────────────────────────────────────────
  *
@@ -111,14 +112,14 @@ private:
             auto handle = mem_.ReadSafe<u32>(*list_ptr + sizeof(u32) * i);
             if (!handle || !*handle) continue;
 
-            // Resolve handle → entity pointer
+            // Resolve handle → entity pointer (same formula as GetEntityByHandle)
             auto entity_list = mem_.ReadSafe<u64>(mem_.Client() + Offsets::dwEntityList);
             if (!entity_list || !*entity_list) continue;
 
-            auto list_entry = mem_.ReadSafe<u64>(*entity_list + 0x8 * ((*handle & 0x7FFF) >> 9) + 0x10);
+            auto list_entry = mem_.ReadSafe<u64>(*entity_list + sizeof(u64) * ((*handle & 0x7FFF) >> 9) + 0x10);
             if (!list_entry || !*list_entry) continue;
 
-            auto weapon = mem_.ReadSafe<u64>(*list_entry + 0x70 * (*handle & 0x1FF));
+            auto weapon = mem_.ReadSafe<u64>(*list_entry + kEntityIdentitySize * (*handle & (kChunkSize - 1)));
             if (!weapon || !*weapon) continue;
 
             u64 item_addr = mem_.Read<u64>(*weapon + Offsets::m_AttributeManager + Offsets::m_Item);

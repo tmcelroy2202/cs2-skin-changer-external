@@ -30,10 +30,26 @@ if(CSC_BUILD_STANDALONE)
     endif()
 else()
     add_library(CS2SkinChanger SHARED)
+
+    # MinHook sources (C files compiled as C by MSVC)
+    target_sources(CS2SkinChanger PRIVATE
+        third_party/MinHook/src/buffer.c
+        third_party/MinHook/src/hook.c
+        third_party/MinHook/src/trampoline.c
+        third_party/MinHook/src/hde/hde64.c
+    )
+    set_source_files_properties(
+        third_party/MinHook/src/buffer.c
+        third_party/MinHook/src/hook.c
+        third_party/MinHook/src/trampoline.c
+        third_party/MinHook/src/hde/hde64.c
+        PROPERTIES LANGUAGE C
+    )
 endif()
 
 target_include_directories(CS2SkinChanger PRIVATE
-    "${CMAKE_CURRENT_SOURCE_DIR}/src")
+    "${CMAKE_CURRENT_SOURCE_DIR}/src"
+    "${CMAKE_CURRENT_SOURCE_DIR}/third_party/MinHook/include")
 
 # ── System libraries ──────────────────────────────────────────────────────────
 target_link_libraries(CS2SkinChanger PRIVATE

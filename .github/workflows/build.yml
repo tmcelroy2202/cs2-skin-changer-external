@@ -6,7 +6,7 @@ on:
       - 'v*.*.*'
 
 jobs:
-  build:
+  standalone:
     runs-on: windows-2022
     permissions:
       contents: write
@@ -24,20 +24,74 @@ jobs:
             git clone --depth 1 --branch v1.91.8 https://github.com/ocornut/imgui.git third_party\imgui
           )
 
-      - name: Configure CMake
+      - name: Configure CMake (standalone)
         run: cmake --preset windows-release
 
-      - name: Build Release
+      - name: Build standalone EXE
         run: cmake --build --preset windows-release
 
-      - name: Upload binary
+      - name: Upload standalone EXE
         uses: actions/upload-artifact@v5
         with:
           name: CS2SkinChanger.exe
           path: build\Release\CS2SkinChanger.exe
 
+  dll:
+    runs-on: windows-2022
+    permissions:
+      contents: write
+    defaults:
+      run:
+        shell: cmd
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v5
+
+      - name: Clone Dear ImGui
+        run: |
+          if not exist third_party\imgui\imgui.h (
+            git clone --depth 1 --branch v1.91.8 https://github.com/ocornut/imgui.git third_party\imgui
+          )
+
+      - name: Configure CMake (DLL)
+        run: cmake --preset windows-dll
+
+      - name: Build DLL
+        run: cmake --build --preset windows-dll
+
+      - name: Upload DLL
+        uses: actions/upload-artifact@v5
+        with:
+          name: CS2SkinChanger.dll
+          path: build-dll\Release\CS2SkinChanger.dll
+
+  release:
+    needs: [standalone, dll]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - name: Download standalone EXE
+        uses: actions/download-artifact@v5
+        with:
+          name: CS2SkinChanger.exe
+          path: artifacts
+
+      - name: Download DLL
+        uses: actions/download-artifact@v5
+        with:
+          name: CS2SkinChanger.dll
+          path: artifacts
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v3
         with:
-          files: build\Release\CS2SkinChanger.exe
+          files: |
+            artifacts/CS2SkinChanger.exe
+            artifacts/CS2SkinChanger.dll
           generate_release_notes: true
