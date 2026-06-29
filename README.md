@@ -1,6 +1,21 @@
-# CS2 Skin Changer — External Overlay
+<div align="center">
+  <img src="branding/social-preview.png" alt="VeneeR Banner" width="100%">
+</div>
 
-An external skin changer for Counter-Strike 2 using process memory access. Standalone overlay with Dear ImGui UI — no injection required.
+<br>
+
+<div align="center">
+
+[![Build](https://img.shields.io/github/actions/workflow/status/mrch4n725/cs2-skin-changer-external/build.yml?branch=main&style=flat-square&label=build&color=%232D7EE7)](https://github.com/mrch4n725/cs2-skin-changer-external/actions)
+[![Release](https://img.shields.io/github/v/release/mrch4n725/cs2-skin-changer-external?style=flat-square&label=release&color=%23F59E0B)](https://github.com/mrch4n725/cs2-skin-changer-external/releases)
+[![License](https://img.shields.io/github/license/mrch4n725/cs2-skin-changer-external?style=flat-square&label=license&color=%23888999)](LICENSE)
+[![Windows](https://img.shields.io/badge/Windows-x64-%232D7EE7?style=flat-square&logo=windows11&logoColor=white)](https://github.com/mrch4n725/cs2-skin-changer-external/releases)
+
+</div>
+
+# cs2-skin-changer-external
+
+**VeneeR** — An external skin changer for Counter-Strike 2 using process memory access. Standalone transparent overlay with Dear ImGui UI — no injection required.
 
 > ⚠️ **Development Status: Pre-v2 Testing Phase**
 >
