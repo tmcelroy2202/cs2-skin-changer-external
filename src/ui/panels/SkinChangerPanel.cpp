@@ -249,7 +249,7 @@ void SkinChangerPanel::DrawSkinsContent() noexcept {
     // ── Weapon search + filter chips ─────────────────────────────────────────
     ImGui::SetNextItemWidth(-1);
     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(8, 5));
-    ImGui::InputTextWithHint("##wep_filter", "Filter weapons...", &weapon_filter_);
+    ImGui::InputText("##wep_filter", &weapon_filter_);
     ImGui::PopStyleVar();
 
     // Build filtered weapon list
@@ -311,7 +311,7 @@ void SkinChangerPanel::DrawSkinsContent() noexcept {
     // Skin search
     ImGui::SetNextItemWidth(220.0f);
     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(8, 5));
-    ImGui::InputTextWithHint("##skin_filter", "Search skins...", &skin_filter_);
+    ImGui::InputText("##skin_filter", &skin_filter_);
     ImGui::PopStyleVar();
     ImGui::Spacing();
 
@@ -580,7 +580,7 @@ void SkinChangerPanel::DrawGlovesContent() noexcept {
 
     ImGui::SetNextItemWidth(220.0f);
     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(8, 5));
-    ImGui::InputTextWithHint("##glove_skin_filter", "Search glove skins...", &glove_skin_search_);
+    ImGui::InputText("##glove_skin_filter", &glove_skin_search_);
     ImGui::PopStyleVar();
     ImGui::Spacing();
 
@@ -662,7 +662,7 @@ void SkinChangerPanel::DrawGlovesContent() noexcept {
                 ImGui::InvisibleButton("##gcard", ImVec2(card_w, total_h));
                 if (ImGui::IsItemClicked()) {
                     selected_glove_skin_idx_ = i;
-                    SkinInfo_t gs{filtered[i].Paint, 0.01f, 0, false, "Glove", WeaponsEnum::None};
+                    SkinInfo_t gs{filtered[i].Paint, 0.01f, 0, false, "Glove", WeaponsEnum{}};
                     mgr_.SetGloveSkin(gs, glove);
                     SaveAndSync();
                 }
@@ -728,7 +728,7 @@ void SkinChangerPanel::DrawMusicContent() noexcept {
     ImGui::Spacing();
     ImGui::SetNextItemWidth(260.0f);
     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(8, 5));
-    ImGui::InputTextWithHint("##music_search", "Search music kits...", &music_filter_);
+    ImGui::InputText("##music_search", &music_filter_);
     ImGui::PopStyleVar();
     ImGui::Spacing();
 

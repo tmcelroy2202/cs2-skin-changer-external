@@ -602,7 +602,7 @@ public:
         return {};
     }
 
-    void SetGloveSkin(const SkinInfo_t& skin, GlovesEnum glove_def = GlovesEnum::None) noexcept {
+    void SetGloveSkin(const SkinInfo_t& skin, GlovesEnum glove_def = GlovesEnum{}) noexcept {
         glove_paint_ = skin.Paint;
         glove_def_ = glove_def;
         force_update_ = true;
@@ -646,7 +646,7 @@ public:
 private:
     bool force_update_ = false;
     i32  glove_paint_  = 0;
-    GlovesEnum glove_def_ = GlovesEnum::None;
-    WeaponsEnum knife_def_   = WeaponsEnum::None;
+    GlovesEnum glove_def_ = GlovesEnum{};
+    WeaponsEnum knife_def_   = WeaponsEnum{};
     i32         knife_paint_ = 0;
 };

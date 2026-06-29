@@ -1,5 +1,6 @@
 #pragma once
 
+#include "imgui.h"
 #include "ui/Panels.h"
 #include "cs2/SkinDatabase.h"
 #include "cs2/SkinChanger.h"

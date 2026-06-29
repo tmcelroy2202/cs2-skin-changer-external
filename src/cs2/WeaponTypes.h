@@ -141,7 +141,7 @@ struct SkinInfo_t {
     i32         Pattern         = 0;
     bool        bUsesOldModel   = false;
     std::string name;
-    WeaponsEnum weaponType      = WeaponsEnum::None;
+    WeaponsEnum weaponType      = WeaponsEnum{};
 };
 
 inline std::string WeaponIdToString(i32 id) {
