@@ -130,7 +130,7 @@ inline std::filesystem::path DataFilePath() {
     const char* appdata = getenv("APPDATA");
     if (!appdata) appdata = getenv("HOME");
     if (!appdata) return "cs2_offsets.txt";
-    return std::filesystem::path(appdata) / "cs2-skin-changer" / "offsets.txt";
+    return std::filesystem::path(appdata) / "veneer" / "offsets.txt";
 }
 
 /// Load all offsets from a data file.  Keys not present keep embedded defaults.
@@ -366,8 +366,11 @@ inline bool ParseCs2Line(const std::string& line,
     if (eq == std::string::npos) return false;
 
     auto vpos = eq + 1;
-    while (vpos < line.size() && (line[vpos] == ' ' || line[vpos] == '0' ||
-           (line[vpos] | 0x20) == 'x')) ++vpos;
+    // Skip spaces then optional 0x/0X prefix
+    while (vpos < line.size() && line[vpos] == ' ') ++vpos;
+    if (vpos + 1 < line.size() && line[vpos] == '0' &&
+        ((line[vpos + 1] | 0x20) == 'x'))
+        vpos += 2;
 
     if (vpos >= line.size()) return false;
 
@@ -489,8 +492,9 @@ inline bool UpdateFromRemote() noexcept {
         }
     }
 
-    // Persist to local file for next launch
-    return SaveToFile(DataFilePath());
+    // Persist to local file for next launch (best-effort)
+    SaveToFile(DataFilePath());
+    return true;
 }
 
 } // namespace Offsets

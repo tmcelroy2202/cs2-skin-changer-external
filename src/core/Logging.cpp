@@ -2,6 +2,7 @@
 
 #include <cstdio>
 #include <ctime>
+#include <mutex>
 
 static constexpr const char* LevelLabel(LogLevel lv) noexcept {
     switch (lv) {
@@ -23,6 +24,9 @@ Logger& Logger::Instance() {
 void Logger::Dispatch(LogLevel lv, std::string_view msg,
                       std::source_location const& loc) {
     if (lv < min_level_) return;
+
+    static std::mutex mtx;
+    std::lock_guard lock(mtx);
 
     // Minimal timestamp
     std::time_t t = std::time(nullptr);

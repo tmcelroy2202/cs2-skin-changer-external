@@ -1,5 +1,6 @@
 #include "AssetAnalyzer.h"
 #include <algorithm>
+#include <cctype>
 
 AssetBreakdown AssetAnalyzer::Analyze() noexcept {
     AssetBreakdown breakdown{};
@@ -20,9 +21,9 @@ AssetBreakdown AssetAnalyzer::Analyze() noexcept {
         }
 
         breakdown.total_memory = resources_->GetTotalMemoryUsage();
+    } else {
+        breakdown.total_memory = breakdown.material_memory + breakdown.texture_memory;
     }
-
-    breakdown.total_memory = breakdown.material_memory + breakdown.texture_memory;
     return breakdown;
 }
 
@@ -59,13 +60,13 @@ AssetAnalyzer::SearchAssets(std::string_view query) noexcept {
 
     auto query_lower = std::string(query);
     std::ranges::transform(query_lower, query_lower.begin(),
-                           [](char c) { return char(std::tolower(c)); });
+                           [](char c) { return char(std::tolower(static_cast<unsigned char>(c))); });
 
     for (auto& entry : all) {
         auto name_lower = entry.name;
         std::ranges::transform(name_lower, name_lower.begin(),
-                               [](char c) { return char(std::tolower(c)); });
-        if (name_lower.find(query_lower) != std::string_view::npos) {
+                               [](char c) { return char(std::tolower(static_cast<unsigned char>(c))); });
+        if (name_lower.find(query_lower) != std::string::npos) {
             result.push_back(std::move(entry));
         }
     }

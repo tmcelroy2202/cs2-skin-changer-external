@@ -1,4 +1,4 @@
-/* ── CS2 Skin Changer — Entry Point ──────────────────────────────────────────
+/* ── VeneeR — Entry Point ────────────────────────────────────────────────────
  *
  * Two build modes:
  *   Standalone (CSC_BUILD_STANDALONE=ON)
@@ -49,6 +49,7 @@
 //  STANDALONE OVERLAY MODE
 // ──────────────────────────────────────────────────────────────────────────────
 
+#include <atomic>
 #include <thread>
 
 namespace {
@@ -71,7 +72,7 @@ struct App {
     ObjectInspector*    obj_inspector{};
     AssetAnalyzer*      asset_analyzer{};
 
-    // ── CS2 Skin Changer ──────────────────────────────────────────────────
+    // ── VeneeR ────────────────────────────────────────────────────────────
     ProcessMemory        cs2;
     SkinDatabase         skin_db;
     SkinManager          skin_mgr;
@@ -106,7 +107,7 @@ void RunFrame(App& app) {
                     if (app.console_panel) app.console_panel->SetOpen(!app.console_panel->IsOpen());
                 if (app.skin_panel) {
                     ImGui::Separator();
-                    if (ImGui::MenuItem("CS2 Skin Changer", nullptr, app.skin_panel->IsOpen()))
+                    if (ImGui::MenuItem("VeneeR", nullptr, app.skin_panel->IsOpen()))
                         app.skin_panel->SetOpen(!app.skin_panel->IsOpen());
                 }
                 ImGui::EndMenu();
@@ -130,7 +131,7 @@ void RunFrame(App& app) {
                              ImGuiWindowFlags_NoSavedSettings |
                              ImGuiWindowFlags_NoFocusOnAppearing |
                              ImGuiWindowFlags_NoNav)) {
-                ImGui::Text("CS2 Skin Changer  v1.4.0");
+                ImGui::Text("VeneeR  v1.4.1");
                 ImGui::Text("Scopes: %zu  Entities: %u",
                             app.schema.GetTypeScopeCount(),
                             app.entities.GetEntityCount());
@@ -164,7 +165,7 @@ void RunFrame(App& app) {
 } // anonymous namespace
 
 int main() {
-    LOG_INFO("CS2 Skin Changer — Standalone Overlay Mode");
+    LOG_INFO("VeneeR — Standalone Overlay Mode");
 
     auto& app = State();
 
@@ -209,7 +210,7 @@ int main() {
     app.panels.Register(app.render_panel);
     app.panels.Register(app.console_panel);
 
-    // ── CS2 Skin Changer ────────────────────────────────────────────────────
+    // ── VeneeR ──────────────────────────────────────────────────────────────
     if (app.cs2.Open(L"cs2.exe")) {
         LOG_INFO("Connected to cs2.exe");
 
@@ -239,7 +240,7 @@ int main() {
         app.skin_changer->SetMusicKit(saved_music);
         LOG_INFO("Config loaded from {}", ConfigPath().string().c_str());
     } else {
-        LOG_WARN("CS2 not running — skin changer disabled");
+        LOG_WARN("CS2 not running — VeneeR disabled");
     }
 
     // ── Main loop ────────────────────────────────────────────────────────────
@@ -292,7 +293,7 @@ struct App {
     ObjectInspector*    obj_inspector{};
     AssetAnalyzer*      asset_analyzer{};
 
-    bool initialised = false;
+    std::atomic<bool> initialised{false};
 };
 
 App& State() {
@@ -335,7 +336,7 @@ void RenderUI(App& app) {
                          ImGuiWindowFlags_NoSavedSettings |
                          ImGuiWindowFlags_NoFocusOnAppearing |
                          ImGuiWindowFlags_NoNav)) {
-            ImGui::Text("CS2 Skin Changer  v1.4.0");
+            ImGui::Text("VeneeR  v1.4.1");
             ImGui::Text("Scopes: %zu  Entities: %u",
                         app.schema.GetTypeScopeCount(),
                         app.entities.GetEntityCount());
@@ -365,7 +366,7 @@ HRESULT STDMETHODCALLTYPE PresentHook(
 DWORD WINAPI InitThread(LPVOID) noexcept {
     auto& app = State();
 
-    LOG_INFO("CS2 Skin Changer — DLL injection mode");
+    LOG_INFO("VeneeR — DLL injection mode");
 
     app.schema.Init();
     app.entities.Init();

@@ -38,7 +38,8 @@ public:
     static T* Get(const Module& mod, std::string_view name) noexcept {
         auto factory = GetFactory(mod);
         if (!factory) return nullptr;
-        return static_cast<T*>(factory(name.data(), nullptr));
+        std::string name_str(name);
+        return static_cast<T*>(factory(name_str.c_str(), nullptr));
     }
 
 private:

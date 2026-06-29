@@ -2,6 +2,7 @@
 #include "engine/schema/SchemaReflection.h"
 #include "imgui.h"
 #include <misc/cpp/imgui_stdlib.h>
+#include <cctype>
 
 void EntityBrowserPanel::Draw() noexcept {
     if (!entities_ || !*entities_) {
@@ -65,15 +66,15 @@ void EntityBrowserPanel::DrawEntityList() noexcept {
                 auto name_lower = e.name;
                 auto class_lower = e.class_name;
                 std::ranges::transform(name_lower, name_lower.begin(),
-                                       [](char c) { return char(std::tolower(c)); });
+                                       [](char c) { return char(std::tolower(static_cast<unsigned char>(c))); });
                 std::ranges::transform(class_lower, class_lower.begin(),
-                                       [](char c) { return char(std::tolower(c)); });
+                                       [](char c) { return char(std::tolower(static_cast<unsigned char>(c))); });
                 auto filter_lower = filter_;
                 std::ranges::transform(filter_lower, filter_lower.begin(),
-                                       [](char c) { return char(std::tolower(c)); });
+                                       [](char c) { return char(std::tolower(static_cast<unsigned char>(c))); });
 
-                if (name_lower.find(filter_lower) == std::string_view::npos &&
-                    class_lower.find(filter_lower) == std::string_view::npos) {
+                if (name_lower.find(filter_lower) == std::string::npos &&
+                    class_lower.find(filter_lower) == std::string::npos) {
                     continue;
                 }
             }

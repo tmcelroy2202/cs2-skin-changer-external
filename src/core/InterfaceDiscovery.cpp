@@ -5,7 +5,6 @@
 InterfaceDiscovery::CreateInterfaceFn
 InterfaceDiscovery::GetFactory(const Module& mod) noexcept {
     u64 addr = mod.GetExport("CreateInterface");
-    if (!addr) addr = mod.GetExport("CreateInterface");
     return reinterpret_cast<CreateInterfaceFn>(addr);
 }
 
@@ -34,8 +33,10 @@ InterfaceDiscovery::Enumerate(const Module& mod) noexcept {
 
     u64 found = 0;
     auto code = mod_obj.CodeSpan();
+    if (addr < mod_obj.Base()) return entries;
     usize start = (addr > mod_obj.Base() + 0x100) ? (addr - mod_obj.Base() - 0x100) : 0;
     usize end   = addr - mod_obj.Base();
+    if (end > code.size()) end = code.size();
 
     for (usize i = start; i + sizeof(pattern) <= end; ++i) {
         bool match = true;
@@ -46,7 +47,8 @@ InterfaceDiscovery::Enumerate(const Module& mod) noexcept {
             }
         }
         if (match) {
-            i32 disp = *reinterpret_cast<const i32*>(&code[i + 3]);
+            i32 disp;
+            std::memcpy(&disp, &code[i + 3], sizeof(disp));
             found = mod_obj.Base() + i + 7 + disp;
             break;
         }
@@ -54,14 +56,16 @@ InterfaceDiscovery::Enumerate(const Module& mod) noexcept {
 
     if (!found) return entries;
 
-    // Walk the linked list
+    // Walk the linked list (32k max entries to prevent infinite loop on corruption)
     InterfaceReg* reg = *reinterpret_cast<InterfaceReg**>(found);
-    while (reg) {
+    u32 seen = 0;
+    while (reg && seen < 32768) {
         entries.push_back(InterfaceEntry{
             .name    = reg->name ? reg->name : "<unnamed>",
             .address = reinterpret_cast<u64>(reg->create_fn)
         });
         reg = reg->next;
+        ++seen;
     }
 
     return entries;

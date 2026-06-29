@@ -29,7 +29,8 @@ Module Module::Get(std::string_view name) noexcept {
                                         ? full.substr(pos + 1)
                                         : full;
 
-            if (!_stricmp(file.data(), name.data())) {
+            if (file.size() == name.size() &&
+                _strnicmp(file.data(), name.data(), name.size()) == 0) {
                 MODULEINFO info{};
                 if (GetModuleInformation(process, hMods[i], &info, sizeof(info))) {
                     mod.base_ = reinterpret_cast<u64>(info.lpBaseOfDll);
@@ -71,7 +72,8 @@ Module Module::GetByAddress(void* address) noexcept {
 u64 Module::GetExport(std::string_view symbol) const noexcept {
     if (!*this) return 0;
     HMODULE hMod = reinterpret_cast<HMODULE>(base_);
-    FARPROC proc = GetProcAddress(hMod, symbol.data());
+    std::string sym(symbol);
+    FARPROC proc = GetProcAddress(hMod, sym.c_str());
     return proc ? reinterpret_cast<u64>(proc) : 0;
 }
 

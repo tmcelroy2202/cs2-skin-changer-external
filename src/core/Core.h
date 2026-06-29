@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <cstddef>
+#include <iterator>
 #include <string_view>
 #include <span>
 #include <expected>

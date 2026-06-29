@@ -35,7 +35,7 @@ template <typename T>
     requires std::is_trivially_copyable_v<T>
 [[nodiscard]] std::vector<T> ReadArray(u64 address, usize count) noexcept {
     std::vector<T> out(count);
-    if (address) {
+    if (address && address != ~0ull) {
         std::memcpy(out.data(), reinterpret_cast<const void*>(address), count * sizeof(T));
     }
     return out;
@@ -54,7 +54,7 @@ template <typename T>
 
 /// Read a null-terminated string from memory.
 [[nodiscard]] inline std::string ReadString(u64 address, usize max_len = 256) noexcept {
-    if (!address) return {};
+    if (!address || address == ~0ull) return {};
     auto ptr = reinterpret_cast<const char*>(address);
     usize len = 0;
     while (len < max_len && ptr[len]) ++len;
@@ -63,7 +63,7 @@ template <typename T>
 
 /// Read a wide null-terminated string from memory.
 [[nodiscard]] inline std::wstring ReadWideString(u64 address, usize max_len = 256) noexcept {
-    if (!address) return {};
+    if (!address || address == ~0ull) return {};
     auto ptr = reinterpret_cast<const wchar_t*>(address);
     usize len = 0;
     while (len < max_len && ptr[len]) ++len;

@@ -40,11 +40,11 @@ public:
         auto it = db_.find(def);
         if (it == db_.end()) return results;
 
-        // Deduplicate by name: keep first occurrence of each skin name
-        std::unordered_set<std::string_view> seen;
+        // Deduplicate by paint_id: keep first occurrence of each paint kit
+        std::unordered_set<i32> seen;
         for (auto& entry : it->second) {
-            if (seen.count(entry.name)) continue;
-            seen.insert(entry.name);
+            if (seen.count(entry.paint_id)) continue;
+            seen.insert(entry.paint_id);
             results.push_back({entry.paint_id, 0.01f, 0, entry.legacy_model, entry.name, weapon});
         }
         return results;
@@ -57,7 +57,7 @@ public:
         if (it == db_.end()) return {};
 
         for (auto& entry : it->second) {
-            if (entry.name.find(name) != std::string_view::npos) {
+            if (entry.name.find(name) != std::string::npos) {
                 return {entry.paint_id, 0.01f, 0, entry.legacy_model, entry.name, weapon};
             }
         }
@@ -602,12 +602,14 @@ public:
         return {};
     }
 
-    void SetGloveSkin(const SkinInfo_t& skin) noexcept {
+    void SetGloveSkin(const SkinInfo_t& skin, GlovesEnum glove_def = GlovesEnum::None) noexcept {
         glove_paint_ = skin.Paint;
+        glove_def_ = glove_def;
         force_update_ = true;
     }
 
     i32 GetGlovePaint() const noexcept { return glove_paint_; }
+    GlovesEnum GetGloveDef() const noexcept { return glove_def_; }
 
     // ── Knife selection ──────────────────────────────────────────────────
     void SetKnife(WeaponsEnum knife_def, i32 paint) noexcept {
@@ -644,6 +646,7 @@ public:
 private:
     bool force_update_ = false;
     i32  glove_paint_  = 0;
+    GlovesEnum glove_def_ = GlovesEnum::None;
     WeaponsEnum knife_def_   = WeaponsEnum::None;
     i32         knife_paint_ = 0;
 };

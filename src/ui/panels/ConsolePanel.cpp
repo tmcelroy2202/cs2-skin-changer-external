@@ -2,6 +2,7 @@
 #include "imgui.h"
 #include <misc/cpp/imgui_stdlib.h>
 #include <algorithm>
+#include <cctype>
 
 void ConsolePanel::AddMessage(std::string_view text, LogLevel level) noexcept {
     messages_.push_back(LogMessage{
@@ -48,11 +49,11 @@ void ConsolePanel::Draw() noexcept {
         if (!filter_.empty()) {
             auto text_lower = msg.text;
             std::ranges::transform(text_lower, text_lower.begin(),
-                                   [](char c) { return char(std::tolower(c)); });
+                                   [](char c) { return char(std::tolower(static_cast<unsigned char>(c))); });
             auto filter_lower = filter_;
             std::ranges::transform(filter_lower, filter_lower.begin(),
-                                   [](char c) { return char(std::tolower(c)); });
-            if (text_lower.find(filter_lower) == std::string_view::npos)
+                                   [](char c) { return char(std::tolower(static_cast<unsigned char>(c))); });
+            if (text_lower.find(filter_lower) == std::string::npos)
                 continue;
         }
 

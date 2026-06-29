@@ -258,11 +258,13 @@ private:
         HANDLE snap = s_Api.CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
         if (snap == INVALID_HANDLE_VALUE) return 0;
 
+        std::wstring name_str(name);
+
         PROCESSENTRY32W entry{};
         entry.dwSize = sizeof(entry);
         if (s_Api.Process32FirstW(snap, &entry)) {
             do {
-                if (!_wcsicmp(entry.szExeFile, name.data())) {
+                if (!_wcsicmp(entry.szExeFile, name_str.c_str())) {
                     pid = entry.th32ProcessID;
                     break;
                 }
@@ -277,12 +279,14 @@ private:
                                                      static_cast<DWORD>(process_id_));
         if (snap == INVALID_HANDLE_VALUE) return 0;
 
+        std::wstring name_str(name);
+
         u64 base = 0;
         MODULEENTRY32W entry{};
         entry.dwSize = sizeof(entry);
         if (s_Api.Module32FirstW(snap, &entry)) {
             do {
-                if (!_wcsicmp(entry.szModule, name.data())) {
+                if (!_wcsicmp(entry.szModule, name_str.c_str())) {
                     base = reinterpret_cast<u64>(entry.modBaseAddr);
                     break;
                 }
@@ -303,6 +307,7 @@ inline detail::Win32Api& ProcessMemory::s_Api = detail::Win32Api::Instance();
 
 inline u64 ProcessMemory::SigScan(std::wstring_view module,
                                    std::string_view pattern) const noexcept {
+    std::wstring module_str(module);
     u64 base = GetModuleBase(module);
     if (!base) return 0;
 
@@ -315,7 +320,7 @@ inline u64 ProcessMemory::SigScan(std::wstring_view module,
     entry.dwSize = sizeof(entry);
     if (s_Api.Module32FirstW(snap, &entry)) {
         do {
-            if (!_wcsicmp(entry.szModule, module.data())) {
+            if (!_wcsicmp(entry.szModule, module_str.c_str())) {
                 module_size = entry.modBaseSize;
                 break;
             }
@@ -326,17 +331,20 @@ inline u64 ProcessMemory::SigScan(std::wstring_view module,
 
     struct PatternByte { u8 byte; bool wildcard; };
     std::vector<PatternByte> sig;
-    const char* p = pattern.data();
-    while (*p) {
-        if (*p == ' ') { ++p; continue; }
-        if (*p == '?') {
+    sig.reserve(pattern.size());
+    auto it = pattern.begin();
+    while (it != pattern.end()) {
+        if (*it == ' ') { ++it; continue; }
+        if (*it == '?') {
             sig.push_back({0, true});
-            ++p;
-            if (*p == '?') ++p;
+            ++it;
+            if (it != pattern.end() && *it == '?') ++it;
         } else {
-            char hex[3] = {p[0], p[1] ? p[1] : 0, 0};
-            sig.push_back({static_cast<u8>(strtoul(hex, nullptr, 16)), false});
-            p += 2;
+            char hex[3]{it[0], 0, 0};
+            if (it + 1 != pattern.end()) hex[1] = it[1];
+            char* end{};
+            sig.push_back({static_cast<u8>(std::strtoul(hex, &end, 16)), false});
+            it += (end - hex) ? (end - hex) : 1;
         }
     }
 

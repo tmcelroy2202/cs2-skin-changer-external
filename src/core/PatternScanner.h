@@ -24,8 +24,8 @@
  * ──────────────────────────────────────────────────────────────────────────── */
 
 struct Signature {
-    std::string_view pattern_bytes;
-    std::string_view mask;             // 'x' = match, '?' = wildcard
+    std::vector<u8> pattern_bytes;
+    std::string     mask;              // 'x' = match, '?' = wildcard
     i32  relative_offset   = 0;        // offset inside pattern where relative addr sits
     u8   dereference_count = 1;        // how many times to dereference after resolve
     i32  additional_offset = 0;        // added after deref chain
@@ -48,7 +48,8 @@ public:
                                          std::string_view ida_pattern);
 
 private:
-    static u64 ResolveRelative(u64 address, const Signature& sig);
+    static u64 ResolveRelative(u64 address, const Signature& sig,
+                               const Module& mod);
 };
 
 // ── Convenience macro ────────────────────────────────────────────────────────
@@ -58,8 +59,8 @@ private:
     ([] { \
         auto [bytes, mask] = PatternScanner::Parse(ida_pattern); \
         return Signature{ \
-            .pattern_bytes = {}, \
-            .mask = mask, \
+            .pattern_bytes = std::move(bytes), \
+            .mask = std::move(mask), \
             .relative_offset = 0, \
             .dereference_count = 0, \
             .additional_offset = 0 \

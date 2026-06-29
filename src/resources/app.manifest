@@ -2,10 +2,10 @@
 <assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">
   <assemblyIdentity
     type="win32"
-    name="CS2SkinChanger"
-    version="1.4.0.0"
+    name="VeneeR"
+    version="1.4.1.0"
     processorArchitecture="amd64"/>
-  <description>CS2 Skin Changer</description>
+  <description>VeneeR — CS2 skin changer overlay</description>
   <dependency>
     <dependentAssembly>
       <assemblyIdentity

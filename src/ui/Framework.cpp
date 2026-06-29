@@ -158,8 +158,9 @@ void ui::Render() noexcept {
 bool ui::WndProcHandler(void* hwnd, u32 msg, u64 wparam, i64 lparam) noexcept {
     if (!Data().initialised) return false;
 
-    ImGui_ImplWin32_WndProcHandler(
-        static_cast<HWND>(hwnd), msg, wparam, lparam);
+    if (ImGui_ImplWin32_WndProcHandler(
+            static_cast<HWND>(hwnd), msg, wparam, lparam))
+        return true;
 
     if (msg == WM_KEYUP && wparam == VK_INSERT) {
         ToggleVisibility();

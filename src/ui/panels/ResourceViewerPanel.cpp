@@ -1,6 +1,7 @@
 #include "ResourceViewerPanel.h"
 #include "imgui.h"
 #include <misc/cpp/imgui_stdlib.h>
+#include <cctype>
 
 void ResourceViewerPanel::Draw() noexcept {
     // Tabs
@@ -48,10 +49,10 @@ void ResourceViewerPanel::DrawMaterialTab() noexcept {
         for (auto& m : materials) {
             if (!filter_.empty()) {
                 auto n = m.name;
-                std::ranges::transform(n, n.begin(), [](char c) { return char(std::tolower(c)); });
+                std::ranges::transform(n, n.begin(), [](char c) { return char(std::tolower(static_cast<unsigned char>(c))); });
                 auto f = filter_;
-                std::ranges::transform(f, f.begin(), [](char c) { return char(std::tolower(c)); });
-                if (n.find(f) == std::string_view::npos) continue;
+                std::ranges::transform(f, f.begin(), [](char c) { return char(std::tolower(static_cast<unsigned char>(c))); });
+                if (n.find(f) == std::string::npos) continue;
             }
 
             ImGui::TableNextRow();

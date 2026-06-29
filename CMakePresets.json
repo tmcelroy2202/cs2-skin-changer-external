@@ -14,7 +14,7 @@
       "binaryDir": "${sourceDir}/build",
       "architecture": {
         "value": "x64",
-        "strategy": "external"
+        "strategy": "set"
       },
       "cacheVariables": {
         "CMAKE_CONFIGURATION_TYPES": "Debug;Release",
@@ -29,7 +29,7 @@
       "binaryDir": "${sourceDir}/build-dll",
       "architecture": {
         "value": "x64",
-        "strategy": "external"
+        "strategy": "set"
       },
       "cacheVariables": {
         "CMAKE_CONFIGURATION_TYPES": "Debug;Release",

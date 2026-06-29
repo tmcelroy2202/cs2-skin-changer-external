@@ -244,7 +244,8 @@ static bool CreateOverlayWindow() noexcept {
 
     HWND hwnd = CreateWindowExW(
         0, class_name.c_str(), win_title.c_str(), WS_POPUP,
-        rect.left, rect.top, rect.right, rect.bottom,
+        rect.left, rect.top,
+        rect.right - rect.left, rect.bottom - rect.top,
         nullptr, nullptr, wcex.hInstance, nullptr);
 
     if (!hwnd) {
@@ -254,7 +255,7 @@ static bool CreateOverlayWindow() noexcept {
 
     s.hwnd = hwnd;
 
-    SetWindowLongPtrA(hwnd, GWL_EXSTYLE,
+    SetWindowLongPtrW(hwnd, GWL_EXSTYLE,
         WS_EX_TRANSPARENT | WS_EX_TOOLWINDOW | WS_EX_LAYERED);
 
     MARGINS margin{-1};

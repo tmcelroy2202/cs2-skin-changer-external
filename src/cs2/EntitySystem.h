@@ -21,10 +21,10 @@ inline u64 GetEntityByHandle(ProcessMemory& mem, u32 handle) {
     auto entity_list = mem.ReadSafe<u64>(mem.Client() + Offsets::dwEntityList);
     if (!entity_list || !*entity_list) return 0;
 
-    auto list_entry = mem.ReadSafe<u64>(*entity_list + 0x8 * ((handle & 0x7FFF) >> 9) + 0x10);
+    auto list_entry = mem.ReadSafe<u64>(*entity_list + sizeof(u64) * ((handle & 0x7FFF) >> 9) + 0x10);
     if (!list_entry || !*list_entry) return 0;
 
-    auto result = mem.ReadSafe<u64>(*list_entry + 0x70 * (handle & 0x1FF));
+    auto result = mem.ReadSafe<u64>(*list_entry + kEntityIdentitySize * (handle & (kChunkSize - 1)));
     return result.value_or(0);
 }
 
@@ -106,7 +106,8 @@ inline WeaponsEnum GetActiveWeaponDef(ProcessMemory& mem, u64 local_player) {
     auto active_weapon = mem.ReadSafe<u64>(local_player + Offsets::m_pClippingWeapon);
     if (!active_weapon || !*active_weapon) return WeaponsEnum::None;
 
-    u64 item = *active_weapon + Offsets::m_AttributeManager + Offsets::m_Item;
+    u64 item = mem.Read<u64>(*active_weapon + Offsets::m_AttributeManager + Offsets::m_Item);
+    if (!item || item == ~0ull) return WeaponsEnum::None;
     auto def = mem.ReadSafe<u16>(item + Offsets::m_iItemDefinitionIndex);
     return static_cast<WeaponsEnum>(def.value_or(0));
 }

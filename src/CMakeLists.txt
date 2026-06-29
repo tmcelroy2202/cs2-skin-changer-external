@@ -52,11 +52,12 @@ target_link_libraries(csc_analysis PUBLIC csc_engine)
 target_sources(CS2SkinChanger PRIVATE main.cpp)
 
 if(MSVC)
-    # Version resource (.rc) + custom manifest for proper metadata
     target_sources(CS2SkinChanger PRIVATE resources/version.rc)
-    target_link_options(CS2SkinChanger PRIVATE
-        "/MANIFESTINPUT:${CMAKE_CURRENT_SOURCE_DIR}/resources/app.manifest"
-        "/MANIFESTUAC:\"level='requireAdministrator' uiAccess='false'\"")
+    if(CSC_BUILD_STANDALONE)
+        target_link_options(CS2SkinChanger PRIVATE
+            "/MANIFESTINPUT:${CMAKE_CURRENT_SOURCE_DIR}/resources/app.manifest"
+            "/MANIFESTUAC:\"level='requireAdministrator' uiAccess='false'\"")
+    endif()
 endif()
 
 target_link_libraries(CS2SkinChanger PRIVATE

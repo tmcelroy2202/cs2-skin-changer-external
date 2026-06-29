@@ -171,7 +171,7 @@ std::string SchemaReflection::FormatFieldValue(
 
     case SchemaFieldType::CUtlString:
     case SchemaFieldType::CUtlString_2:
-        return memory::ReadString(addr);
+        return memory::ReadString(memory::Read<u64>(addr));
 
     case SchemaFieldType::EHandle:
     case SchemaFieldType::CEntityHandle:

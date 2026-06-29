@@ -82,8 +82,8 @@ SchemaSystemTypeScope*
 SchemaSystem::FindTypeScope(std::string_view module_name) const noexcept {
     for (auto* scope : GetTypeScopes()) {
         if (!scope) continue;
-        u64 name_addr = reinterpret_cast<u64>(scope) + offsets_.scope_module_name;
-        auto name = memory::ReadString(name_addr);
+        u64 name_ptr = memory::Read<u64>(reinterpret_cast<u64>(scope) + offsets_.scope_module_name);
+        auto name = memory::ReadString(name_ptr);
         if (name == module_name) return scope;
     }
     return nullptr;

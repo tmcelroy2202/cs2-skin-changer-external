@@ -13,14 +13,14 @@ BEGIN
     BEGIN
         BLOCK "040904B0"
         BEGIN
-            VALUE "CompanyName",      "CS2 Skin Changer"
-            VALUE "FileDescription",  "CS2 Skin Changer — External overlay skin changer"
-            VALUE "FileVersion",      "1.4.0.0"
-            VALUE "InternalName",     "CS2SkinChanger"
+            VALUE "CompanyName",      "VeneeR"
+            VALUE "FileDescription",  "VeneeR — CS2 skin changer overlay"
+            VALUE "FileVersion",      "1.4.1.0"
+            VALUE "InternalName",     "VeneeR"
             VALUE "LegalCopyright",   "Copyright (C) 2026"
-            VALUE "OriginalFilename", "CS2SkinChanger.exe"
-            VALUE "ProductName",      "CS2 Skin Changer"
-            VALUE "ProductVersion",   "1.4.0.0"
+            VALUE "OriginalFilename", "VeneeR.exe"
+            VALUE "ProductName",      "VeneeR"
+            VALUE "ProductVersion",   "1.4.1.0"
         END
     END
     BLOCK "VarFileInfo"

@@ -9,7 +9,7 @@
 #include <random>
 #include <chrono>
 
-/* ── CS2 Skin Changer ──────────────────────────────────────────────────────
+/* ── VeneeR Skin Changer ────────────────────────────────────────────────────
  *
  * Port of the reference's main skin-changing logic.
  *
@@ -58,7 +58,8 @@ public:
         bool applied = false;
 
         for (u64 weapon : weapons) {
-            u64 item = weapon + Offsets::m_AttributeManager + Offsets::m_Item;
+            u64 item = mem_.Read<u64>(weapon + Offsets::m_AttributeManager + Offsets::m_Item);
+            if (!item || item == ~0ull) continue;
 
             auto cur_def_raw = mem_.ReadSafe<u16>(item + Offsets::m_iItemDefinitionIndex);
             if (!cur_def_raw) continue;
@@ -139,7 +140,8 @@ public:
         if (!glove_entity) return false;
 
         // Same treat as weapon econ item
-        u64 item = glove_entity + Offsets::m_AttributeManager + Offsets::m_Item;
+        u64 item = mem_.Read<u64>(glove_entity + Offsets::m_AttributeManager + Offsets::m_Item);
+        if (!item || item == ~0ull) return false;
 
         // Force item view re-init with fallback
         mem_.Write<u32>(glove_entity + Offsets::m_nFallbackPaintKit, static_cast<u32>(glove_paint));
@@ -197,7 +199,8 @@ private:
         if (!local_player || !*local_player) return 0;
         auto weapons = GetWeapons(mem_, *local_player);
         for (u64 weapon : weapons) {
-            u64 item = weapon + Offsets::m_AttributeManager + Offsets::m_Item;
+            u64 item = mem_.Read<u64>(weapon + Offsets::m_AttributeManager + Offsets::m_Item);
+            if (!item || item == ~0ull) continue;
             auto aid = mem_.ReadSafe<u32>(item + Offsets::m_iAccountID);
             if (aid && *aid) return *aid;
         }

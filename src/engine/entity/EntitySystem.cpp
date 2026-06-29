@@ -132,7 +132,7 @@ std::vector<EntityInfo>
 EntitySystem::FindEntities(std::string_view class_substr) const noexcept {
     std::vector<EntityInfo> result;
     for (auto& e : GetAllEntities()) {
-        if (e.class_name.find(class_substr) != std::string_view::npos) {
+        if (e.class_name.find(class_substr) != std::string::npos) {
             result.push_back(e);
         }
     }

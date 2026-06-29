@@ -3,13 +3,18 @@
 
 #include <mutex>
 
+static std::mutex s_mutex;
+
 void OffsetManager::Add(std::string_view key, OffsetEntry entry) {
+    std::lock_guard lock(s_mutex);
     Entries().emplace(std::string(key), std::move(entry));
 }
 
 std::optional<u64> OffsetManager::Resolve(std::string_view key) {
     // Check cache first
     if (auto cached = Get(key)) return cached;
+
+    std::lock_guard lock(s_mutex);
 
     auto& entries = Entries();
     auto it = entries.find(std::string(key));
@@ -45,6 +50,7 @@ std::optional<u64> OffsetManager::Resolve(std::string_view key) {
 }
 
 std::optional<u64> OffsetManager::Get(std::string_view key) {
+    std::lock_guard lock(s_mutex);
     auto& cache = Cache();
     auto it = cache.find(std::string(key));
     if (it != cache.end())
@@ -53,11 +59,13 @@ std::optional<u64> OffsetManager::Get(std::string_view key) {
 }
 
 void OffsetManager::SetDefaultModule(const Module& mod) noexcept {
+    std::lock_guard lock(s_mutex);
     DefaultModule() = mod;
     ModuleSet() = true;
 }
 
 void OffsetManager::ClearCache() noexcept {
+    std::lock_guard lock(s_mutex);
     Cache().clear();
 }
 

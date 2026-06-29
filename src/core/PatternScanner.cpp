@@ -1,5 +1,6 @@
 #include "PatternScanner.h"
 
+#include <cctype>
 #include <cstring>
 
 // ── Parse ─────────────────────────────────────────────────────────────────────
@@ -22,6 +23,10 @@ PatternScanner::Parse(std::string_view ida_pattern) {
             // skip optional second '?'
             if (it != ida_pattern.end() && *it == '?') ++it;
         } else {
+            if (!std::isxdigit(static_cast<unsigned char>(*it))) {
+                ++it;
+                continue;
+            }
             char hex[3]{it[0], 0, 0};
             if (it + 1 != ida_pattern.end()) hex[1] = it[1];
             char* end{};
@@ -29,6 +34,7 @@ PatternScanner::Parse(std::string_view ida_pattern) {
             bytes.push_back(val);
             mask.push_back('x');
             it += (end - hex);
+            if (end == hex) ++it;
         }
     }
     return {std::move(bytes), std::move(mask)};
@@ -41,11 +47,13 @@ u64 PatternScanner::FindRaw(const Module& mod, std::span<const u8> pattern,
     if (code.empty() || pattern.empty()) return 0;
 
     const usize pattern_len = pattern.size();
+    const usize mask_len = mask.size();
 
     for (usize i = 0; i + pattern_len <= code.size(); ++i) {
         bool match = true;
         for (usize j = 0; j < pattern_len; ++j) {
-            if (mask[j] == 'x' && code[i + j] != pattern[j]) {
+            if (j < mask_len && mask[j] != 'x') continue;
+            if (code[i + j] != pattern[j]) {
                 match = false;
                 break;
             }
@@ -58,17 +66,25 @@ u64 PatternScanner::FindRaw(const Module& mod, std::span<const u8> pattern,
 }
 
 // ── ResolveRelative ───────────────────────────────────────────────────────────
-u64 PatternScanner::ResolveRelative(u64 address, const Signature& sig) {
+u64 PatternScanner::ResolveRelative(u64 address, const Signature& sig,
+                                    const Module& mod) {
     if (sig.dereference_count == 0)
         return address + sig.additional_offset;
 
     // Read the relative displacement (usually a signed 32-bit int)
-    i32 displacement = *reinterpret_cast<const i32*>(address + sig.relative_offset);
+    if (!mod.Contains(address + sig.relative_offset + sizeof(i32) - 1))
+        return 0;
+    i32 displacement;
+    std::memcpy(&displacement,
+        reinterpret_cast<const void*>(address + sig.relative_offset),
+        sizeof(displacement));
     u64 result = address + sig.relative_offset + sizeof(i32) + displacement;
 
     // Chain of dereferences
     for (u8 i = 1; i < sig.dereference_count; ++i) {
-        result = *reinterpret_cast<const u64*>(result);
+        if (!mod.Contains(result)) return 0;
+        std::memcpy(&result,
+            reinterpret_cast<const void*>(result), sizeof(result));
     }
 
     return result + sig.additional_offset;
@@ -76,15 +92,13 @@ u64 PatternScanner::ResolveRelative(u64 address, const Signature& sig) {
 
 // ── Find ──────────────────────────────────────────────────────────────────────
 std::optional<u64> PatternScanner::Find(const Module& mod, const Signature& sig) {
-    auto [bytes, mask] = Parse(sig.pattern_bytes);
-    // If mask was explicitly provided in the Signature, use it
-    if (!sig.mask.empty()) mask = sig.mask;
+    if (sig.pattern_bytes.empty()) return std::nullopt;
 
-    u64 addr = FindRaw(mod, bytes, mask);
+    u64 addr = FindRaw(mod, sig.pattern_bytes, sig.mask);
     if (!addr) return std::nullopt;
 
     if (sig.dereference_count > 0 || sig.additional_offset != 0) {
-        addr = ResolveRelative(addr, sig);
+        addr = ResolveRelative(addr, sig, mod);
     }
     return addr;
 }

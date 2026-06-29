@@ -151,10 +151,10 @@ void SchemaBrowserPanel::DrawFieldRow(const FieldValue& fv) noexcept {
 
     // Type
     ImGui::TableSetColumnIndex(2);
-    ImGui::Text("%.*s", static_cast<int>(SchemaFieldTypeName(fv.type).size()),
-                SchemaFieldTypeName(fv.type).data());
+    { auto tn = SchemaFieldTypeName(fv.type);
+      ImGui::Text("%.*s", static_cast<int>(tn.size()), tn.data()); }
 
     // Size (approximate)
     ImGui::TableSetColumnIndex(3);
-    // Show size based on type
+    ImGui::Text("--");
 }

@@ -88,14 +88,11 @@ ResourceSystem::GetMaterials(std::string_view filter) const noexcept {
         u64 entry = memory::Read<u64>(list + i * sizeof(void*));
         if (!entry) continue;
 
-        // Read the vtable to determine resource type; check if it's a material
-        u64 vtable = memory::Read<u64>(entry);
-        // Materials have characteristic vtable function pointers
         auto name = memory::ReadString(memory::Read<u64>(entry + 0x08));
         if (name.empty()) continue;
 
         if (!filter.empty() &&
-            name.find(filter) == std::string_view::npos) continue;
+            name.find(filter) == std::string::npos) continue;
 
         auto mat = ReadMaterialInfo(entry);
         if (!mat.name.empty())
@@ -119,7 +116,7 @@ ResourceSystem::GetTextures(std::string_view filter) const noexcept {
         if (name.empty()) continue;
 
         if (!filter.empty() &&
-            name.find(filter) == std::string_view::npos) continue;
+            name.find(filter) == std::string::npos) continue;
 
         auto tex = ReadTextureInfo(entry);
         if (!tex.name.empty())

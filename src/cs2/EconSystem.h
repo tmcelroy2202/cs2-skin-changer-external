@@ -12,7 +12,8 @@
  * ──────────────────────────────────────────────────────────────────────────── */
 
 struct CPtrGameVector {
-    u64 size{};
+    u32 size{};
+    u32 pad{};
     u64 ptr{};
 };
 
@@ -54,7 +55,9 @@ public:
         auto existing = mem_.ReadSafe<CPtrGameVector>(
             item + Offsets::m_AttributeList + Offsets::m_Attributes);
         if (!existing) return false;
-        if (existing->size || existing->ptr) return false;
+        if (existing->size || existing->ptr) {
+            Remove(item);
+        }
 
         u64 block = mem_.Allocate();
         if (!block) return false;
@@ -118,7 +121,8 @@ private:
             auto weapon = mem_.ReadSafe<u64>(*list_entry + 0x70 * (*handle & 0x1FF));
             if (!weapon || !*weapon) continue;
 
-            u64 item_addr = *weapon + Offsets::m_AttributeManager + Offsets::m_Item;
+            u64 item_addr = mem_.Read<u64>(*weapon + Offsets::m_AttributeManager + Offsets::m_Item);
+            if (!item_addr || item_addr == ~0ull) continue;
             auto attrs = mem_.ReadSafe<CPtrGameVector>(
                 item_addr + Offsets::m_AttributeList + Offsets::m_Attributes);
             if (attrs && attrs->size > 0 && attrs->ptr) {

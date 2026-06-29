@@ -63,8 +63,6 @@ void MemoryInspectorPanel::DrawHexView() noexcept {
             // Check readability
             if (!row_addr || row_addr < 0x10000) continue;
 
-            auto* data = reinterpret_cast<const u8*>(row_addr);
-
             ImGui::TableNextRow();
 
             // Address column
@@ -77,11 +75,11 @@ void MemoryInspectorPanel::DrawHexView() noexcept {
                 if (i == bytes_per_row_ / 2) ImGui::SameLine(0, 8);
                 else if (i > 0) ImGui::SameLine(0, 2);
 
-                bool is_target = (row_addr + i == target_addr_);
-                if (is_target) {
-                    ImGui::TextColored(ImVec4(1,1,0,1), "%02X", data[i]);
+                u8 byte = memory::Read<u8>(row_addr + i);
+                if (row_addr + i == target_addr_) {
+                    ImGui::TextColored(ImVec4(1,1,0,1), "%02X", byte);
                 } else {
-                    ImGui::Text("%02X", data[i]);
+                    ImGui::Text("%02X", byte);
                 }
             }
 
@@ -89,7 +87,8 @@ void MemoryInspectorPanel::DrawHexView() noexcept {
             ImGui::TableSetColumnIndex(2);
             char ascii_buf[256]{};
             for (i32 i = 0; i < bytes_per_row_; ++i) {
-                ascii_buf[i] = std::isprint(data[i]) ? static_cast<char>(data[i]) : '.';
+                u8 byte = memory::Read<u8>(row_addr + i);
+                ascii_buf[i] = std::isprint(byte) ? static_cast<char>(byte) : '.';
             }
             ImGui::Text("%s", ascii_buf);
         }
@@ -103,21 +102,19 @@ void MemoryInspectorPanel::DrawHexView() noexcept {
 void MemoryInspectorPanel::DrawTypeInterpretation() noexcept {
     if (!target_addr_) return;
 
-    auto* ptr = reinterpret_cast<const void*>(target_addr_);
-
     ImGui::Text("Interpretation at 0x%llX:", target_addr_);
     ImGui::Separator();
 
-    ImGui::Text("u8:   %hhu",    *static_cast<const u8*>(ptr));
-    ImGui::Text("i8:   %hhd",    *static_cast<const i8*>(ptr));
-    ImGui::Text("u16:  %hu",     *static_cast<const u16*>(ptr));
-    ImGui::Text("i16:  %hd",     *static_cast<const i16*>(ptr));
-    ImGui::Text("u32:  %u",      *static_cast<const u32*>(ptr));
-    ImGui::Text("i32:  %d",      *static_cast<const i32*>(ptr));
-    ImGui::Text("u64:  0x%llX",  *static_cast<const u64*>(ptr));
-    ImGui::Text("i64:  %lld",    *static_cast<const i64*>(ptr));
-    ImGui::Text("f32:  %f",      *static_cast<const f32*>(ptr));
-    ImGui::Text("f64:  %lf",     *static_cast<const f64*>(ptr));
+    ImGui::Text("u8:   %hhu",    memory::Read<u8>(target_addr_));
+    ImGui::Text("i8:   %hhd",    memory::Read<i8>(target_addr_));
+    ImGui::Text("u16:  %hu",     memory::Read<u16>(target_addr_));
+    ImGui::Text("i16:  %hd",     memory::Read<i16>(target_addr_));
+    ImGui::Text("u32:  %u",      memory::Read<u32>(target_addr_));
+    ImGui::Text("i32:  %d",      memory::Read<i32>(target_addr_));
+    ImGui::Text("u64:  0x%llX",  memory::Read<u64>(target_addr_));
+    ImGui::Text("i64:  %lld",    memory::Read<i64>(target_addr_));
+    ImGui::Text("f32:  %f",      memory::Read<f32>(target_addr_));
+    ImGui::Text("f64:  %lf",     memory::Read<f64>(target_addr_));
 
     // Null-terminated string
     auto str = memory::ReadString(target_addr_, 64);
