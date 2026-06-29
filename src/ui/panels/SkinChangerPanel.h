@@ -20,6 +20,8 @@ public:
         equipped_weapon_id_ = def_id;
     }
 
+    void SetTextureCache(SkinTextureCache* cache) noexcept { tex_cache_ = cache; }
+
 private:
     SkinDatabase&  db_;
     SkinManager&   mgr_;
@@ -54,7 +56,6 @@ private:
     void DrawSkinCards(std::span<const SkinInfo_t> skins) noexcept;
     void DrawSkinCard(i32 idx, const SkinInfo_t& skin, bool selected) noexcept;
     void DrawWearControls(SkinInfo_t& skin, bool& changed) noexcept;
-    void SetTextureCache(SkinTextureCache* cache) noexcept { tex_cache_ = cache; }
     void SaveAndSync() noexcept;
 
     static ImColor PreviewColor(i32 paint_id) noexcept;

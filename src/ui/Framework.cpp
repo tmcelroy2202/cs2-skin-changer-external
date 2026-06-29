@@ -158,10 +158,21 @@ void ui::Render() noexcept {
 bool ui::WndProcHandler(void* hwnd, u32 msg, u64 wparam, i64 lparam) noexcept {
     if (!Data().initialised) return false;
 
-    // Only let ImGui consume input when the UI overlay is visible
+    // When the overlay is visible, consume all mouse/keyboard input so the
+    // game never receives it — prevents CS2 from re-clipping the cursor.
     if (Data().visible) {
+        // Let ImGui handle input for its own UI elements first
         if (ImGui_ImplWin32_WndProcHandler(
                 static_cast<HWND>(hwnd), msg, wparam, lparam))
+            return true;
+
+        // Eat mouse button events that ImGui didn't consume (clicks on
+        // empty space) so CS2 doesn't re-capture the cursor.
+        if (msg == WM_LBUTTONDOWN || msg == WM_LBUTTONUP ||
+            msg == WM_RBUTTONDOWN || msg == WM_RBUTTONUP ||
+            msg == WM_MBUTTONDOWN || msg == WM_MBUTTONUP ||
+            msg == WM_XBUTTONDOWN || msg == WM_XBUTTONUP ||
+            msg == WM_MOUSEWHEEL || msg == WM_MOUSEHWHEEL)
             return true;
     }
 

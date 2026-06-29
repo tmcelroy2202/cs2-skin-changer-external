@@ -287,10 +287,14 @@ int main() {
 
 #else // ── DLL MODE (in-process injection) ──────────────────────────────────
 
+#ifndef NOMINMAX
 #define NOMINMAX
+#endif
 #include <Windows.h>
 #include <d3d11.h>
 #include <dxgi.h>
+#include <atomic>
+#include <memory>
 
 #include "MinHook.h"
 
@@ -568,7 +572,8 @@ DWORD WINAPI InitThread(LPVOID) noexcept {
     MH_Initialize();
     void* present_addr = FindPresentFunction();
     if (present_addr) {
-        MH_STATUS s = MH_CreateHook(present_addr, &PresentHook,
+        MH_STATUS s = MH_CreateHook(present_addr,
+                                     reinterpret_cast<LPVOID>(&PresentHook),
                                      reinterpret_cast<void**>(&original_present));
         if (s == MH_OK) {
             MH_EnableHook(present_addr);
@@ -614,7 +619,8 @@ void ShutdownDLL() noexcept {
     delete app.asset_analyzer;
 
     app.cs2.Close();
-    app = {};
+    std::destroy_at(&app);
+    std::construct_at(&app);
 }
 
 } // anonymous namespace

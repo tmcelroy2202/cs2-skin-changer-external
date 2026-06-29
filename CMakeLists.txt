@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(CS2SkinChanger VERSION 1.4.1 LANGUAGES CXX)
+project(CS2SkinChanger VERSION 1.4.1 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -51,19 +51,23 @@ target_include_directories(CS2SkinChanger PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/src"
     "${CMAKE_CURRENT_SOURCE_DIR}/third_party/MinHook/include")
 
-# ── System libraries ──────────────────────────────────────────────────────────
-target_link_libraries(CS2SkinChanger PRIVATE
-    D3D11.lib       # Direct3D 11
-    DXGI.lib        # DXGI swap chain
-    Dwmapi.lib      # Desktop Window Manager (overlay transparency)
-    imm32.lib       # IME support (ImGui)
-    Ole32.lib       # COM (CoInitializeEx for WIC)
-    Windowscodecs.lib  # WIC image decoding
-    imgui::imgui
-)
-
 # ── Sub-libraries ─────────────────────────────────────────────────────────────
 add_subdirectory(src)
+
+# ── System libraries ──────────────────────────────────────────────────────────
+# Must come after sub-libraries so MinGW ld can resolve symbols left-to-right.
+if(MSVC)
+    target_link_libraries(CS2SkinChanger PRIVATE
+        imgui::imgui
+        D3D11.lib DXGI.lib Dwmapi.lib imm32.lib Ole32.lib Windowscodecs.lib d3dcompiler.lib
+    )
+else()
+    # MinGW — library names are lowercase (case-sensitive filesystem).
+    target_link_libraries(CS2SkinChanger PRIVATE
+        imgui::imgui
+        d3d11 dxgi dwmapi imm32 ole32 windowscodecs d3dcompiler
+    )
+endif()
 
 # ── Compiler flags ────────────────────────────────────────────────────────────
 if(MSVC)

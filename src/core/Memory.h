@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Core.h"
+#include <cstring>
 #include <type_traits>
 
 /* ── Memory ─────────────────────────────────────────────────────────────────

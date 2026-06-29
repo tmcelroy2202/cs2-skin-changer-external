@@ -1,10 +1,13 @@
 build/
 build-dll/
+build-mingw/
+build-mingw-dll/
 out/
 .cache/
 .idea/
 .vs/
 third_party/
+!third_party/MinHook/
 CMakeFiles/
 CMakeCache.txt
 cmake_install.cmake

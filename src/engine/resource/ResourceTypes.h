@@ -30,7 +30,7 @@ enum class ResourceBindingFlags : u32 {
     ForceLoad       = 1 << 3,
     Async           = 1 << 4,
     Defer           = 1 << 5,
-    Invalid         = 1 << 31,
+    Invalid         = 1u << 31,
 };
 
 /// Resource handle — 64-bit identifier for a resource.

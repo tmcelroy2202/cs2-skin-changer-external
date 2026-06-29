@@ -40,7 +40,7 @@ public:
         auto it = map_.find(paint_id);
         if (it != map_.end() && it->second.srv)
             return (ImTextureID)it->second.srv;
-        return nullptr;
+        return ImTextureID(0);
     }
 
     /// Request async texture load (queued for next ProcessPending call).

@@ -432,15 +432,15 @@ void SkinChangerPanel::DrawSkinCard(i32 idx, const SkinInfo_t& skin, bool select
     dl->AddRectFilled(pos, ImVec2(pos.x + card_w, pos.y + total_h), card_bg, 6.0f);
 
     // Preview band (texture or generated color)
-    ImRect preview_rect(ImVec2(pos.x + 2, pos.y + 2),
-                        ImVec2(pos.x + card_w - 2, pos.y + preview_h - 2));
+    ImVec2 preview_min(pos.x + 2, pos.y + 2);
+    ImVec2 preview_max(pos.x + card_w - 2, pos.y + preview_h - 2);
 
-    ImTextureID tex_id = tex_cache_ ? tex_cache_->Get(skin.Paint) : nullptr;
+    ImTextureID tex_id = tex_cache_ ? tex_cache_->Get(skin.Paint) : ImTextureID(0);
     if (tex_id) {
-        dl->AddImage(tex_id, preview_rect.Min, preview_rect.Max,
+        dl->AddImage(tex_id, preview_min, preview_max,
                      ImVec2(0, 0), ImVec2(1, 1), IM_COL32(255,255,255,255));
     } else {
-        dl->AddRectFilled(preview_rect.Min, preview_rect.Max, preview_col, 4.0f);
+        dl->AddRectFilled(preview_min, preview_max, preview_col, 4.0f);
 
         // Darken gradient at bottom of preview
         dl->AddRectFilledMultiColor(
