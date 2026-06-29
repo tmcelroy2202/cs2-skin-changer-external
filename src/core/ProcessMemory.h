@@ -240,7 +240,6 @@ public:
             reinterpret_cast<LPTHREAD_START_ROUTINE>(func_addr), param,
             0, nullptr);
         if (h) {
-            s_Api.WaitForSingleObject(h, 100);
             s_Api.CloseHandle(h);
         }
     }

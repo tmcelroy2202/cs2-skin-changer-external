@@ -175,6 +175,17 @@ void ui::ToggleVisibility() noexcept {
     // When visible: capture mouse clicks on the overlay.
     // When hidden:  click-through so CS2 receives all input.
     overlay::SetClickthrough(!Data().visible);
+
+    if (Data().visible) {
+        ::ClipCursor(nullptr);
+        HWND hwnd = static_cast<HWND>(overlay::State().hwnd);
+        if (hwnd) {
+            ::SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0,
+                           SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW);
+            ::SetForegroundWindow(hwnd);
+            ::SetFocus(hwnd);
+        }
+    }
 }
 
 bool ui::IsVisible() noexcept {

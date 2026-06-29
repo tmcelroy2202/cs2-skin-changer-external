@@ -345,11 +345,25 @@ void NewFrame() noexcept {
     auto& s = State();
     if (!s.running) return;
 
-    // FPS limiter (relative delta, no drift)
+    // FPS limiter — cap at desired_fps
     static auto last_frame = std::chrono::high_resolution_clock::now();
     auto interval = std::chrono::duration_cast<
         std::chrono::high_resolution_clock::duration>(
             std::chrono::duration<double>(1.0 / s.desired_fps));
+
+    // Sleep to maintain target framerate (relative to last frame start)
+    auto elapsed = std::chrono::high_resolution_clock::now() - last_frame;
+    if (elapsed < interval) {
+        std::this_thread::sleep_for(interval - elapsed);
+    }
+
+    // Compute real delta time for smooth animation
+    auto now = std::chrono::high_resolution_clock::now();
+    f32 dt = std::chrono::duration<f32>(now - last_frame).count();
+    last_frame = now;
+
+    ImGuiIO& io = ImGui::GetIO();
+    io.DeltaTime = std::max(dt, 1.0f / 120.0f);
 
     // Pump messages
     MSG msg{};
@@ -373,22 +387,9 @@ void NewFrame() noexcept {
     // Manual mouse input (no WndProc needed for click-through)
     POINT pt;
     GetCursorPos(&pt);
-    ImGuiIO& io = ImGui::GetIO();
     io.MousePos      = ImVec2(static_cast<f32>(pt.x), static_cast<f32>(pt.y));
     io.MouseDown[0]  = (GetAsyncKeyState(VK_LBUTTON) & 0x8000) != 0;
     io.MouseDown[1]  = (GetAsyncKeyState(VK_RBUTTON) & 0x8000) != 0;
-
-    // Compute real delta time for smooth animation
-    auto now = std::chrono::high_resolution_clock::now();
-    f32 dt = std::chrono::duration<f32>(now - last_frame).count();
-    io.DeltaTime = std::max(dt, 1.0f / 120.0f);
-
-    // Sleep to maintain target framerate (relative to last frame)
-    auto elapsed = std::chrono::high_resolution_clock::now() - last_frame;
-    if (elapsed < interval) {
-        std::this_thread::sleep_for(interval - elapsed);
-    }
-    last_frame = std::chrono::high_resolution_clock::now();
 
     ImGui_ImplDX11_NewFrame();
     ImGui_ImplWin32_NewFrame();

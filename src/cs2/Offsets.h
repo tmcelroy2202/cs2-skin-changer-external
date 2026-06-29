@@ -10,6 +10,12 @@
 #include <unordered_map>
 #include <charconv>
 #include <cstdlib>
+#include <vector>
+
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#include <Windows.h>
 
 /* ── CS2 Offsets ────────────────────────────────────────────────────────────
  *
@@ -17,8 +23,8 @@
  * variables, loaded from an external data file at startup so they survive
  * game updates without recompiling.  Ship cs2-dumper defaults embedded.
  *
- * When CS2 patches, the user replaces the offset file (or the embedded
- * defaults apply).  Keys match cs2-dumper output names.
+ * When CS2 patches, the offsets can be auto-updated from the cs2-dumper
+ * project's GitHub output at startup (see UpdateFromRemote).
  *
  * Regenerate defaults: https://github.com/a2x/cs2-dumper
  * ──────────────────────────────────────────────────────────────────────────── */
@@ -288,6 +294,191 @@ inline void ResetToDefaults() {
     // The inline variable initialisers are already the defaults.
     // To force a reload from defaults, the simplest path is to delete the
     // data file — LoadFromFile will fail and the built-in values stay.
+}
+
+// ── Auto-update from cs2-dumper GitHub ─────────────────────────────────────-
+// These constants control which URLs are fetched at startup.
+inline constexpr const char* kCs2DumperOffsetsUrl =
+    "https://raw.githubusercontent.com/a2x/cs2-dumper/main/output/offsets.hpp";
+inline constexpr const char* kCs2DumperClientDllUrl =
+    "https://raw.githubusercontent.com/a2x/cs2-dumper/main/output/client_dll.hpp";
+
+/// Download a URL to a local file using URLDownloadToFileA (resolved dynamically).
+inline bool DownloadUrl(const char* url, const std::filesystem::path& out) noexcept {
+    HMODULE urlmon = ::LoadLibraryW(L"urlmon.dll");
+    if (!urlmon) return false;
+
+    // "URLDownloadToFileA" XOR 0xAB
+    static constexpr unsigned char kName[] = {
+        0xFE, 0xF9, 0xE7, 0xEF, 0xC4, 0xDC, 0xC5, 0xC7,
+        0xC4, 0xCA, 0xCF, 0xFF, 0xC4, 0xED, 0xC2, 0xC7,
+        0xCE, 0xEA };
+    char name[19]{};
+    for (int i = 0; i < 18; ++i) name[i] = static_cast<char>(kName[i] ^ 0xAB);
+
+    using Fn = HRESULT(STDAPICALLTYPE*)(void*, const char*, const char*, DWORD, void*);
+    auto fn = reinterpret_cast<Fn>(::GetProcAddress(urlmon, name));
+
+    if (!fn) { ::FreeLibrary(urlmon); return false; }
+
+    std::string out_str = out.string();
+    HRESULT hr = fn(nullptr, url, out_str.c_str(), 0, nullptr);
+    ::FreeLibrary(urlmon);
+    return SUCCEEDED(hr);
+}
+
+/// Parse one cs2-dumper C++ header line.
+/// Extracts the identifier (stripping namespace prefixes) and hex value.
+inline bool ParseCs2Line(const std::string& line,
+                         std::string& out_key,
+                         std::ptrdiff_t& out_val) noexcept {
+    // Look for: inline constexpr std::ptrdiff_t  IDENTIFIER  =  0xVALUE;
+    constexpr const char prefix[] = "inline constexpr std::ptrdiff_t ";
+    auto pos = line.find(prefix);
+    if (pos == std::string::npos) return false;
+
+    auto start = pos + sizeof(prefix) - 1;
+    // skip spaces
+    while (start < line.size() && line[start] == ' ') ++start;
+
+    // extract identifier (until space or =)
+    auto end_id = start;
+    while (end_id < line.size() && line[end_id] != ' ' && line[end_id] != '=') ++end_id;
+    if (end_id == start) return false;
+
+    std::string ident = line.substr(start, end_id - start);
+
+    // Strip namespace prefixes (take last component after ::)
+    auto scope = ident.rfind("::");
+    if (scope != std::string::npos) ident = ident.substr(scope + 2);
+
+    // Find hex value after '='
+    auto eq = line.find('=', end_id);
+    if (eq == std::string::npos) return false;
+
+    auto vpos = eq + 1;
+    while (vpos < line.size() && (line[vpos] == ' ' || line[vpos] == '0' ||
+           (line[vpos] | 0x20) == 'x')) ++vpos;
+
+    if (vpos >= line.size()) return false;
+
+    // Read hex digits until ; or space
+    std::string hex_str;
+    while (vpos < line.size() && line[vpos] != ';' && line[vpos] != ' ' && line[vpos] != '\r' && line[vpos] != '\n') {
+        hex_str += line[vpos];
+        ++vpos;
+    }
+
+    if (hex_str.empty()) return false;
+
+    std::ptrdiff_t val = 0;
+    auto [p, ec] = std::from_chars(hex_str.data(), hex_str.data() + hex_str.size(), val, 16);
+    if (ec != std::errc{}) return false;
+
+    out_key = ident;
+    out_val = val;
+    return true;
+}
+
+/// Fetch the latest offsets from cs2-dumper's GitHub output and save them
+/// to the local offsets file.  Best-effort: silently returns false on failure.
+inline bool UpdateFromRemote() noexcept {
+    // Download offsets.hpp for dw* fields
+    auto tmp_offsets = std::filesystem::temp_directory_path() / "cs2_offsets_dl.tmp";
+    if (!DownloadUrl(kCs2DumperOffsetsUrl, tmp_offsets))
+        return false;
+
+    // Download client_dll.hpp for m_* schema fields
+    auto tmp_client = std::filesystem::temp_directory_path() / "cs2_client_dl.tmp";
+    DownloadUrl(kCs2DumperClientDllUrl, tmp_client);  // best-effort
+
+    // Parse both files into a unified map
+    std::unordered_map<std::string, std::ptrdiff_t> parsed;
+
+    auto parse_file = [&](const std::filesystem::path& p) {
+        std::ifstream f(p);
+        if (!f) return;
+        std::string line;
+        while (std::getline(f, line)) {
+            std::string key;
+            std::ptrdiff_t val;
+            if (ParseCs2Line(line, key, val))
+                parsed[key] = val;
+        }
+    };
+
+    parse_file(tmp_offsets);
+    if (std::filesystem::exists(tmp_client))
+        parse_file(tmp_client);
+
+    // Clean up temp files
+    std::error_code ec;
+    std::filesystem::remove(tmp_offsets, ec);
+    std::filesystem::remove(tmp_client, ec);
+
+    if (parsed.empty()) return false;
+
+    // Build the name→pointer table (same as LoadFromFile)
+    std::unordered_map<std::string_view, std::ptrdiff_t*> table = {
+        {"dwEntityList",             &dwEntityList},
+        {"dwLocalPlayerController",  &dwLocalPlayerController},
+        {"dwLocalPlayerPawn",        &dwLocalPlayerPawn},
+        {"dwGlobalVars",             &dwGlobalVars},
+        {"dwViewMatrix",             &dwViewMatrix},
+        {"dwGameRules",              &dwGameRules},
+        {"dwNetworkGameClient",      &dwNetworkGameClient},
+        {"m_pGameSceneNode",         &m_pGameSceneNode},
+        {"m_nSubclassID",            &m_nSubclassID},
+        {"m_hOwnerEntity",           &m_hOwnerEntity},
+        {"m_pEntity",                &m_pEntity},
+        {"m_flags",                  &m_flags},
+        {"m_pClippingWeapon",        &m_pClippingWeapon},
+        {"m_hHudModelArms",          &m_hHudModelArms},
+        {"m_bNeedToReApplyGloves",   &m_bNeedToReApplyGloves},
+        {"m_EconGloves",             &m_EconGloves},
+        {"m_pWeaponServices",        &m_pWeaponServices},
+        {"m_pInventoryServices",     &m_pInventoryServices},
+        {"m_unMusicID",              &m_unMusicID},
+        {"m_hMyWeapons",             &m_hMyWeapons},
+        {"m_hActiveWeapon",          &m_hActiveWeapon},
+        {"m_AttributeManager",       &m_AttributeManager},
+        {"m_nFallbackPaintKit",      &m_nFallbackPaintKit},
+        {"m_nFallbackStatTrak",      &m_nFallbackStatTrak},
+        {"m_flFallbackWear",         &m_flFallbackWear},
+        {"m_nFallbackSeed",          &m_nFallbackSeed},
+        {"m_OriginalOwnerXuidLow",   &m_OriginalOwnerXuidLow},
+        {"m_Item",                   &m_Item},
+        {"m_AttributeList",          &m_AttributeList},
+        {"m_NetworkedDynamicAttributes", &m_NetworkedDynamicAttributes},
+        {"m_iItemDefinitionIndex",   &m_iItemDefinitionIndex},
+        {"m_iAccountID",             &m_iAccountID},
+        {"m_iItemIDHigh",            &m_iItemIDHigh},
+        {"m_szCustomNameOverride",   &m_szCustomNameOverride},
+        {"m_bInitialized",           &m_bInitialized},
+        {"m_bRestoreCustomMaterialAfterPrecache", &m_bRestoreCustomMaterialAfterPrecache},
+        {"m_iEntityQuality",         &m_iEntityQuality},
+        {"m_Attributes",             &m_Attributes},
+        {"m_modelState",             &m_modelState},
+        {"m_MeshGroupMask",          &m_MeshGroupMask},
+        {"m_pChild",                 &m_pChild},
+        {"m_pNextSibling",           &m_pNextSibling},
+        {"m_pOwner",                 &m_pOwner},
+        {"m_bMeleeWeapon",           &m_bMeleeWeapon},
+        {"m_WeaponType",             &m_WeaponType},
+        {"m_pDirtyModelData",        &m_pDirtyModelData},
+        {"m_DirtyMeshGroupMask",     &m_DirtyMeshGroupMask},
+    };
+
+    // Apply parsed values
+    for (auto& [k, v] : parsed) {
+        auto it = table.find(k);
+        if (it != table.end()) {
+            *it->second = v;
+        }
+    }
+
+    // Persist to local file for next launch
+    return SaveToFile(DataFilePath());
 }
 
 } // namespace Offsets

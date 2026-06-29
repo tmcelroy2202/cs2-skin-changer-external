@@ -213,8 +213,13 @@ int main() {
     if (app.cs2.Open(L"cs2.exe")) {
         LOG_INFO("Connected to cs2.exe");
 
-        // Load offsets from data file (if present); otherwise embedded defaults apply
+        // Auto-update offsets from cs2-dumper GitHub (best-effort, no delay)
         auto off_path = Offsets::DataFilePath();
+        if (Offsets::UpdateFromRemote()) {
+            LOG_INFO("Offsets auto-updated from cs2-dumper");
+        }
+
+        // Load offsets from data file (cached from auto-update or pre-existing)
         if (Offsets::LoadFromFile(off_path)) {
             LOG_INFO("Offsets loaded from {}", off_path.string().c_str());
         } else {
