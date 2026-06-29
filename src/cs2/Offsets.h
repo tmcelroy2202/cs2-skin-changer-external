@@ -32,26 +32,26 @@
 namespace Offsets {
 
 // ── External addresses (client.dll) ──────────────────────────────────────────
-inline std::ptrdiff_t dwEntityList             = 0x24A7B48;
-inline std::ptrdiff_t dwLocalPlayerController  = 0x22ECA18;
-inline std::ptrdiff_t dwLocalPlayerPawn        = 0x2062850;
-inline std::ptrdiff_t dwGlobalVars             = 0x20572A8;
-inline std::ptrdiff_t dwViewMatrix             = 0x2308850;
-inline std::ptrdiff_t dwGameRules              = 0x23035F0;
+inline std::ptrdiff_t dwEntityList             = 0x24E76A0;
+inline std::ptrdiff_t dwLocalPlayerController  = 0x2320720;
+inline std::ptrdiff_t dwLocalPlayerPawn        = 0x2341698;
+inline std::ptrdiff_t dwGlobalVars             = 0x20616D0;
+inline std::ptrdiff_t dwViewMatrix             = 0x2346B30;
+inline std::ptrdiff_t dwGameRules              = 0x2341158;
 
 // ── External addresses (engine2.dll) ─────────────────────────────────────────
-inline std::ptrdiff_t dwNetworkGameClient      = 0x900FB0;
+inline std::ptrdiff_t dwNetworkGameClient      = 0x90A1A0;
 
 // ── Schema offsets: C_BaseEntity ─────────────────────────────────────────────
-inline std::ptrdiff_t m_pGameSceneNode         = 0x308;
-inline std::ptrdiff_t m_nSubclassID            = 0x2C8;
-inline std::ptrdiff_t m_hOwnerEntity           = 0x2C0;
+inline std::ptrdiff_t m_pGameSceneNode         = 0x330;
+inline std::ptrdiff_t m_nSubclassID            = 0x380;
+inline std::ptrdiff_t m_hOwnerEntity           = 0x520;
 
 // ── CEntityInstance ───────────────────────────────────────────────────────────
 inline std::ptrdiff_t m_pEntity                = 0x10;
 
 // ── CEntityIdentity ───────────────────────────────────────────────────────────
-inline std::ptrdiff_t m_flags                  = 0x28;
+inline std::ptrdiff_t m_flags                  = 0x30;
 
 // ── C_CSPlayerPawn ────────────────────────────────────────────────────────────
 inline std::ptrdiff_t m_pClippingWeapon        = 0x15D0;
@@ -60,55 +60,58 @@ inline std::ptrdiff_t m_bNeedToReApplyGloves   = 0x15F7;
 inline std::ptrdiff_t m_EconGloves             = 0x15D8;
 
 // ── C_BasePlayerPawn ──────────────────────────────────────────────────────────
-inline std::ptrdiff_t m_pWeaponServices        = 0x10C0;
+inline std::ptrdiff_t m_pWeaponServices        = 0x11E0;
 
 // ── CCSPlayerController ───────────────────────────────────────────────────────
-inline std::ptrdiff_t m_pInventoryServices      = 0x6B0;
+inline std::ptrdiff_t m_pInventoryServices      = 0x810;
 
 // ── CCSPlayerController_InventoryServices ─────────────────────────────────────
-inline std::ptrdiff_t m_unMusicID              = 0x39;
+inline std::ptrdiff_t m_unMusicID              = 0x58;
 
 // ── CPlayer_WeaponServices ────────────────────────────────────────────────────
-inline std::ptrdiff_t m_hMyWeapons             = 0x30;
-inline std::ptrdiff_t m_hActiveWeapon          = 0x38;
+inline std::ptrdiff_t m_hMyWeapons             = 0x48;
+inline std::ptrdiff_t m_hActiveWeapon          = 0x60;
 
 // ── C_EconEntity ──────────────────────────────────────────────────────────────
-inline std::ptrdiff_t m_AttributeManager       = 0x940;
-inline std::ptrdiff_t m_nFallbackPaintKit      = 0x11D0;
-inline std::ptrdiff_t m_nFallbackStatTrak      = 0x11D4;
-inline std::ptrdiff_t m_flFallbackWear         = 0x11D8;
-inline std::ptrdiff_t m_nFallbackSeed          = 0x11DC;
-inline std::ptrdiff_t m_OriginalOwnerXuidLow   = 0x11E0;
+inline std::ptrdiff_t m_AttributeManager       = 0x1180;
+inline std::ptrdiff_t m_nFallbackPaintKit      = 0x1658;
+inline std::ptrdiff_t m_nFallbackStatTrak      = 0x1664;
+inline std::ptrdiff_t m_flFallbackWear         = 0x1660;
+inline std::ptrdiff_t m_nFallbackSeed          = 0x165C;
+inline std::ptrdiff_t m_OriginalOwnerXuidLow   = 0x1650;
+inline std::ptrdiff_t m_OriginalOwnerXuidHigh  = 0x1654;
 
 // ── C_AttributeContainer ─────────────────────────────────────────────────────
-inline std::ptrdiff_t m_Item                   = 0x30;
+inline std::ptrdiff_t m_Item                   = 0x50;
 
 // ── C_EconItemView ────────────────────────────────────────────────────────────
-inline std::ptrdiff_t m_AttributeList           = 0x70;
-inline std::ptrdiff_t m_NetworkedDynamicAttributes = 0x80;
-inline std::ptrdiff_t m_iItemDefinitionIndex   = 0xF0;
-inline std::ptrdiff_t m_iAccountID             = 0xF4;
-inline std::ptrdiff_t m_iItemIDHigh            = 0xF8;
-inline std::ptrdiff_t m_szCustomNameOverride   = 0x100;
-inline std::ptrdiff_t m_bInitialized           = 0x9C;
-inline std::ptrdiff_t m_bRestoreCustomMaterialAfterPrecache = 0x9D;
-inline std::ptrdiff_t m_iEntityQuality         = 0xA0;
+inline std::ptrdiff_t m_AttributeList           = 0x208;
+inline std::ptrdiff_t m_NetworkedDynamicAttributes = 0x280;
+inline std::ptrdiff_t m_iItemDefinitionIndex   = 0x1BA;
+inline std::ptrdiff_t m_iAccountID             = 0x1D8;
+inline std::ptrdiff_t m_iItemIDHigh            = 0x1D0;
+inline std::ptrdiff_t m_iItemIDLow             = 0x1D4;
+inline std::ptrdiff_t m_szCustomNameOverride   = 0x399;
+inline std::ptrdiff_t m_bInitialized           = 0x1E8;
+inline std::ptrdiff_t m_bRestoreCustomMaterialAfterPrecache = 0x1B8;
+inline std::ptrdiff_t m_iEntityQuality         = 0x1BC;
 
 // ── CAttributeList ────────────────────────────────────────────────────────────
-inline std::ptrdiff_t m_Attributes             = 0x18;
+inline std::ptrdiff_t m_Attributes             = 0x8;
 
 // ── CSkeletonInstance / CModelState ───────────────────────────────────────────
-inline std::ptrdiff_t m_modelState             = 0x160;
-inline std::ptrdiff_t m_MeshGroupMask          = 0x104;
+inline std::ptrdiff_t m_modelState             = 0x150;
+inline std::ptrdiff_t m_MeshGroupMask          = 0x1C8;
 
 // ── CGameSceneNode ────────────────────────────────────────────────────────────
-inline std::ptrdiff_t m_pChild                 = 0x38;
-inline std::ptrdiff_t m_pNextSibling           = 0x40;
+inline std::ptrdiff_t m_pParent                = 0x38;
+inline std::ptrdiff_t m_pChild                 = 0x40;
+inline std::ptrdiff_t m_pNextSibling           = 0x48;
 inline std::ptrdiff_t m_pOwner                 = 0x30;
 
 // ── CCSWeaponBaseVData ────────────────────────────────────────────────────────
-inline std::ptrdiff_t m_bMeleeWeapon           = 0x908;
-inline std::ptrdiff_t m_WeaponType             = 0x91C;
+inline std::ptrdiff_t m_bMeleeWeapon           = 0x71C;
+inline std::ptrdiff_t m_WeaponType             = 0x520;
 
 // ── Extra (not in cs2-dumper output) ──────────────────────────────────────────
 inline std::ptrdiff_t m_pDirtyModelData        = 0xD8;
@@ -184,6 +187,9 @@ inline bool LoadFromFile(const std::filesystem::path& path) {
         {"m_WeaponType",             &m_WeaponType},
         {"m_pDirtyModelData",        &m_pDirtyModelData},
         {"m_DirtyMeshGroupMask",     &m_DirtyMeshGroupMask},
+        {"m_iItemIDLow",             &m_iItemIDLow},
+        {"m_OriginalOwnerXuidHigh",  &m_OriginalOwnerXuidHigh},
+        {"m_pParent",                &m_pParent},
     };
 
     std::string line;
@@ -264,12 +270,14 @@ inline bool SaveToFile(const std::filesystem::path& path) {
     write("m_flFallbackWear",         m_flFallbackWear);
     write("m_nFallbackSeed",          m_nFallbackSeed);
     write("m_OriginalOwnerXuidLow",   m_OriginalOwnerXuidLow);
+    write("m_OriginalOwnerXuidHigh",  m_OriginalOwnerXuidHigh);
     write("m_Item",                   m_Item);
     write("m_AttributeList",          m_AttributeList);
     write("m_NetworkedDynamicAttributes", m_NetworkedDynamicAttributes);
     write("m_iItemDefinitionIndex",   m_iItemDefinitionIndex);
     write("m_iAccountID",             m_iAccountID);
     write("m_iItemIDHigh",            m_iItemIDHigh);
+    write("m_iItemIDLow",             m_iItemIDLow);
     write("m_szCustomNameOverride",   m_szCustomNameOverride);
     write("m_bInitialized",           m_bInitialized);
     write("m_bRestoreCustomMaterialAfterPrecache", m_bRestoreCustomMaterialAfterPrecache);
@@ -278,6 +286,7 @@ inline bool SaveToFile(const std::filesystem::path& path) {
     f << "\n";
     write("m_modelState",             m_modelState);
     write("m_MeshGroupMask",          m_MeshGroupMask);
+    write("m_pParent",                m_pParent);
     write("m_pChild",                 m_pChild);
     write("m_pNextSibling",           m_pNextSibling);
     write("m_pOwner",                 m_pOwner);
@@ -467,6 +476,9 @@ inline bool UpdateFromRemote() noexcept {
         {"m_WeaponType",             &m_WeaponType},
         {"m_pDirtyModelData",        &m_pDirtyModelData},
         {"m_DirtyMeshGroupMask",     &m_DirtyMeshGroupMask},
+        {"m_iItemIDLow",             &m_iItemIDLow},
+        {"m_OriginalOwnerXuidHigh",  &m_OriginalOwnerXuidHigh},
+        {"m_pParent",                &m_pParent},
     };
 
     // Apply parsed values

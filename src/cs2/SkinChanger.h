@@ -41,6 +41,10 @@ public:
         u64 local_player_val = *local_player;
         u64 local_ctrl_val = *local_ctrl;
 
+        // Resolve account ID once
+        if (!account_id_)
+            account_id_ = ResolveAccountId();
+
         // ── Music kit (only write when changed) ──────────────────────────
         auto inv = mem_.ReadSafe<u64>(local_ctrl_val + Offsets::m_pInventoryServices);
         if (inv && *inv && music_kit_id_ != last_music_kit_id_) {
@@ -72,33 +76,36 @@ public:
 
             if (!skin.Paint) continue;
 
-            // Randomize write order among 3 groups (6 permutations)
-            auto do_paint = [&]() {
-                mem_.Write<u32>(weapon + Offsets::m_nFallbackPaintKit,
-                                static_cast<u32>(skin.Paint));
-                mem_.Write<f32>(weapon + Offsets::m_flFallbackWear, skin.Wear);
-                mem_.Write<u32>(weapon + Offsets::m_nFallbackSeed,
-                                static_cast<u32>(skin.Pattern));
-                if (is_knife && knife_def > 0 && knife_def != cur_def)
-                    mem_.Write<u16>(item + Offsets::m_iItemDefinitionIndex,
-                                    static_cast<u16>(knife_def));
-            };
+            // ── Always-written fallback + item-view force ──────────────────
+            // These writes signal CS2 to use fallback values and force
+            // re-initialization of the item view so it re-reads our values.
+            mem_.Write<u32>(weapon + Offsets::m_nFallbackPaintKit, static_cast<u32>(skin.Paint));
+            mem_.Write<f32>(weapon + Offsets::m_flFallbackWear, skin.Wear);
+            mem_.Write<u32>(weapon + Offsets::m_nFallbackSeed, static_cast<u32>(skin.Pattern));
+            mem_.Write<u32>(weapon + Offsets::m_nFallbackStatTrak, 0xFFFFFFFF);
+            mem_.Write<u32>(weapon + Offsets::m_OriginalOwnerXuidLow, 0);
+            mem_.Write<u32>(weapon + Offsets::m_OriginalOwnerXuidHigh, 0);
+
+            mem_.Write<u32>(item + Offsets::m_iItemIDHigh, 0xFFFFFFFF);
+            mem_.Write<u32>(item + Offsets::m_iItemIDLow, 0xFFFFFFFF);
+            mem_.Write<u32>(item + Offsets::m_iAccountID, account_id_);
+            mem_.Write<bool>(item + Offsets::m_bInitialized, false);
+            mem_.Write<bool>(item + Offsets::m_bRestoreCustomMaterialAfterPrecache, true);
+
+            if (is_knife && knife_def > 0 && knife_def != cur_def)
+                mem_.Write<u16>(item + Offsets::m_iItemDefinitionIndex, static_cast<u16>(knife_def));
+
+            // Mesh mask + attrs (randomized for obfuscation)
             auto do_mesh = [&]() {
                 auto n = mem_.ReadSafe<u64>(weapon + Offsets::m_pGameSceneNode);
                 if (n && *n) DoMeshMask(weapon, *n, skin.bUsesOldModel);
             };
             auto do_attrs = [&]() { attr_mgr_.Create(item, skin); };
 
-            // Set item ID high to signal game to use fallback values
-            mem_.Write<u32>(item + Offsets::m_iItemIDHigh, 0xFFFFFFFF);
-
-            switch (std::uniform_int_distribution<int>(0, 5)(rng_)) {
-            case 0: do_paint(); do_mesh();  do_attrs(); break;
-            case 1: do_paint(); do_attrs(); do_mesh();  break;
-            case 2: do_mesh();  do_paint(); do_attrs(); break;
-            case 3: do_mesh();  do_attrs(); do_paint(); break;
-            case 4: do_attrs(); do_paint(); do_mesh();  break;
-            case 5: do_attrs(); do_mesh();  do_paint(); break;
+            if (std::uniform_int_distribution<int>(0, 1)(rng_)) {
+                do_mesh();  do_attrs();
+            } else {
+                do_attrs(); do_mesh();
             }
 
             applied = true;
@@ -134,8 +141,18 @@ public:
         // Same treat as weapon econ item
         u64 item = glove_entity + Offsets::m_AttributeManager + Offsets::m_Item;
 
-        // Set item ID high to mark as applied
+        // Force item view re-init with fallback
+        mem_.Write<u32>(glove_entity + Offsets::m_nFallbackPaintKit, static_cast<u32>(glove_paint));
+        mem_.Write<f32>(glove_entity + Offsets::m_flFallbackWear, 0.01f);
+        mem_.Write<u32>(glove_entity + Offsets::m_nFallbackStatTrak, 0xFFFFFFFF);
+        mem_.Write<u32>(glove_entity + Offsets::m_OriginalOwnerXuidLow, 0);
+        mem_.Write<u32>(glove_entity + Offsets::m_OriginalOwnerXuidHigh, 0);
+
         mem_.Write<u32>(item + Offsets::m_iItemIDHigh, 0xFFFFFFFF);
+        mem_.Write<u32>(item + Offsets::m_iItemIDLow, 0xFFFFFFFF);
+        mem_.Write<u32>(item + Offsets::m_iAccountID, account_id_);
+        mem_.Write<bool>(item + Offsets::m_bInitialized, false);
+        mem_.Write<bool>(item + Offsets::m_bRestoreCustomMaterialAfterPrecache, true);
 
         // Create econ attributes for paint kit
         SkinInfo_t glove_skin{glove_paint, 0.01f, 0, false, "Glove", WeaponsEnum::None};
@@ -170,8 +187,22 @@ private:
     EconItemAttributeManager attr_mgr_;
     u16                 music_kit_id_ = 0;
     u16                 last_music_kit_id_ = 0;
+    u32                 account_id_ = 0;
     std::chrono::steady_clock::time_point last_tick_{};
     mutable std::mt19937 rng_{std::random_device{}()};
+
+    /// Read the player's Steam account ID from any existing weapon's item view.
+    u32 ResolveAccountId() noexcept {
+        auto local_player = mem_.ReadSafe<u64>(mem_.Client() + Offsets::dwLocalPlayerPawn);
+        if (!local_player || !*local_player) return 0;
+        auto weapons = GetWeapons(mem_, *local_player);
+        for (u64 weapon : weapons) {
+            u64 item = weapon + Offsets::m_AttributeManager + Offsets::m_Item;
+            auto aid = mem_.ReadSafe<u32>(item + Offsets::m_iAccountID);
+            if (aid && *aid) return *aid;
+        }
+        return 0;
+    }
 
     void DoMeshMask(u64 weapon, u64 node, bool old_model) noexcept {
         u64 model = node + Offsets::m_modelState;
