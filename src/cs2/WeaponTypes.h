@@ -38,7 +38,7 @@ enum class WeaponsEnum : u16 {
     Mp7            = 33,
     Mp9            = 34,
     Nova           = 35,
-    p250           = 36,
+    P250           = 36,
     Scar20         = 38,
     Sg556          = 39,
     Ssg08          = 40,
@@ -53,7 +53,7 @@ enum class WeaponsEnum : u16 {
     Tknife         = 59,
     M4A1Silencer   = 60,
     UspS           = 61,
-    Cz65A          = 63,
+    Cz75A          = 63,
     Revolver       = 64,
 
     // ── Cosmetic knives (from m_hMyWeapons, def indices 500+) ──────────
@@ -224,9 +224,9 @@ inline CSWeaponType WeaponEnumToType(WeaponsEnum weapon) {
     case WeaponsEnum::Glock:
     case WeaponsEnum::Tec9:
     case WeaponsEnum::P200:
-    case WeaponsEnum::p250:
+    case WeaponsEnum::P250:
     case WeaponsEnum::UspS:
-    case WeaponsEnum::Cz65A:
+    case WeaponsEnum::Cz75A:
     case WeaponsEnum::Revolver:
         return CSWeaponType::Pistol;
     case WeaponsEnum::Mac10:
@@ -294,9 +294,9 @@ inline constexpr WeaponsEnum kAllWeaponDefs[] = {
     WeaponsEnum::Ump45, WeaponsEnum::Xm1014, WeaponsEnum::Bizon,
     WeaponsEnum::Mag7, WeaponsEnum::Negev, WeaponsEnum::Sawedoof,
     WeaponsEnum::Tec9, WeaponsEnum::P200, WeaponsEnum::Mp7,
-    WeaponsEnum::Mp9, WeaponsEnum::Nova, WeaponsEnum::p250,
+    WeaponsEnum::Mp9, WeaponsEnum::Nova, WeaponsEnum::P250,
     WeaponsEnum::Scar20, WeaponsEnum::Sg556, WeaponsEnum::Ssg08,
-    WeaponsEnum::M4A1Silencer, WeaponsEnum::UspS, WeaponsEnum::Cz65A,
+    WeaponsEnum::M4A1Silencer, WeaponsEnum::UspS, WeaponsEnum::Cz75A,
     WeaponsEnum::Revolver,
     // Knives
     WeaponsEnum::Bayonet, WeaponsEnum::FlipKnife, WeaponsEnum::GutKnife,

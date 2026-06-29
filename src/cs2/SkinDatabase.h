@@ -150,9 +150,7 @@ private:
         Add(1, 711, "Code Red");
         Add(1, 527, "Kumicho Dragon");
         Add(1, 351, "Conspiracy");
-        Add(1, 476, "Hand Cannon");
         Add(1, 444, "Hypnotic");
-        Add(1, 631, "Printstream");
 
         // DUAL BERETTAS (2)
         Add(2, 978, "Dezastre");
@@ -169,7 +167,6 @@ private:
         Add(3, 430, "Hyper Beast");
         Add(3, 837, "Angry Mob");
         Add(3, 44,  "Case Hardened");
-        Add(3, 400, "Case Hardened");
 
         // GLOCK-18 (4)
         Add(4, 38,  "Fade");
@@ -194,13 +191,8 @@ private:
         Add(7, 551, "Asiimov");
         Add(7, 259, "Redline");
         Add(7, 8,   "Vulcan");
-        Add(7, 11,  "Fire Serpent");
         Add(7, 524, "Fuel Injector");
-        Add(7, 7,   "Redline");
         Add(7, 597, "Bloodsport");
-        Add(7, 20,  "Bloodsport");
-        Add(7, 22,  "Asiimov");
-        Add(7, 19,  "Fuel Injector");
         Add(7, 490, "Frontside Misty");
         Add(7, 586, "Wasteland Rebel");
         Add(7, 506, "Point Disarray");
@@ -221,14 +213,10 @@ private:
         Add(9, 446, "Medusa", true);
         Add(9, 736, "The Prince");
         Add(9, 551, "Asiimov");
-        Add(9, 316, "Dragon Lore", true);
-        Add(9, 319, "Asiimov");
         Add(9, 662, "Oni Taiji");
         Add(9, 324, "Hyper Beast");
         Add(9, 653, "Neo-Noir");
-        Add(9, 579, "Neo-Noir");
         Add(9, 580, "Wildfire");
-        Add(9, 325, "The Prince");
         Add(9, 311, "Corticera");
         Add(9, 312, "Redline");
         Add(9, 1058, "POP AWP");
@@ -256,10 +244,7 @@ private:
         Add(13, 1038, "Chromatic Aberration");
         Add(13, 647, "Crimson Tsunami");
         Add(13, 1071, "CAUTION!");
-        Add(13, 433, "Chromatic Aberration");
-        Add(13, 431, "Sugar Rush");
         Add(13, 435, "Phoenix Blacklight");
-        Add(13, 447, "Crimson Tsunami");
 
         // M249 (14)
         Add(14, 401, "System Lock");
@@ -277,9 +262,7 @@ private:
         Add(16, 155, "Bullet Rain");
         Add(16, 156, "Death by Kitty");
         Add(16, 166, "Global Offensive");
-        Add(16, 160, "Desolate Space");
         Add(16, 161, "Hellfire");
-        Add(16, 162, "Neo-Noir");
         Add(16, 1063, "The Coalition");
         Add(16, 189, "Bright Water");
 
@@ -289,8 +272,6 @@ private:
         Add(17, 707, "Neon Rider");
         Add(17, 947, "Disco Tech");
         Add(17, 665, "Aloha");
-        Add(17, 433, "Neon Rider");
-        Add(17, 434, "Stalker");
 
         // P90 (19)
         Add(19, 156, "Death by Kitty");
@@ -361,7 +342,6 @@ private:
         Add(30, 599, "Ice Cap");
         Add(30, 552, "Fubar");
         Add(30, 791, "Remote Control");
-        Add(30, 816, "Fubar");
         Add(30, 837, "Angry Mob");
 
         // P2000 (32)
@@ -394,7 +374,6 @@ private:
         Add(35, 785, "Mandrel");
         Add(35, 716, "Toy Soldier");
         Add(35, 864, "Candy Apple");
-        Add(35, 3,   "Candy Apple");
 
         // P250 (36)
         Add(36, 678, "See Ya Later");
@@ -409,8 +388,6 @@ private:
         Add(38, 719, "Powercore");
         Add(38, 954, "Enforcer");
         Add(38, 637, "Cyrex");
-        Add(38, 313, "Bloodsport");
-        Add(38, 315, "Enforcer");
 
         // SG 553 (39)
         Add(39, 750, "Integrale");
@@ -428,7 +405,6 @@ private:
         Add(40, 989, "Parallax");
         Add(40, 538, "Necropos");
         Add(40, 321, "Turbo Peek");
-        Add(40, 310, "Blood in the Water");
 
         // ═════════════════════════════════════════════════════════════════════
         //  RIFLES (M4A1-S, USP-S, CZ75, Revolver)
@@ -441,12 +417,8 @@ private:
         Add(60, 946, "Player Two");
         Add(60, 587, "Mecha Industries");
         Add(60, 921, "Gold Arabesque");
-        Add(60, 53,  "Printstream");
         Add(60, 54,  "Guardian");
         Add(60, 41,  "Hyper Beast");
-        Add(60, 44,  "Mecha Industries");
-        Add(60, 49,  "Player Two");
-        Add(60, 50,  "Welcome to the Jungle");
         Add(60, 48,  "Control");
         Add(60, 40,  "Icarus Fell");
         Add(60, 43,  "Golden Coil");
@@ -459,8 +431,6 @@ private:
         Add(61, 653, "Neo-Noir");
         Add(61, 1136, "Ticket to Hell");
         Add(61, 312, "Cyrex");
-        Add(61, 53,  "Neo-Noir");
-        Add(61, 51,  "Cyrex");
         Add(61, 45,  "Guardian");
         Add(61, 50,  "Lead Conduit");
         Add(61, 47,  "Overgrowth");
@@ -628,16 +598,6 @@ public:
     SkinInfo_t GetSkin(WeaponsEnum weapon) const noexcept {
         for (auto& s : active_skins) {
             if (s.weaponType == weapon) return s;
-        }
-        return {};
-    }
-
-    SkinInfo_t GetGloveSkin(i32 glove_def) const noexcept {
-        for (auto& s : active_skins) {
-            if (s.Paint > 0 && s.weaponType == WeaponsEnum::None &&
-                s.name.find("Glove") != std::string_view::npos) {
-                return s;
-            }
         }
         return {};
     }

@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(CS2SkinChanger VERSION 1.2.2 LANGUAGES CXX)
+project(CS2SkinChanger VERSION 1.4.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -12,7 +12,7 @@ endif()
 
 # ── Build mode ─────────────────────────────────────────────────────────────────
 option(CSC_BUILD_STANDALONE
-    "Build as standalone overlay EXE (OFF = injected DLL)" OFF)
+    "Build as standalone overlay EXE (OFF = injected DLL)" ON)
 
 message(STATUS "Build mode: ${CSC_BUILD_STANDALONE}"
                "  (standalone=${CSC_BUILD_STANDALONE})")

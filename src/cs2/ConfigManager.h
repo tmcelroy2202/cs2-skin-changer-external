@@ -5,7 +5,7 @@
 #include <fstream>
 #include <sstream>
 #include <filesystem>
-#include <cstdlib>
+#include <charconv>
 
 /* ── ConfigManager ──────────────────────────────────────────────────────────
  *
@@ -96,7 +96,8 @@ inline void LoadConfig(SkinManager& mgr, u16& music_kit_id) {
             }
         } else {
             // Per-weapon: weapon_def = paint, wear, pattern
-            int def = std::atoi(key.c_str());
+            int def = 0;
+            std::from_chars(key.data(), key.data() + key.size(), def);
             if (def <= 0) continue;
 
             int paint;

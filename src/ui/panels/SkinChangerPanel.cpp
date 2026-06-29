@@ -51,8 +51,7 @@ static void DrawWearGradient() {
 void SkinChangerPanel::Draw() noexcept {
     ImGui::SetNextWindowSize(ImVec2(460, 400), ImGuiCond_FirstUseEver);
 
-    ImGui::Begin("CS2 Skin Changer", &open_,
-                 ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoSavedSettings);
+    ImGui::Begin("CS2 Skin Changer", &open_);
 
     // ── Sidebar tabs ─────────────────────────────────────────────────────────
     ImGui::BeginChild("##sc_sidebar", ImVec2(110, 0), true);
@@ -113,7 +112,7 @@ void SkinChangerPanel::DrawSkinsTab() noexcept {
     bool is_knife = mgr_.IsKnifeDef(static_cast<i32>(selected_weapon));
 
     ImGui::PushStyleColor(ImGuiCol_Separator, ImVec4(0.92f, 0.35f, 0.14f, 0.30f));
-    ImGui::SeparatorText("Skin");
+    ImGui::SeparatorText(is_knife ? "Knife Paint Kit" : "Skin");
     ImGui::PopStyleColor();
 
     DrawSkinCombo(selected_weapon);
@@ -488,6 +487,8 @@ void SkinChangerPanel::DrawFloatPatternControls() noexcept {
     }
     ImGui::SameLine();
     ImGui::Text("Pattern Seed");
+    if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal))
+        ImGui::SetTooltip("Click the number and type a value directly, or use the arrows (0\u20139999)");
 
     if (changed) {
         mgr_.SetSkin(skin);

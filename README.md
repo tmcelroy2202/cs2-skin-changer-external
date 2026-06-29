@@ -38,7 +38,7 @@ Grab the latest `CS2SkinChanger.exe` from [Releases](https://github.com/mrch4n72
 3. Run `CS2SkinChanger.exe` **as Administrator**
 4. Press **Insert** to toggle the overlay
 
-All offsets and defaults are embedded — no setup needed. If CS2 updates break skin application, wait for a new release.
+All offsets and defaults are embedded with automatic updates from [cs2-dumper](https://github.com/a2x/cs2-dumper) at every launch — no manual setup needed. If CS2 updates break skin application, just restart the tool and it will fetch the latest offsets automatically.
 
 > ⚠️ **Windows blocks the download?** See the [troubleshooting guide](#windows-blocks-the-app) below.
 

@@ -130,7 +130,7 @@ void RunFrame(App& app) {
                              ImGuiWindowFlags_NoSavedSettings |
                              ImGuiWindowFlags_NoFocusOnAppearing |
                              ImGuiWindowFlags_NoNav)) {
-                ImGui::Text("CS2 Skin Changer  v1.2.2");
+                ImGui::Text("CS2 Skin Changer  v1.4.0");
                 ImGui::Text("Scopes: %zu  Entities: %u",
                             app.schema.GetTypeScopeCount(),
                             app.entities.GetEntityCount());
@@ -335,7 +335,7 @@ void RenderUI(App& app) {
                          ImGuiWindowFlags_NoSavedSettings |
                          ImGuiWindowFlags_NoFocusOnAppearing |
                          ImGuiWindowFlags_NoNav)) {
-            ImGui::Text("CS2 Skin Changer  v1.2.2");
+            ImGui::Text("CS2 Skin Changer  v1.4.0");
             ImGui::Text("Scopes: %zu  Entities: %u",
                         app.schema.GetTypeScopeCount(),
                         app.entities.GetEntityCount());

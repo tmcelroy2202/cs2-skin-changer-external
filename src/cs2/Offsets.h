@@ -341,8 +341,8 @@ inline bool DownloadUrl(const char* url, const std::filesystem::path& out) noexc
 inline bool ParseCs2Line(const std::string& line,
                          std::string& out_key,
                          std::ptrdiff_t& out_val) noexcept {
-    // Look for: inline constexpr std::ptrdiff_t  IDENTIFIER  =  0xVALUE;
-    constexpr const char prefix[] = "inline constexpr std::ptrdiff_t ";
+    // Look for: constexpr std::ptrdiff_t  IDENTIFIER  =  0xVALUE;
+    constexpr const char prefix[] = "constexpr std::ptrdiff_t ";
     auto pos = line.find(prefix);
     if (pos == std::string::npos) return false;
 
