@@ -2,6 +2,7 @@
 
 #include "Core.h"
 #include <source_location>
+#include <string_view>
 
 /* ── Logging ────────────────────────────────────────────────────────────────
  *
@@ -19,6 +20,8 @@ enum class LogLevel : u8 {
     Trace, Debug, Info, Warn, Error, Fatal
 };
 
+using LogCallback = void(*)(LogLevel lv, std::string_view msg) noexcept;
+
 class Logger {
 public:
     static Logger& Instance();
@@ -32,10 +35,14 @@ public:
 
     void SetMinLevel(LogLevel lv) noexcept { min_level_ = lv; }
 
+    /// Register a callback to receive all future log messages.
+    void SetCallback(LogCallback cb) noexcept { callback_ = cb; }
+
 private:
     void Dispatch(LogLevel lv, std::string_view msg, std::source_location const& loc);
 
     LogLevel min_level_{LogLevel::Info};
+    LogCallback callback_{nullptr};
 };
 
 // ── Convenience macros ───────────────────────────────────────────────────────

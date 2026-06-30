@@ -11,16 +11,17 @@
 namespace {
 
 struct Palette {
-    inline static const ImVec4 Bg        = ImVec4(0.04f, 0.04f, 0.08f, 1.00f);
-    inline static const ImVec4 Panel     = ImVec4(0.09f, 0.09f, 0.15f, 1.00f);
-    inline static const ImVec4 Card      = ImVec4(0.13f, 0.13f, 0.22f, 1.00f);
-    inline static const ImVec4 CardHover = ImVec4(0.18f, 0.18f, 0.30f, 1.00f);
-    inline static const ImVec4 Accent    = ImVec4(0.18f, 0.49f, 0.91f, 1.00f);
+    inline static const ImVec4 Bg        = ImVec4(0.07f, 0.07f, 0.10f, 1.00f);
+    inline static const ImVec4 Panel     = ImVec4(0.10f, 0.10f, 0.15f, 1.00f);
+    inline static const ImVec4 Card      = ImVec4(0.14f, 0.14f, 0.20f, 1.00f);
+    inline static const ImVec4 CardHover = ImVec4(0.20f, 0.20f, 0.28f, 1.00f);
+    inline static const ImVec4 Accent    = ImVec4(0.30f, 0.65f, 1.00f, 1.00f);
+    inline static const ImVec4 AccentDim = ImVec4(0.20f, 0.45f, 0.80f, 1.00f);
     inline static const ImVec4 Gold      = ImVec4(0.96f, 0.62f, 0.04f, 1.00f);
-    inline static const ImVec4 Text      = ImVec4(0.89f, 0.89f, 0.94f, 1.00f);
-    inline static const ImVec4 TextDim   = ImVec4(0.42f, 0.42f, 0.50f, 1.00f);
-    inline static const ImVec4 TextGood  = ImVec4(0.20f, 0.83f, 0.60f, 1.00f);
-    inline static const ImVec4 TabActive = ImVec4(0.18f, 0.49f, 0.91f, 0.20f);
+    inline static const ImVec4 Text      = ImVec4(0.90f, 0.90f, 0.95f, 1.00f);
+    inline static const ImVec4 TextDim   = ImVec4(0.55f, 0.55f, 0.65f, 1.00f);
+    inline static const ImVec4 TextGood  = ImVec4(0.30f, 0.85f, 0.60f, 1.00f);
+    inline static const ImVec4 TabBg     = ImVec4(0.12f, 0.12f, 0.18f, 1.00f);
 };
 
 const char* WearLabel(float w) {
@@ -70,30 +71,19 @@ const char* SkinChangerPanel::CategoryLabel(Category c) noexcept {
 
 std::vector<WeaponsEnum> SkinChangerPanel::WeaponsForCategory(Category c) noexcept {
     std::vector<WeaponsEnum> result;
+    if (c == Category::Knives) {
+        for (auto k : kAllKnifeDefs) result.push_back(k);
+        return result;
+    }
     for (auto w : kAllWeaponDefs) {
         auto t = WeaponEnumToType(w);
         switch (c) {
-        case Category::Pistols:
-            if (t == CSWeaponType::Pistol) result.push_back(w);
-            break;
-        case Category::Rifles:
-            if (t == CSWeaponType::Rifle) result.push_back(w);
-            break;
-        case Category::Smgs:
-            if (t == CSWeaponType::SubmachineGun) result.push_back(w);
-            break;
-        case Category::Snipers:
-            if (t == CSWeaponType::SniperRifle) result.push_back(w);
-            break;
-        case Category::Heavy:
-            if (t == CSWeaponType::Shotgun || t == CSWeaponType::MachineGun)
-                result.push_back(w);
-            break;
-        case Category::Knives:
-            for (auto k : kAllKnifeDefs) result.push_back(k);
-            break;
-        default:
-            break;
+        case Category::Pistols: if (t == CSWeaponType::Pistol) result.push_back(w); break;
+        case Category::Rifles:  if (t == CSWeaponType::Rifle) result.push_back(w); break;
+        case Category::Smgs:    if (t == CSWeaponType::SubmachineGun) result.push_back(w); break;
+        case Category::Snipers: if (t == CSWeaponType::SniperRifle) result.push_back(w); break;
+        case Category::Heavy:   if (t == CSWeaponType::Shotgun || t == CSWeaponType::MachineGun) result.push_back(w); break;
+        default: break;
         }
     }
     return result;
@@ -109,12 +99,12 @@ ImColor SkinChangerPanel::PreviewColor(i32 paint_id) noexcept {
 
 void SkinChangerPanel::Draw() noexcept {
     if (tex_cache_) tex_cache_->ProcessPending();
-    ImGui::SetNextWindowSize(ImVec2(760, 520), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(ImVec2(780, 540), ImGuiCond_FirstUseEver);
 
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 8.0f);
-    ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 6.0f);
-    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(8, 6));
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 4.0f);
+    ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 4.0f);
+    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(6, 4));
 
     ImGui::PushStyleColor(ImGuiCol_WindowBg, Palette::Bg);
 
@@ -125,10 +115,9 @@ void SkinChangerPanel::Draw() noexcept {
     DrawEquippedBar();
     DrawCategories();
 
-    // Content
     ImGui::BeginChild("##content", ImVec2(0, 0), false,
                       ImGuiWindowFlags_AlwaysUseWindowPadding);
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(14, 10));
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(12, 8));
 
     switch (active_cat_) {
     case Category::Pistols: case Category::Rifles:
@@ -159,45 +148,43 @@ void SkinChangerPanel::DrawTitleBar() noexcept {
     ImVec2 pos = ImGui::GetWindowPos();
     float w = ImGui::GetWindowWidth();
 
-    dl->AddRectFilled(pos, ImVec2(pos.x + w, pos.y + 38),
-                      ImColor(0.06f, 0.06f, 0.10f));
-    dl->AddRectFilled(ImVec2(pos.x, pos.y + 38),
-                      ImVec2(pos.x + w, pos.y + 40),
+    dl->AddRectFilled(pos, ImVec2(pos.x + w, pos.y + 36),
+                      ImColor(0.08f, 0.08f, 0.12f));
+    dl->AddRectFilled(ImVec2(pos.x, pos.y + 36),
+                      ImVec2(pos.x + w, pos.y + 37),
                       ImColor(Palette::Accent));
 
-    ImGui::SetCursorScreenPos(ImVec2(pos.x + 16, pos.y + 10));
+    ImGui::SetCursorScreenPos(ImVec2(pos.x + 14, pos.y + 8));
     ImGui::TextColored(Palette::Accent, "VeneeR");
-    ImGui::SameLine(0, 2);
-    ImGui::TextColored(Palette::TextDim, "v1.5.3");
+    ImGui::SameLine(0, 4);
+    ImGui::TextColored(Palette::TextDim, "v1.5.7");
 
-    ImGui::SetCursorScreenPos(ImVec2(pos.x, pos.y + 44));
+    ImGui::SetCursorScreenPos(ImVec2(pos.x, pos.y + 40));
 }
 
 // ── Equipped weapon ────────────────────────────────────────────────────────────
 
 void SkinChangerPanel::DrawEquippedBar() noexcept {
     if (equipped_weapon_.empty()) {
-        ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 4);
+        ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 2);
         return;
     }
-
-    ImDrawList* dl = ImGui::GetWindowDrawList();
     ImVec2 p = ImGui::GetCursorScreenPos();
+    ImDrawList* dl = ImGui::GetWindowDrawList();
     float w = ImGui::GetContentRegionAvail().x;
-
-    dl->AddRectFilled(p, ImVec2(p.x + w, p.y + 30),
-                      ImColor(0.08f, 0.08f, 0.14f), 6.0f);
-    ImGui::SetCursorScreenPos(ImVec2(p.x + 14, p.y + 7));
+    dl->AddRectFilled(p, ImVec2(p.x + w, p.y + 26),
+                      ImColor(0.09f, 0.09f, 0.14f), 4.0f);
+    ImGui::SetCursorScreenPos(ImVec2(p.x + 12, p.y + 5));
     ImGui::TextColored(Palette::TextDim, "Equipped:");
     ImGui::SameLine(0, 6);
     ImGui::TextColored(Palette::TextGood, "%s", equipped_weapon_.c_str());
-    ImGui::SetCursorScreenPos(ImVec2(p.x, p.y + 36));
+    ImGui::SetCursorScreenPos(ImVec2(p.x, p.y + 32));
 }
 
 // ── Category tabs ──────────────────────────────────────────────────────────────
 
 void SkinChangerPanel::DrawCategories() noexcept {
-    ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 6);
+    ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 4);
 
     constexpr Category cats[] = {
         Category::Pistols, Category::Rifles, Category::Smgs,
@@ -206,47 +193,33 @@ void SkinChangerPanel::DrawCategories() noexcept {
     };
 
     float avail = ImGui::GetContentRegionAvail().x;
-    float btn_w = (avail - 8.0f * 7.0f) / 8.0f;
-    if (btn_w < 60.0f) btn_w = 60.0f;
+    float btn_w = (avail - 6.0f * 7.0f - 72.0f) / 8.0f;
+    if (btn_w < 58.0f) btn_w = 58.0f;
 
-    // CT / T toggle
-    {
-        ImU32 bg_ct = ct_selected_ ? ImColor(Palette::Accent) : ImColor(0,0,0,0);
-        ImU32 bg_t  = !ct_selected_ ? ImColor(Palette::Accent) : ImColor(0,0,0,0);
-        ImU32 bg_ho = ImColor(Palette::Accent);
+    // CT/T toggle
+    ImGui::PushStyleColor(ImGuiCol_Button, ct_selected_ ? Palette::Accent : Palette::TabBg);
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, Palette::Accent);
+    if (ImGui::Button("CT", ImVec2(30, 26))) ct_selected_ = true;
+    ImGui::PopStyleColor(2);
 
-        ImGui::PushStyleColor(ImGuiCol_Button, bg_ct);
-        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, bg_ho);
-        ImGui::PushStyleColor(ImGuiCol_Text, ct_selected_ ? ImVec4(1,1,1,1) : Palette::TextDim);
-        if (ImGui::Button("CT", ImVec2(30, 30))) { ct_selected_ = true; }
-        ImGui::PopStyleColor(3);
+    ImGui::SameLine(0, 4);
 
-        ImGui::SameLine(0, 4);
+    ImGui::PushStyleColor(ImGuiCol_Button, !ct_selected_ ? Palette::Accent : Palette::TabBg);
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, Palette::Accent);
+    if (ImGui::Button("T", ImVec2(30, 26))) ct_selected_ = false;
+    ImGui::PopStyleColor(2);
 
-        ImGui::PushStyleColor(ImGuiCol_Button, bg_t);
-        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, bg_ho);
-        ImGui::PushStyleColor(ImGuiCol_Text, !ct_selected_ ? ImVec4(1,1,1,1) : Palette::TextDim);
-        if (ImGui::Button("T", ImVec2(30, 30))) { ct_selected_ = false; }
-        ImGui::PopStyleColor(3);
-
-        ImGui::SameLine(0, 12);
-    }
+    ImGui::SameLine(0, 10);
 
     for (i32 i = 0; i < 8; ++i) {
-        if (i > 0) ImGui::SameLine(0, 8);
+        if (i > 0) ImGui::SameLine(0, 4);
 
         bool active = active_cat_ == cats[i];
-        ImU32 bg = active ? ImColor(Palette::Accent) : ImColor(0, 0, 0, 0);
-        ImU32 bg_hover = active ? ImColor(Palette::Accent)
-                                : ImColor(1.0f, 1.0f, 1.0f, 0.06f);
-        ImU32 text_col = active ? ImColor(1.0f, 1.0f, 1.0f)
-                                : ImColor(Palette::TextDim);
+        ImGui::PushStyleColor(ImGuiCol_Button, active ? Palette::Accent : Palette::TabBg);
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, Palette::CardHover);
+        ImGui::PushStyleColor(ImGuiCol_Text, active ? ImVec4(1,1,1,1) : Palette::Text);
 
-        ImGui::PushStyleColor(ImGuiCol_Button, bg);
-        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, bg_hover);
-        ImGui::PushStyleColor(ImGuiCol_Text, text_col);
-
-        if (ImGui::Button(CategoryLabel(cats[i]), ImVec2(btn_w, 30))) {
+        if (ImGui::Button(CategoryLabel(cats[i]), ImVec2(btn_w, 26))) {
             active_cat_ = cats[i];
             selected_weapon_idx_ = 0;
             selected_skin_idx_ = 0;
@@ -262,7 +235,6 @@ void SkinChangerPanel::DrawCategories() noexcept {
 // ── Skins content ──────────────────────────────────────────────────────────────
 
 void SkinChangerPanel::DrawSkinsContent() noexcept {
-    // Build weapon list for this category on first access
     if (cat_weapons_.empty())
         cat_weapons_ = WeaponsForCategory(active_cat_);
 
@@ -271,87 +243,44 @@ void SkinChangerPanel::DrawSkinsContent() noexcept {
         return;
     }
 
-    // ── Weapon search + filter chips ─────────────────────────────────────────
-    ImGui::SetNextItemWidth(-1);
-    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(8, 5));
-    ImGui::InputTextWithHint("##wep_filter", "Filter weapons...", &weapon_filter_);
+    // ── Layout: weapon list (left) + skin grid (right) ──────────────────────
+    float avail_w = ImGui::GetContentRegionAvail().x;
+    float list_w = (avail_w < 520) ? 140.0f : 160.0f;
+    float grid_w = avail_w - list_w - 8.0f;
+
+    // Weapon filter
+    ImGui::SetNextItemWidth(list_w);
+    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(6, 4));
+    ImGui::InputTextWithHint("##wep_filter", "Search...", &weapon_filter_);
+    ImGui::PopStyleVar();
+
+    ImGui::SameLine(0, 8);
+
+    // Skin filter
+    ImGui::SetNextItemWidth(grid_w);
+    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(6, 4));
+    ImGui::InputTextWithHint("##skin_filter", "Search skins...", &skin_filter_);
     ImGui::PopStyleVar();
 
     // Build filtered weapon list
     std::vector<WeaponsEnum> filtered;
     for (auto w : cat_weapons_) {
-        auto name = WeaponIdToString(static_cast<i32>(w));
-        if (ContainsIgnoreCase(name, weapon_filter_))
+        if (ContainsIgnoreCase(WeaponIdToString(static_cast<i32>(w)), weapon_filter_))
             filtered.push_back(w);
     }
 
-    // ── Weapon chips ─────────────────────────────────────────────────────────
-    ImGui::BeginChild("##weapon_chips", ImVec2(0, 34), false);
-    float cx = ImGui::GetCursorPosX();
-    float cw = ImGui::GetContentRegionAvail().x;
-
-    if (!filtered.empty())
-        selected_weapon_idx_ = std::clamp<i32>(selected_weapon_idx_, 0,
-            static_cast<i32>(filtered.size()) - 1);
-
-    float chip_x = cx;
-    for (i32 i = 0; i < static_cast<i32>(filtered.size()); ++i) {
-        auto name = WeaponIdToString(static_cast<i32>(filtered[i]));
-        bool sel = (i == selected_weapon_idx_);
-
-        ImVec2 txt_size = ImGui::CalcTextSize(name.c_str());
-        float cw_chip = txt_size.x + 20.0f;
-        if (chip_x + cw_chip > cx + cw && i > 0) break;
-
-        ImGui::SetCursorPosX(chip_x);
-
-        ImU32 chip_bg = sel ? ImColor(Palette::Accent) : ImColor(Palette::Card);
-        ImU32 chip_bg_hov = sel ? ImColor(Palette::Accent) : ImColor(Palette::CardHover);
-        ImU32 chip_txt = sel ? ImColor(1.0f, 1.0f, 1.0f) : ImColor(Palette::Text);
-
-        ImGui::PushStyleColor(ImGuiCol_Button, chip_bg);
-        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, chip_bg_hov);
-        ImGui::PushStyleColor(ImGuiCol_Text, chip_txt);
-
-        char chip_label[64];
-        std::snprintf(chip_label, sizeof(chip_label), "%s##wc_%d", name.c_str(), i);
-
-        if (ImGui::Button(chip_label, ImVec2(cw_chip, 28))) {
-            selected_weapon_idx_ = i;
-            selected_skin_idx_ = 0;
-        }
-
-        ImGui::PopStyleColor(3);
-        chip_x += cw_chip + 6.0f;
-    }
-    ImGui::EndChild();
-
-    ImGui::Spacing();
-
-    // Show team indicator when editing knives
-    if (active_cat_ == Category::Knives) {
-        ImGui::TextColored(ct_selected_ ? Palette::TextGood : Palette::TextDim,
-                           "Editing: %s Knife", ct_selected_ ? "CT" : "T");
-        ImGui::Spacing();
+    if (filtered.empty()) {
+        ImGui::TextColored(Palette::TextDim, "No matching weapons");
+        return;
     }
 
-    // ── Skin cards ───────────────────────────────────────────────────────────
-    WeaponsEnum weapon = filtered.empty() ? cat_weapons_[0] : filtered[selected_weapon_idx_];
+    selected_weapon_idx_ = std::clamp<i32>(selected_weapon_idx_, 0,
+        static_cast<i32>(filtered.size()) - 1);
+
+    WeaponsEnum weapon = filtered[selected_weapon_idx_];
     bool is_knife = mgr_.IsKnifeDef(static_cast<i32>(weapon));
 
     auto skins = db_.GetWeaponSkins(weapon);
-
-    // Skin search
-    ImGui::SetNextItemWidth(220.0f);
-    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(8, 5));
-    ImGui::InputTextWithHint("##skin_filter", "Search skins...", &skin_filter_);
-    ImGui::PopStyleVar();
-    ImGui::Spacing();
-
-    if (skins.empty()) {
-        ImGui::TextColored(Palette::TextDim, "No skins available for this weapon");
-        return;
-    }
 
     // Filter skins
     std::vector<SkinInfo_t> filtered_skins;
@@ -360,15 +289,45 @@ void SkinChangerPanel::DrawSkinsContent() noexcept {
             filtered_skins.push_back(s);
     }
 
-    if (filtered_skins.empty()) {
-        ImGui::TextColored(Palette::TextDim, "No matching skins");
-        return;
-    }
-
     selected_skin_idx_ = std::clamp<i32>(selected_skin_idx_, 0,
         static_cast<i32>(filtered_skins.size()) - 1);
 
-    // Grid of skin cards
+    // ── Weapon list (scrollable) ──────────────────────────────────────────────
+    ImGui::BeginChild("##weapon_list", ImVec2(list_w, 0), true);
+    for (i32 i = 0; i < static_cast<i32>(filtered.size()); ++i) {
+        auto name = WeaponIdToString(static_cast<i32>(filtered[i]));
+        bool sel = (i == selected_weapon_idx_);
+        if (sel) ImGui::PushStyleColor(ImGuiCol_Text, Palette::Accent);
+        else ImGui::PushStyleColor(ImGuiCol_Text, Palette::Text);
+
+        char label[128];
+        std::snprintf(label, sizeof(label), "%s##wl_%d", name.c_str(), i);
+        if (ImGui::Selectable(label, sel)) {
+            selected_weapon_idx_ = i;
+            selected_skin_idx_ = 0;
+        }
+        ImGui::PopStyleColor();
+    }
+    ImGui::EndChild();
+
+    ImGui::SameLine(0, 8);
+
+    // ── Skin grid (right) ───────────────────────────────────────────────────
+    ImGui::BeginChild("##skin_area", ImVec2(grid_w, 0), false);
+
+    // Team indicator for knives
+    if (active_cat_ == Category::Knives) {
+        ImGui::TextColored(ct_selected_ ? Palette::TextGood : Palette::TextDim,
+                           "%s Knife", ct_selected_ ? "CT" : "T");
+        ImGui::Spacing();
+    }
+
+    if (filtered_skins.empty()) {
+        ImGui::TextColored(Palette::TextDim, "No matching skins");
+        ImGui::EndChild();
+        return;
+    }
+
     DrawSkinCards(filtered_skins, weapon, is_knife);
 
     ImGui::Spacing();
@@ -378,7 +337,7 @@ void SkinChangerPanel::DrawSkinsContent() noexcept {
     auto& chosen = filtered_skins[selected_skin_idx_];
     SkinInfo_t skin = chosen;
 
-    // Pre-fill wear/pattern/statTrak from existing selection
+    // Pre-fill wear/pattern from existing selection
     SkinInfo_t existing{};
     if (is_knife) {
         i32 kp = mgr_.GetKnifePaint(ct_selected_);
@@ -406,9 +365,9 @@ void SkinChangerPanel::DrawSkinsContent() noexcept {
     bool changed = false;
     DrawWearControls(skin, changed);
 
-    // StatTrak input
+    // StatTrak row
     ImGui::Spacing();
-    ImGui::SetNextItemWidth(120.0f);
+    ImGui::SetNextItemWidth(100.0f);
     int st = (skin.StatTrak >= 0) ? skin.StatTrak : 0;
     if (ImGui::InputInt("##stattrak", &st, 1, 100)) {
         skin.StatTrak = std::clamp(st, -1, 999999);
@@ -420,24 +379,22 @@ void SkinChangerPanel::DrawSkinsContent() noexcept {
         skin.StatTrak = st_enabled ? 0 : -1;
         changed = true;
     }
-    if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal))
-        ImGui::SetTooltip("Enable StatTrak counter on this weapon");
 
     // Apply button
     ImGui::Spacing();
-    ImGui::SetCursorPosX(ImGui::GetContentRegionAvail().x * 0.5f - 50);
+    ImGui::SetCursorPosX(ImGui::GetContentRegionAvail().x * 0.5f - 60);
     ImGui::PushStyleColor(ImGuiCol_Button, Palette::Accent);
-    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, Palette::Accent);
-    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1, 1, 1, 1));
-    if (ImGui::Button("Apply Skin", ImVec2(120, 32))) {
-        if (is_knife) {
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, Palette::AccentDim);
+    if (ImGui::Button("Apply Skin", ImVec2(120, 30))) {
+        if (is_knife)
             mgr_.SetTeamKnife(weapon, skin.Paint, ct_selected_);
-        } else {
+        else
             mgr_.SetSkin(skin);
-        }
         SaveAndSync();
     }
-    ImGui::PopStyleColor(3);
+    ImGui::PopStyleColor(2);
+
+    ImGui::EndChild();
 }
 
 // ── Skin cards grid ────────────────────────────────────────────────────────────
@@ -445,10 +402,11 @@ void SkinChangerPanel::DrawSkinsContent() noexcept {
 void SkinChangerPanel::DrawSkinCards(std::span<const SkinInfo_t> skins,
                                       WeaponsEnum weapon, bool is_knife) noexcept {
     float avail_w = ImGui::GetContentRegionAvail().x;
-    int cols = std::max(2, static_cast<int>(avail_w / 175.0f));
+    int cols = std::max(2, static_cast<int>(avail_w / 165.0f));
     if (cols > static_cast<int>(skins.size())) cols = static_cast<int>(skins.size());
     if (cols < 1) cols = 1;
 
+    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0, 0));
     if (ImGui::BeginTable("##skin_grid", cols,
                           ImGuiTableFlags_SizingStretchSame |
                           ImGuiTableFlags_NoPadInnerX |
@@ -459,17 +417,18 @@ void SkinChangerPanel::DrawSkinCards(std::span<const SkinInfo_t> skins,
         }
         ImGui::EndTable();
     }
+    ImGui::PopStyleVar();
 }
 
 // ── Single skin card ───────────────────────────────────────────────────────────
 
 void SkinChangerPanel::DrawSkinCard(i32 idx, const SkinInfo_t& skin, bool selected,
-                                     WeaponsEnum weapon, bool is_knife) noexcept {
+                                      WeaponsEnum weapon, bool is_knife) noexcept {
     ImGui::PushID(idx);
 
     float card_w = ImGui::GetContentRegionAvail().x;
-    float preview_h = 72.0f;
-    float total_h = preview_h + 34.0f;
+    float preview_h = 64.0f;
+    float total_h = preview_h + 30.0f;
 
     ImVec2 pos = ImGui::GetCursorScreenPos();
     ImDrawList* dl = ImGui::GetWindowDrawList();
@@ -478,17 +437,17 @@ void SkinChangerPanel::DrawSkinCard(i32 idx, const SkinInfo_t& skin, bool select
     // Shadow
     dl->AddRectFilled(ImVec2(pos.x + 1, pos.y + 1),
                       ImVec2(pos.x + card_w + 1, pos.y + total_h + 1),
-                      ImColor(0, 0, 0, 80), 6.0f);
+                      ImColor(0, 0, 0, 60), 4.0f);
 
     // Card body
     bool hovered = ImGui::IsWindowHovered() &&
                    ImGui::IsMouseHoveringRect(pos, ImVec2(pos.x + card_w, pos.y + total_h));
-    ImU32 card_bg = selected ? ImColor(Palette::Accent)
+    ImU32 card_bg = selected ? ImColor(Palette::AccentDim)
                    : hovered ? ImColor(Palette::CardHover)
                              : ImColor(Palette::Card);
-    dl->AddRectFilled(pos, ImVec2(pos.x + card_w, pos.y + total_h), card_bg, 6.0f);
+    dl->AddRectFilled(pos, ImVec2(pos.x + card_w, pos.y + total_h), card_bg, 4.0f);
 
-    // Preview band (texture or generated color)
+    // Preview band
     ImVec2 preview_min(pos.x + 2, pos.y + 2);
     ImVec2 preview_max(pos.x + card_w - 2, pos.y + preview_h - 2);
 
@@ -498,39 +457,36 @@ void SkinChangerPanel::DrawSkinCard(i32 idx, const SkinInfo_t& skin, bool select
                      ImVec2(0, 0), ImVec2(1, 1), IM_COL32(255,255,255,255));
     } else {
         dl->AddRectFilled(preview_min, preview_max, preview_col, 4.0f);
-
-        // Darken gradient at bottom of preview
         dl->AddRectFilledMultiColor(
             ImVec2(pos.x + 2, pos.y + preview_h * 0.5f),
             ImVec2(pos.x + card_w - 2, pos.y + preview_h - 2),
             ImColor(0, 0, 0, 0), ImColor(0, 0, 0, 0),
-            ImColor(0, 0, 0, 120), ImColor(0, 0, 0, 120));
+            ImColor(0, 0, 0, 100), ImColor(0, 0, 0, 100));
     }
 
-    // Request async texture load for unloaded skins
     if (tex_cache_ && !tex_cache_->IsLoaded(skin.Paint) && skin.weaponType != WeaponsEnum{})
         tex_cache_->Request(skin.Paint, skin.weaponType);
 
     // Paint ID badge
-    float badge_w = ImGui::CalcTextSize("#00").x + 16.0f;
-    dl->AddRectFilled(ImVec2(pos.x + card_w - badge_w - 4, pos.y + preview_h - 22),
-                      ImVec2(pos.x + card_w - 4, pos.y + preview_h - 4),
-                      ImColor(0, 0, 0, 150), 3.0f);
-    ImGui::SetCursorScreenPos(ImVec2(pos.x + card_w - badge_w, pos.y + preview_h - 20));
+    float badge_w = ImGui::CalcTextSize("#000").x + 12.0f;
+    dl->AddRectFilled(ImVec2(pos.x + card_w - badge_w - 3, pos.y + preview_h - 20),
+                      ImVec2(pos.x + card_w - 3, pos.y + preview_h - 3),
+                      ImColor(0, 0, 0, 160), 3.0f);
+    ImGui::SetCursorScreenPos(ImVec2(pos.x + card_w - badge_w, pos.y + preview_h - 18));
     char badge[32];
     std::snprintf(badge, sizeof(badge), "#%d", skin.Paint);
     ImGui::TextColored(ImVec4(1, 1, 1, 0.7f), "%s", badge);
 
     // Skin name
-    ImGui::SetCursorScreenPos(ImVec2(pos.x + 8, pos.y + preview_h + 6));
+    ImGui::SetCursorScreenPos(ImVec2(pos.x + 6, pos.y + preview_h + 5));
     ImU32 name_col = selected ? ImColor(1, 1, 1) : ImColor(Palette::Text);
     ImGui::PushStyleColor(ImGuiCol_Text, name_col);
-    ImGui::PushTextWrapPos(pos.x + card_w - 8.0f);
+    ImGui::PushTextWrapPos(pos.x + card_w - 6.0f);
     ImGui::TextUnformatted(skin.name.c_str());
     ImGui::PopTextWrapPos();
     ImGui::PopStyleColor();
 
-    // Clickable area — applies immediately (consistent with gloves / music UX)
+    // Clickable area
     ImGui::SetCursorScreenPos(pos);
     ImGui::InvisibleButton("##card", ImVec2(card_w, total_h));
     if (ImGui::IsItemClicked()) {
@@ -545,14 +501,13 @@ void SkinChangerPanel::DrawSkinCard(i32 idx, const SkinInfo_t& skin, bool select
         ImGui::SetTooltip("%s\nPaint Kit #%d", skin.name.c_str(), skin.Paint);
     }
 
-    ImGui::SetCursorScreenPos(ImVec2(pos.x, pos.y + total_h + 6));
+    ImGui::SetCursorScreenPos(ImVec2(pos.x, pos.y + total_h + 4));
     ImGui::PopID();
 }
 
 // ── Wear & pattern controls ────────────────────────────────────────────────────
 
 void SkinChangerPanel::DrawWearControls(SkinInfo_t& skin, bool& changed) noexcept {
-    // Wear gradient bar
     ImDrawList* dl = ImGui::GetWindowDrawList();
     ImVec2 p = ImGui::GetCursorScreenPos();
     float w = ImGui::GetContentRegionAvail().x;
@@ -581,19 +536,18 @@ void SkinChangerPanel::DrawWearControls(SkinInfo_t& skin, bool& changed) noexcep
 
     ImGui::Dummy(ImVec2(0, h + 6));
 
-    // Wear slider
-    ImGui::SetNextItemWidth(260.0f);
+    ImGui::SetNextItemWidth(240.0f);
     ImGui::PushStyleColor(ImGuiCol_Text, WearColor(skin.Wear));
     if (ImGui::SliderFloat("##wear", &skin.Wear, 0.0f, 1.0f, "%.4f"))
         changed = true;
     ImGui::PopStyleColor();
 
-    ImGui::SameLine(0, 10);
+    ImGui::SameLine(0, 8);
     ImGui::TextColored(WearColor(skin.Wear), "%s", WearLabel(skin.Wear));
 
     // Pattern seed
     ImGui::Spacing();
-    ImGui::SetNextItemWidth(160.0f);
+    ImGui::SetNextItemWidth(140.0f);
     int pattern = skin.Pattern;
     if (ImGui::InputInt("##pattern", &pattern, 1, 100)) {
         skin.Pattern = std::clamp(pattern, 0, 9999);
@@ -608,56 +562,47 @@ void SkinChangerPanel::DrawWearControls(SkinInfo_t& skin, bool& changed) noexcep
 // ── Gloves tab ─────────────────────────────────────────────────────────────────
 
 void SkinChangerPanel::DrawGlovesContent() noexcept {
-    // Glove type chips
-    ImGui::TextColored(Palette::TextDim, "Glove Type");
+    // ── Layout: glove type list (left) + skin grid (right) ────────────────
+    float avail_w = ImGui::GetContentRegionAvail().x;
+    float list_w = (avail_w < 520) ? 140.0f : 160.0f;
+    float grid_w = avail_w - list_w - 8.0f;
+
+    ImGui::TextColored(Palette::TextDim, "Type");
     ImGui::Spacing();
 
-    float cx = ImGui::GetCursorPosX();
-    float cw = ImGui::GetContentRegionAvail().x;
-    float chip_x = cx;
-
+    // Glove type list (scrollable)
+    ImGui::BeginChild("##glove_type_list", ImVec2(list_w, 0), true);
     for (i32 i = 0; i < static_cast<i32>(std::size(kAllGloveDefs)); ++i) {
         auto name = GloveIdToString(static_cast<i32>(kAllGloveDefs[i]));
         bool sel = (i == selected_glove_type_idx_);
+        if (sel) ImGui::PushStyleColor(ImGuiCol_Text, Palette::Accent);
+        else ImGui::PushStyleColor(ImGuiCol_Text, Palette::Text);
 
-        ImVec2 txt_size = ImGui::CalcTextSize(name.c_str());
-        float chip_w = txt_size.x + 20.0f;
-        if (chip_x + chip_w > cx + cw && i > 0) break;
-
-        ImGui::SetCursorPosX(chip_x);
-
-        ImU32 bg = sel ? ImColor(Palette::Accent) : ImColor(Palette::Card);
-        ImU32 bg_hov = sel ? ImColor(Palette::Accent) : ImColor(Palette::CardHover);
-        ImU32 txt = sel ? ImColor(1, 1, 1) : ImColor(Palette::Text);
-
-        ImGui::PushStyleColor(ImGuiCol_Button, bg);
-        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, bg_hov);
-        ImGui::PushStyleColor(ImGuiCol_Text, txt);
-
-        char label[64];
-        std::snprintf(label, sizeof(label), "%s##gv_%d", name.c_str(), i);
-        if (ImGui::Button(label, ImVec2(chip_w, 28))) {
+        char label[128];
+        std::snprintf(label, sizeof(label), "%s##gl_%d", name.c_str(), i);
+        if (ImGui::Selectable(label, sel)) {
             selected_glove_type_idx_ = i;
             selected_glove_skin_idx_ = 0;
         }
-
-        ImGui::PopStyleColor(3);
-        chip_x += chip_w + 6.0f;
+        ImGui::PopStyleColor();
     }
+    ImGui::EndChild();
 
-    ImGui::Spacing();
+    ImGui::SameLine(0, 8);
+
+    // Right side: skins
+    ImGui::BeginChild("##glove_skin_area", ImVec2(grid_w, 0), false);
+
     ImGui::TextColored(ct_selected_ ? Palette::TextGood : Palette::TextDim,
-                       "Editing: %s Gloves", ct_selected_ ? "CT" : "T");
-    ImGui::Separator();
+                       "%s Gloves", ct_selected_ ? "CT" : "T");
     ImGui::Spacing();
 
-    // Glove skin cards
     GlovesEnum glove = kAllGloveDefs[selected_glove_type_idx_];
     auto skins = db_.GetGloveSkins(glove);
 
-    ImGui::SetNextItemWidth(220.0f);
-    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(8, 5));
-    ImGui::InputTextWithHint("##glove_skin_filter", "Search glove skins...", &glove_skin_search_);
+    ImGui::SetNextItemWidth(-1);
+    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(6, 4));
+    ImGui::InputTextWithHint("##glove_skin_filter", "Search skins...", &glove_skin_search_);
     ImGui::PopStyleVar();
     ImGui::Spacing();
 
@@ -671,13 +616,14 @@ void SkinChangerPanel::DrawGlovesContent() noexcept {
         selected_glove_skin_idx_ = std::clamp<i32>(selected_glove_skin_idx_, 0,
             static_cast<i32>(filtered.size()) - 1);
 
-    // Glove skin cards (table-based grid)
+    // Glove skin cards
     {
-        float avail_w = ImGui::GetContentRegionAvail().x;
-        int cols = std::max(2, static_cast<int>(avail_w / 175.0f));
+        float g_avail = ImGui::GetContentRegionAvail().x;
+        int cols = std::max(2, static_cast<int>(g_avail / 165.0f));
         if (cols > static_cast<int>(filtered.size())) cols = static_cast<int>(filtered.size());
         if (cols < 1) cols = 1;
 
+        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0, 0));
         if (ImGui::BeginTable("##glove_grid", cols,
                               ImGuiTableFlags_SizingStretchSame |
                               ImGuiTableFlags_NoPadInnerX |
@@ -688,54 +634,47 @@ void SkinChangerPanel::DrawGlovesContent() noexcept {
 
                 bool sel = (i == selected_glove_skin_idx_);
                 float card_w = ImGui::GetContentRegionAvail().x;
-                float preview_h = 72.0f, total_h = preview_h + 34.0f;
+                float preview_h = 64.0f, total_h = preview_h + 30.0f;
 
                 ImVec2 pos = ImGui::GetCursorScreenPos();
                 ImDrawList* dl = ImGui::GetWindowDrawList();
                 ImColor col = PreviewColor(filtered[i].Paint);
 
-                // Shadow
                 dl->AddRectFilled(ImVec2(pos.x + 1, pos.y + 1),
                                   ImVec2(pos.x + card_w + 1, pos.y + total_h + 1),
-                                  ImColor(0, 0, 0, 80), 6.0f);
+                                  ImColor(0, 0, 0, 60), 4.0f);
 
-                // Card body
                 bool hovered = ImGui::IsWindowHovered() &&
                                ImGui::IsMouseHoveringRect(pos, ImVec2(pos.x + card_w, pos.y + total_h));
-                ImU32 card_bg = sel ? ImColor(Palette::Accent)
+                ImU32 card_bg = sel ? ImColor(Palette::AccentDim)
                                     : (hovered ? ImColor(Palette::CardHover) : ImColor(Palette::Card));
-                dl->AddRectFilled(pos, ImVec2(pos.x + card_w, pos.y + total_h), card_bg, 6.0f);
+                dl->AddRectFilled(pos, ImVec2(pos.x + card_w, pos.y + total_h), card_bg, 4.0f);
 
-                // Preview band
                 dl->AddRectFilled(ImVec2(pos.x + 2, pos.y + 2),
                                   ImVec2(pos.x + card_w - 2, pos.y + preview_h - 2), col, 4.0f);
 
-                // Gradient overlay
                 dl->AddRectFilledMultiColor(
                     ImVec2(pos.x + 2, pos.y + preview_h * 0.5f),
                     ImVec2(pos.x + card_w - 2, pos.y + preview_h - 2),
                     ImColor(0, 0, 0, 0), ImColor(0, 0, 0, 0),
-                    ImColor(0, 0, 0, 120), ImColor(0, 0, 0, 120));
+                    ImColor(0, 0, 0, 100), ImColor(0, 0, 0, 100));
 
-                // Paint ID badge
-                float badge_w = ImGui::CalcTextSize("#00").x + 16.0f;
-                dl->AddRectFilled(ImVec2(pos.x + card_w - badge_w - 4, pos.y + preview_h - 22),
-                                  ImVec2(pos.x + card_w - 4, pos.y + preview_h - 4),
-                                  ImColor(0, 0, 0, 150), 3.0f);
-                ImGui::SetCursorScreenPos(ImVec2(pos.x + card_w - badge_w, pos.y + preview_h - 20));
+                float badge_w = ImGui::CalcTextSize("#000").x + 12.0f;
+                dl->AddRectFilled(ImVec2(pos.x + card_w - badge_w - 3, pos.y + preview_h - 20),
+                                  ImVec2(pos.x + card_w - 3, pos.y + preview_h - 3),
+                                  ImColor(0, 0, 0, 160), 3.0f);
+                ImGui::SetCursorScreenPos(ImVec2(pos.x + card_w - badge_w, pos.y + preview_h - 18));
                 char badge[32];
                 std::snprintf(badge, sizeof(badge), "#%d", filtered[i].Paint);
                 ImGui::TextColored(ImVec4(1, 1, 1, 0.7f), "%s", badge);
 
-                // Name
-                ImGui::SetCursorScreenPos(ImVec2(pos.x + 8, pos.y + preview_h + 6));
+                ImGui::SetCursorScreenPos(ImVec2(pos.x + 6, pos.y + preview_h + 5));
                 ImGui::PushStyleColor(ImGuiCol_Text, sel ? ImVec4(1, 1, 1, 1) : Palette::Text);
-                ImGui::PushTextWrapPos(pos.x + card_w - 8.0f);
+                ImGui::PushTextWrapPos(pos.x + card_w - 6.0f);
                 ImGui::TextUnformatted(filtered[i].name.c_str());
                 ImGui::PopTextWrapPos();
                 ImGui::PopStyleColor();
 
-                // Clickable area
                 ImGui::SetCursorScreenPos(pos);
                 ImGui::InvisibleButton("##gcard", ImVec2(card_w, total_h));
                 if (ImGui::IsItemClicked()) {
@@ -752,6 +691,7 @@ void SkinChangerPanel::DrawGlovesContent() noexcept {
             }
             ImGui::EndTable();
         }
+        ImGui::PopStyleVar();
     }
 
     ImGui::Spacing();
@@ -769,10 +709,11 @@ void SkinChangerPanel::DrawGlovesContent() noexcept {
         if (t_active > 0) {
             ImGui::TextColored(Palette::TextGood, "T #%d", t_active);
         }
-        if (ct_active <= 0 && t_active <= 0) {
+        if (ct_active <= 0 && t_active <= 0)
             ImGui::TextColored(Palette::TextDim, "None");
-        }
     }
+
+    ImGui::EndChild();
 }
 
 // ── Music tab ──────────────────────────────────────────────────────────────────
@@ -812,15 +753,15 @@ void SkinChangerPanel::DrawMusicContent() noexcept {
         if (kits[i].id == current_id) { selected_music_idx_ = i; break; }
     }
 
-    ImGui::TextColored(Palette::TextDim, "Select Music Kit");
+    ImGui::TextColored(Palette::TextDim, "Music Kit");
     ImGui::Spacing();
-    ImGui::SetNextItemWidth(260.0f);
-    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(8, 5));
-    ImGui::InputTextWithHint("##music_search", "Search music kits...", &music_filter_);
+    ImGui::SetNextItemWidth(-1);
+    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(6, 4));
+    ImGui::InputTextWithHint("##music_search", "Search...", &music_filter_);
     ImGui::PopStyleVar();
     ImGui::Spacing();
 
-    ImGui::BeginChild("##music_list", ImVec2(0, 0), false);
+    ImGui::BeginChild("##music_list", ImVec2(0, 0), true);
     for (i32 i = 0; i < kit_count; ++i) {
         if (!ContainsIgnoreCase(kits[i].name, music_filter_))
             continue;
@@ -831,7 +772,7 @@ void SkinChangerPanel::DrawMusicContent() noexcept {
 
         char label[128];
         std::snprintf(label, sizeof(label), "%s##mk_%d", kits[i].name, i);
-        if (ImGui::Selectable(label, sel, ImGuiSelectableFlags_None)) {
+        if (ImGui::Selectable(label, sel)) {
             selected_music_idx_ = i;
             changer_.SetMusicKit(kits[i].id);
             SaveAndSync();

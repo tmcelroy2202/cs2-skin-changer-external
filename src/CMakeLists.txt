@@ -15,6 +15,7 @@ add_library(csc_ui STATIC
     ui/Panels.cpp
     ui/overlay/OverlayWindow.cpp
     ui/panels/SkinChangerPanel.cpp
+    ui/panels/ConsolePanel.cpp
 )
 target_include_directories(csc_ui PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
 target_link_libraries(csc_ui PUBLIC imgui::imgui)
