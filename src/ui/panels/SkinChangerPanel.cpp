@@ -168,7 +168,7 @@ void SkinChangerPanel::DrawTitleBar() noexcept {
     ImGui::SetCursorScreenPos(ImVec2(pos.x + 16, pos.y + 10));
     ImGui::TextColored(Palette::Accent, "VeneeR");
     ImGui::SameLine(0, 2);
-    ImGui::TextColored(Palette::TextDim, "v1.5.2");
+    ImGui::TextColored(Palette::TextDim, "v1.5.3");
 
     ImGui::SetCursorScreenPos(ImVec2(pos.x, pos.y + 44));
 }

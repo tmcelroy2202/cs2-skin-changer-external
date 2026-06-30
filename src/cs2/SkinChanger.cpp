@@ -130,7 +130,6 @@ bool SkinChanger::Tick() noexcept {
     if (ApplyGloves()) applied = true;
 
     if (applied) {
-        CallRegenerateWeaponSkins();
         force_update_ = false;
         mgr_.ClearUpdate();
         last_tick_ = now;
