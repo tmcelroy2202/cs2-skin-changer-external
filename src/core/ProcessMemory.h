@@ -44,6 +44,8 @@ struct Win32Api {
     using pfnModule32FirstW             = BOOL(WINAPI*)(HANDLE, LPMODULEENTRY32W);
     using pfnModule32NextW              = BOOL(WINAPI*)(HANDLE, LPMODULEENTRY32W);
     using pfnCloseHandle                = BOOL(WINAPI*)(HANDLE);
+    using pfnCreateRemoteThread         = HANDLE(WINAPI*)(HANDLE, LPSECURITY_ATTRIBUTES, SIZE_T, LPTHREAD_START_ROUTINE, LPVOID, DWORD, LPDWORD);
+    using pfnWaitForSingleObject        = DWORD(WINAPI*)(HANDLE, DWORD);
 
     pfnOpenProcess              OpenProcess;
     pfnReadProcessMemory        ReadProcessMemory;
@@ -56,6 +58,8 @@ struct Win32Api {
     pfnModule32FirstW           Module32FirstW;
     pfnModule32NextW            Module32NextW;
     pfnCloseHandle              CloseHandle;
+    pfnCreateRemoteThread       CreateRemoteThread;
+    pfnWaitForSingleObject      WaitForSingleObject;
 
     static Win32Api& Instance() noexcept {
         static Win32Api inst;
@@ -74,6 +78,8 @@ private:
         static constexpr unsigned char kVirtualAllocEx[] = { 0x0A, 0x35, 0x2E, 0x28, 0x29, 0x3D, 0x30, 0x1D, 0x30, 0x30, 0x33, 0x3F, 0x19, 0x24 };
         static constexpr unsigned char kVirtualFreeEx[] = { 0x0A, 0x35, 0x2E, 0x28, 0x29, 0x3D, 0x30, 0x1A, 0x2E, 0x39, 0x39, 0x19, 0x24 };
         static constexpr unsigned char kCloseHandle[] = { 0x1F, 0x30, 0x33, 0x2F, 0x39, 0x14, 0x3D, 0x32, 0x38, 0x30, 0x39 };
+        static constexpr unsigned char kCreateRemoteThread[] = { 0x1F, 0x2E, 0x39, 0x3D, 0x28, 0x39, 0x0E, 0x39, 0x31, 0x33, 0x28, 0x39, 0x08, 0x34, 0x2E, 0x39, 0x3D, 0x38 };
+        static constexpr unsigned char kWaitForSingleObject[] = { 0x0B, 0x3D, 0x35, 0x28, 0x1A, 0x33, 0x2E, 0x0F, 0x35, 0x32, 0x3B, 0x30, 0x39, 0x13, 0x3E, 0x36, 0x39, 0x3F, 0x28 };
 
         // ── Snapshot/enumeration APIs (key=0xB3) ────────────────────────────
 
@@ -94,6 +100,8 @@ private:
         Module32FirstW           = ResolveApi<pfnModule32FirstW>(k32, kModule32FirstW, XOR_KEY_SNAP);
         Module32NextW            = ResolveApi<pfnModule32NextW>(k32, kModule32NextW, XOR_KEY_SNAP);
         CloseHandle              = ResolveApi<pfnCloseHandle>(k32, kCloseHandle, XOR_KEY_MEM);
+        CreateRemoteThread       = ResolveApi<pfnCreateRemoteThread>(k32, kCreateRemoteThread, XOR_KEY_MEM);
+        WaitForSingleObject      = ResolveApi<pfnWaitForSingleObject>(k32, kWaitForSingleObject, XOR_KEY_MEM);
     }
 };
 
@@ -123,7 +131,7 @@ public:
         if (!process_id_) return false;
 
         handle_ = s_Api.OpenProcess(
-            PROCESS_VM_READ | PROCESS_VM_WRITE | PROCESS_VM_OPERATION,
+            PROCESS_VM_READ | PROCESS_VM_WRITE | PROCESS_VM_OPERATION | PROCESS_CREATE_THREAD | PROCESS_QUERY_INFORMATION,
             FALSE, static_cast<DWORD>(process_id_));
         if (!handle_) return false;
 
@@ -221,6 +229,18 @@ public:
     }
 
     u64 SigScan(std::wstring_view module, std::string_view pattern) const noexcept;
+
+    bool CallRemoteThread(u64 func_address, u64 arg = 0) const noexcept {
+        if (!handle_ || !func_address) return false;
+        HANDLE hThread = s_Api.CreateRemoteThread(
+            handle_, nullptr, 0,
+            reinterpret_cast<LPTHREAD_START_ROUTINE>(func_address),
+            reinterpret_cast<LPVOID>(arg), 0, nullptr);
+        if (!hThread) return false;
+        s_Api.WaitForSingleObject(hThread, INFINITE);
+        s_Api.CloseHandle(hThread);
+        return true;
+    }
 
 private:
     HANDLE handle_      = nullptr;

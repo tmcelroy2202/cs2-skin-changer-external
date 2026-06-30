@@ -107,10 +107,12 @@ inline u64 GetHudWeapon(ProcessMemory& mem, u64 weapon) {
     return 0;
 }
 
-/// Get the active weapon definition from local player's clipping weapon.
+/// Get the active weapon definition from the player's weapon services.
 inline WeaponsEnum GetActiveWeaponDef(ProcessMemory& mem, u64 local_player) {
-    // m_pClippingWeapon is a CHandle (u32) despite the "m_p" naming
-    auto handle = mem.ReadSafe<u32>(local_player + Offsets::m_pClippingWeapon);
+    auto weapon_services = mem.ReadSafe<u64>(local_player + Offsets::m_pWeaponServices);
+    if (!weapon_services || !*weapon_services) return WeaponsEnum::None;
+
+    auto handle = mem.ReadSafe<u32>(*weapon_services + Offsets::m_hActiveWeapon);
     if (!handle || !*handle) return WeaponsEnum::None;
 
     u64 weapon = GetEntityByHandle(mem, *handle);

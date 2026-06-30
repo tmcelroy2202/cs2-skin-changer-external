@@ -54,11 +54,11 @@ inline std::ptrdiff_t m_pEntity                = 0x10;
 inline std::ptrdiff_t m_flags                  = 0x30;
 
 // ── C_CSPlayerPawn ────────────────────────────────────────────────────────────
-inline std::ptrdiff_t m_iTeamNum               = 0x3BB;
+inline std::ptrdiff_t m_iTeamNum               = 0x3EB;
 inline std::ptrdiff_t m_pClippingWeapon        = 0x15D0;
-inline std::ptrdiff_t m_hHudModelArms          = 0x1600;
-inline std::ptrdiff_t m_bNeedToReApplyGloves   = 0x15F7;
-inline std::ptrdiff_t m_EconGloves             = 0x15D8;
+inline std::ptrdiff_t m_hHudModelArms          = 0x1B58;
+inline std::ptrdiff_t m_bNeedToReApplyGloves   = 0x1655;
+inline std::ptrdiff_t m_EconGloves             = 0x1658;
 
 // ── C_BasePlayerPawn ──────────────────────────────────────────────────────────
 inline std::ptrdiff_t m_pWeaponServices        = 0x11E0;

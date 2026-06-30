@@ -51,6 +51,9 @@ bool SkinChanger::Tick() noexcept {
     auto weapons = GetWeapons(mem_, local_player_val);
     bool applied = false;
 
+    // Check if we need to force re-apply
+    if (mgr_.NeedsUpdate()) force_update_ = true;
+
     for (u64 weapon : weapons) {
         u64 item = mem_.Read<u64>(weapon + Offsets::m_AttributeManager + Offsets::m_Item);
         if (!item || item == ~0ull) continue;
@@ -69,6 +72,17 @@ bool SkinChanger::Tick() noexcept {
             : mgr_.GetSkin(def);
 
         if (!skin.Paint) continue;
+
+        // Skip already-applied weapons unless force_update
+        auto item_id_raw = mem_.ReadSafe<u32>(item + Offsets::m_iItemIDHigh);
+        if (!item_id_raw) continue;
+        u32 item_id_high = *item_id_raw;
+
+        if (!force_update_ && item_id_high == 0xFFFFFFFF) continue;
+
+        // If force updating, reset itemIDHigh first so the game re-reads fallback
+        if (force_update_)
+            mem_.Write<u32>(item + Offsets::m_iItemIDHigh, 0);
 
         // Fallback + item-view force
         mem_.Write<u32>(weapon + Offsets::m_nFallbackPaintKit, static_cast<u32>(skin.Paint));
@@ -109,17 +123,19 @@ bool SkinChanger::Tick() noexcept {
         }
 
         // Force the game to re-read and apply our attributes immediately
-        CallRegenerateWeaponSkins(item);
-
         applied = true;
     }
 
     // Gloves
     if (ApplyGloves()) applied = true;
 
-    if (applied || mgr_.NeedsUpdate()) {
+    if (applied) {
+        CallRegenerateWeaponSkins();
+        force_update_ = false;
         mgr_.ClearUpdate();
         last_tick_ = now;
+    } else {
+        force_update_ = false;
     }
 
     return applied;
@@ -174,9 +190,6 @@ bool SkinChanger::ApplyGloves() noexcept {
     if (!attr_mgr_.Create(item, glove_skin))
         LOG_WARN("ApplyGloves — attr_mgr_.Create failed for item 0x{:X} paint={}", item, glove_paint);
 
-    // Force visual refresh for glove item too
-    CallRegenerateWeaponSkins(item);
-
     u64 hud_arms = GetHudArms(mem_);
     if (hud_arms) {
         auto node = mem_.ReadSafe<u64>(hud_arms + Offsets::m_pGameSceneNode);
@@ -227,12 +240,7 @@ void SkinChanger::DoMeshMask(u64 weapon, u64 node, bool old_model) noexcept {
     mem_.Write<u64>(*hud_node + Offsets::m_modelState + Offsets::m_MeshGroupMask, mask);
 }
 
-void SkinChanger::CallRegenerateWeaponSkins(u64 item) noexcept {
-    if (mem_.ProcessId() != ::GetCurrentProcessId()) {
-        LOG_WARN("CallRegenerateWeaponSkins — external process, skipping");
-        return;
-    }
-
+void SkinChanger::CallRegenerateWeaponSkins() noexcept {
     if (!regenerate_addr_) {
         regenerate_addr_ = mem_.SigScan(L"client.dll", Offsets::Sigs::RegenerateWeaponSkins);
         if (!regenerate_addr_) {
@@ -242,19 +250,19 @@ void SkinChanger::CallRegenerateWeaponSkins(u64 item) noexcept {
         LOG_INFO("SkinChanger — resolved RegenerateWeaponSkins at 0x{:X}", regenerate_addr_);
     }
 
-    LOG_INFO("SkinChanger — calling RegenerateWeaponSkins(0x{:X})", item);
-
-    using Fn = void (*)(void*);
-
-#if defined(_MSC_VER)
-    __try {
-        reinterpret_cast<Fn>(regenerate_addr_)(reinterpret_cast<void*>(item));
-    } __except (EXCEPTION_EXECUTE_HANDLER) {
-        LOG_ERROR("SkinChanger — access violation in RegenerateWeaponSkins, disabling");
-        regenerate_addr_ = 0;
+    // Patch the hardcoded offset inside RegenerateWeaponSkins so it uses
+    // the correct attribute list offset for the current game version.
+    if (!regenerate_patched_) {
+        u16 attr_offset = static_cast<u16>(
+            Offsets::m_AttributeManager + Offsets::m_Item +
+            Offsets::m_AttributeList + Offsets::m_Attributes);
+        mem_.Write<u16>(regenerate_addr_ + 0x52, attr_offset);
+        regenerate_patched_ = true;
+        LOG_INFO("SkinChanger — patched RegenerateWeaponSkins +0x52 with attr offset 0x{:04X}",
+                 attr_offset);
     }
-#else
-    // MinGW: no SEH, call directly. Signature validation should prevent crashes.
-    reinterpret_cast<Fn>(regenerate_addr_)(reinterpret_cast<void*>(item));
-#endif
+
+    LOG_INFO("SkinChanger — calling RegenerateWeaponSkins remotely");
+    if (!mem_.CallRemoteThread(regenerate_addr_))
+        LOG_ERROR("SkinChanger — CallRemoteThread failed");
 }

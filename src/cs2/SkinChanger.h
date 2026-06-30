@@ -46,6 +46,8 @@ private:
     u16                 last_music_kit_id_ = 0;
     u32                 account_id_ = 0;
     u64                 regenerate_addr_ = 0;
+    bool                regenerate_patched_ = false;
+    bool                force_update_ = true;
     std::chrono::steady_clock::time_point last_tick_{};
     mutable std::mt19937 rng_{std::random_device{}()};
 
@@ -55,7 +57,7 @@ private:
     /// Write mesh group mask to the weapon's scene node and its HUD counterpart.
     void DoMeshMask(u64 weapon, u64 node, bool old_model) noexcept;
 
-    /// Resolve and call RegenerateWeaponSkins on the given econ item.
-    /// Safe to call from external process mode — checks address space compatibility.
-    void CallRegenerateWeaponSkins(u64 item) noexcept;
+    /// Resolve and call RegenerateWeaponSkins in the CS2 process.
+    /// Uses CreateRemoteThread to execute it remotely.
+    void CallRegenerateWeaponSkins() noexcept;
 };
