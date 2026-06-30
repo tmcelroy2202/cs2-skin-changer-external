@@ -49,9 +49,7 @@ private:
 
     std::vector<WeaponsEnum> cat_weapons_;
 
-    void DrawTitleBar() noexcept;
-    void DrawEquippedBar() noexcept;
-    void DrawCategories() noexcept;
+    void DrawHeader() noexcept;
     void DrawSkinsContent() noexcept;
     void DrawGlovesContent() noexcept;
     void DrawMusicContent() noexcept;
