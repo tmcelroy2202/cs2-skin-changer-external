@@ -26,7 +26,14 @@ struct LogMessage {
 
 class ConsolePanel final : public Panel {
 public:
-    ConsolePanel() noexcept : Panel("Console") {}
+    ConsolePanel() noexcept : Panel("Console") {
+        instance_ = this;
+    }
+
+    ~ConsolePanel() noexcept override {
+        if (instance_ == this)
+            instance_ = nullptr;
+    }
 
     std::string_view GetId() const noexcept override { return "Console"; }
 
@@ -38,12 +45,20 @@ public:
     /// Clear all messages.
     void Clear() noexcept;
 
+    /// Static callback to feed Logger output into the panel.
+    static void LoggerCallback(LogLevel lv, std::string_view msg) noexcept {
+        if (instance_)
+            instance_->AddMessage(msg, lv);
+    }
+
 private:
     std::deque<LogMessage> messages_;
     std::string            filter_;
     bool                   auto_scroll_{true};
     bool                   scroll_to_bottom_{};
     usize                  max_messages_{1000};
+
+    static inline ConsolePanel* instance_{nullptr};
 
     static ImVec4 ColorForLevel(LogLevel lv) noexcept;
 };

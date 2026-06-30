@@ -31,6 +31,7 @@
 #include "cs2/ConfigManager.h"
 #include "ui/panels/SkinChangerPanel.h"
 #include "ui/panels/DebugPanel.h"
+#include "ui/panels/ConsolePanel.h"
 // ──────────────────────────────────────────────────────────────────────────────
 //  STANDALONE OVERLAY MODE
 // ──────────────────────────────────────────────────────────────────────────────
@@ -51,6 +52,7 @@ struct App {
     SkinChangerPanel*    skin_panel{};
     SkinTextureCache*    skin_tex_cache{};
     DebugPanel*          debug_panel{};
+    ConsolePanel*        console_panel{};
 
     bool running = false;
 };
@@ -92,6 +94,12 @@ void RunFrame(App& app) {
                     app.debug_panel->SetOpen(open);
                 ImGui::SameLine();
             }
+            if (app.console_panel) {
+                bool open = app.console_panel->IsOpen();
+                if (ImGui::MenuItem("Console", nullptr, &open))
+                    app.console_panel->SetOpen(open);
+                ImGui::SameLine();
+            }
             if (ImGui::BeginMenu("Options")) {
                 if (ImGui::MenuItem("Toggle UI", "Insert")) { ui::ToggleVisibility(); }
                 ImGui::Separator();
@@ -110,8 +118,12 @@ void RunFrame(App& app) {
                          ImGuiWindowFlags_NoSavedSettings |
                          ImGuiWindowFlags_NoFocusOnAppearing |
                          ImGuiWindowFlags_NoNav)) {
-            ImGui::Text("VeneeR  v1.5.5");
-            ImGui::Text("Active");
+            ImGui::Text("VeneeR  v1.5.7");
+            if (app.cs2) {
+                ImGui::TextColored(ImVec4(0,1,0,1), "Connected");
+            } else {
+                ImGui::TextColored(ImVec4(1,0,0,1), "Idle (CS2 not found)");
+            }
         }
         ImGui::End();
 
@@ -127,6 +139,14 @@ void RunFrame(App& app) {
 } // anonymous namespace
 
 int main() {
+    // Open a console window so LOG_* output is visible (standalone only)
+    ::AllocConsole();
+    {
+        FILE* dummy{};
+        ::freopen_s(&dummy, "CONOUT$", "w", stdout);
+        ::freopen_s(&dummy, "CONOUT$", "w", stderr);
+    }
+
     CoInitializeEx(nullptr, COINIT_MULTITHREADED);
     LOG_INFO("VeneeR — Standalone Overlay Mode");
 
@@ -167,6 +187,10 @@ int main() {
         app.debug_panel  = new DebugPanel(app.cs2);
         app.panels.Register(app.debug_panel);
 
+        app.console_panel = new ConsolePanel();
+        Logger::Instance().SetCallback(ConsolePanel::LoggerCallback);
+        app.panels.Register(app.console_panel);
+
         // Texture cache for skin preview images
         {
             auto& overlay_state = overlay::State();
@@ -194,9 +218,11 @@ int main() {
     }
 
     // ── Cleanup ──────────────────────────────────────────────────────────────
+    Logger::Instance().SetCallback(nullptr);
     delete app.skin_changer;
     delete app.skin_panel;
     delete app.debug_panel;
+    delete app.console_panel;
     delete app.skin_tex_cache;
 
     app.cs2.Close();

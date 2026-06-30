@@ -38,6 +38,9 @@ void Logger::Dispatch(LogLevel lv, std::string_view msg,
                  loc.file_name(), loc.line(),
                  static_cast<int>(msg.size()), msg.data());
     std::fflush(stderr);
+
+    if (callback_)
+        callback_(lv, msg);
 }
 
 void Logger::Trace(std::string_view msg, std::source_location loc) { Dispatch(LogLevel::Trace, msg, loc); }
