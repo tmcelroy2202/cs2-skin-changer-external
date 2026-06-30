@@ -75,4 +75,6 @@ if(MSVC)
     target_link_options(CS2SkinChanger PRIVATE /GUARD:CF)
 else()
     target_compile_options(CS2SkinChanger PRIVATE -Wall -Wextra)
+    target_link_options(CS2SkinChanger PRIVATE
+        -static-libgcc -static-libstdc++ -static -lpthread)
 endif()
