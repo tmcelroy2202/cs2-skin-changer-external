@@ -6,13 +6,13 @@
   Standalone overlay &middot; D3D11 &middot; Dear ImGui &middot; No injection
 </p>
 <p align="center">
-  <code>mrch4n725/cs2-skin-changer-external</code> &nbsp;&middot;&nbsp; <strong>v1.4.1</strong>
+  <code>mrch4n725/cs2-skin-changer-external</code> &nbsp;&middot;&nbsp; <strong>v1.5.8</strong>
 </p>
 
 <div align="center">
 
 [![Build](https://img.shields.io/badge/build-passing-2D7EE7?style=flat-square)](https://github.com/mrch4n725/cs2-skin-changer-external/actions)
-[![Release](https://img.shields.io/badge/release-v1.4.1-F59E0B?style=flat-square)](https://github.com/mrch4n725/cs2-skin-changer-external/releases)
+[![Release](https://img.shields.io/badge/release-v1.5.8-F59E0B?style=flat-square)](https://github.com/mrch4n725/cs2-skin-changer-external/releases)
 [![License](https://img.shields.io/badge/license-MIT-888999?style=flat-square)](LICENSE)
 [![Windows](https://img.shields.io/badge/Windows-10%2F11-2D7EE7?style=flat-square&logo=windows11&logoColor=white)](https://github.com/mrch4n725/cs2-skin-changer-external/releases)
 
@@ -38,6 +38,13 @@ An external skin changer for Counter-Strike 2 using process memory access. Stand
 - **Cloud-Synced Configs** — Loadout auto-saves to `%APPDATA%/veneer/loadout.txt` on every change; persists across restarts
 - **Full-Update Bypass** — Fire-and-forget remote thread; no blocking, no lag stutter
 - **Anti-Detection** — Timing jitter (random 1–15ms), randomized write-order (6 permutations per weapon), idle rate-limiting (~20 Hz), cached sig addresses (no repeated pattern scans), unique random window class/title per launch, minimum-access process handle
+
+## Screenshots
+
+<p align="center">
+  <img src="assets/veneer-ui.png" alt="VeneeR UI Preview — Rifles category" width="820"/>
+</p>
+<p align="center"><em>VeneeR main UI — sidebar categories, weapon list, skin cards, and wear/StatTrak controls</em></p>
 
 ## How It Works
 
@@ -116,14 +123,13 @@ For release checklist details and the DLL preset, see [BUILD.md](BUILD.md).
 1. **Launch Counter-Strike 2** and join a game (official or community).
 2. **Run the overlay as Administrator** — required for `OpenProcess` access to `cs2.exe`.
 3. **Press `Insert`** to toggle the overlay UI on/off (overlay is visible by default).
-4. **Use the overlay window** — 8 horizontal category tabs across the top:
+4. **Use the overlay window**:
 
-   | Tab | What you can do |
-   |---|---|
-   | **Pistols / Rifles / SMGs / Snipers / Heavy** | Filter weapons by class, select a weapon chip, pick a skin card, adjust wear & pattern, click **Apply Skin** |
-   | **Knives** | Same card-based UI — select knife type chip, pick finish, apply |
-   | **Gloves** | Pick glove type chip, select skin card, applies immediately |
-   | **Music** | Search and select from ~70 music kits, applies immediately |
+   <p align="center">
+     <img src="assets/veneer-ui.png" alt="VeneeR UI Preview" width="820"/>
+   </p>
+
+   A vertical sidebar organises 8 categories on the left with the active category highlighted in teal. The main panel shows a searchable weapon list and a grid of skin cards. Adjust wear, pattern seed, and StatTrak, then click **Apply Skin**.
 
 5. **Click "Apply Skin"** to save weapon/knife changes, or select a glove/music kit for immediate apply.
 
