@@ -30,6 +30,7 @@
 #include "cs2/Offsets.h"
 #include "cs2/ConfigManager.h"
 #include "ui/panels/SkinChangerPanel.h"
+#include "ui/panels/DebugPanel.h"
 // ──────────────────────────────────────────────────────────────────────────────
 //  STANDALONE OVERLAY MODE
 // ──────────────────────────────────────────────────────────────────────────────
@@ -49,6 +50,7 @@ struct App {
     SkinChanger*         skin_changer{};
     SkinChangerPanel*    skin_panel{};
     SkinTextureCache*    skin_tex_cache{};
+    DebugPanel*          debug_panel{};
 
     bool running = false;
 };
@@ -82,6 +84,12 @@ void RunFrame(App& app) {
                 bool open = app.skin_panel->IsOpen();
                 if (ImGui::MenuItem("VeneeR", nullptr, &open))
                     app.skin_panel->SetOpen(open);
+                ImGui::SameLine();
+            }
+            if (app.debug_panel) {
+                bool open = app.debug_panel->IsOpen();
+                if (ImGui::MenuItem("Debug", nullptr, &open))
+                    app.debug_panel->SetOpen(open);
                 ImGui::SameLine();
             }
             if (ImGui::BeginMenu("Options")) {
@@ -156,6 +164,8 @@ int main() {
         app.skin_changer = new SkinChanger(app.cs2, app.skin_db, app.skin_mgr);
         app.skin_panel   = new SkinChangerPanel(app.skin_db, app.skin_mgr,
                                                  *app.skin_changer);
+        app.debug_panel  = new DebugPanel(app.cs2);
+        app.panels.Register(app.debug_panel);
 
         // Texture cache for skin preview images
         {
@@ -186,6 +196,7 @@ int main() {
     // ── Cleanup ──────────────────────────────────────────────────────────────
     delete app.skin_changer;
     delete app.skin_panel;
+    delete app.debug_panel;
     delete app.skin_tex_cache;
 
     app.cs2.Close();
@@ -215,6 +226,7 @@ int main() {
 #include "cs2/ConfigManager.h"
 #include "cs2/Offsets.h"
 #include "ui/panels/SkinChangerPanel.h"
+#include "ui/panels/DebugPanel.h"
 
 namespace {
 
@@ -227,6 +239,7 @@ struct App {
     SkinChanger*         skin_changer{};
     SkinChangerPanel*    skin_panel{};
     SkinTextureCache*    skin_tex_cache{};
+    DebugPanel*          debug_panel{};
     HWND                 game_hwnd{};
 
     std::atomic<bool> initialised{false};
@@ -245,6 +258,12 @@ void RenderUI(App& app) {
             bool open = app.skin_panel->IsOpen();
             if (ImGui::MenuItem("VeneeR", nullptr, &open))
                 app.skin_panel->SetOpen(open);
+            ImGui::SameLine();
+        }
+        if (app.debug_panel) {
+            bool open = app.debug_panel->IsOpen();
+            if (ImGui::MenuItem("Debug", nullptr, &open))
+                app.debug_panel->SetOpen(open);
             ImGui::SameLine();
         }
         if (ImGui::BeginMenu("Options")) {
@@ -413,6 +432,8 @@ DWORD WINAPI InitThread(LPVOID) noexcept {
         app.skin_changer = new SkinChanger(app.cs2, app.skin_db, app.skin_mgr);
         app.skin_panel   = new SkinChangerPanel(app.skin_db, app.skin_mgr,
                                                   *app.skin_changer);
+        app.debug_panel  = new DebugPanel(app.cs2);
+        app.panels.Register(app.debug_panel);
 
         u16 saved_music = app.skin_changer->GetMusicKit();
         LoadConfig(app.skin_mgr, saved_music);
@@ -462,6 +483,7 @@ void ShutdownDLL() noexcept {
 
     delete app.skin_changer;
     delete app.skin_panel;
+    delete app.debug_panel;
     delete app.skin_tex_cache;
 
     app.cs2.Close();
