@@ -90,6 +90,7 @@ inline std::ptrdiff_t m_AttributeList           = 0x208;
 inline std::ptrdiff_t m_NetworkedDynamicAttributes = 0x280;
 inline std::ptrdiff_t m_iItemDefinitionIndex   = 0x1BA;
 inline std::ptrdiff_t m_iAccountID             = 0x1D8;
+inline std::ptrdiff_t m_iItemID                = 0x1C8; // uint64 — combined item ID (write -1 for custom)
 inline std::ptrdiff_t m_iItemIDHigh            = 0x1D0;
 inline std::ptrdiff_t m_iItemIDLow             = 0x1D4;
 inline std::ptrdiff_t m_szCustomNameOverride   = 0x399;
@@ -174,6 +175,7 @@ inline bool LoadFromFile(const std::filesystem::path& path) {
         {"m_NetworkedDynamicAttributes", &m_NetworkedDynamicAttributes},
         {"m_iItemDefinitionIndex",   &m_iItemDefinitionIndex},
         {"m_iAccountID",             &m_iAccountID},
+        {"m_iItemID",                &m_iItemID},
         {"m_iItemIDHigh",            &m_iItemIDHigh},
         {"m_szCustomNameOverride",   &m_szCustomNameOverride},
         {"m_bInitialized",           &m_bInitialized},
@@ -279,6 +281,7 @@ inline bool SaveToFile(const std::filesystem::path& path) {
     write("m_NetworkedDynamicAttributes", m_NetworkedDynamicAttributes);
     write("m_iItemDefinitionIndex",   m_iItemDefinitionIndex);
     write("m_iAccountID",             m_iAccountID);
+    write("m_iItemID",                m_iItemID);
     write("m_iItemIDHigh",            m_iItemIDHigh);
     write("m_iItemIDLow",             m_iItemIDLow);
     write("m_szCustomNameOverride",   m_szCustomNameOverride);
@@ -468,6 +471,7 @@ inline bool UpdateFromRemote() noexcept {
         {"m_NetworkedDynamicAttributes", &m_NetworkedDynamicAttributes},
         {"m_iItemDefinitionIndex",   &m_iItemDefinitionIndex},
         {"m_iAccountID",             &m_iAccountID},
+        {"m_iItemID",                &m_iItemID},
         {"m_iItemIDHigh",            &m_iItemIDHigh},
         {"m_szCustomNameOverride",   &m_szCustomNameOverride},
         {"m_bInitialized",           &m_bInitialized},

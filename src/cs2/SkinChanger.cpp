@@ -49,6 +49,11 @@ bool SkinChanger::Tick() noexcept {
 
     // Weapons
     auto weapons = GetWeapons(mem_, local_player_val);
+    // Fallback: if the weapon vector is empty, try the active weapon directly
+    if (weapons.empty()) {
+        u64 active = GetActiveWeapon(mem_, local_player_val);
+        if (active) weapons.push_back(active);
+    }
     bool applied = false;
 
     for (u64 weapon : weapons) {
@@ -84,7 +89,9 @@ bool SkinChanger::Tick() noexcept {
         // Nametag (m_szCustomNameOverride is CUtlString — needs heap alloc, skip for now)
         // TODO: implement nametag via string allocation in target process
 
+        mem_.Write<u64>(item + Offsets::m_iItemID, 0xFFFFFFFFFFFFFFFFull);
         mem_.Write<u32>(item + Offsets::m_iItemIDHigh, 0xFFFFFFFF);
+        mem_.Write<u32>(item + Offsets::m_iItemIDLow, 0xFFFFFFFF);
         mem_.Write<u32>(item + Offsets::m_iAccountID, account_id_);
         mem_.Write<bool>(item + Offsets::m_bRestoreCustomMaterialAfterPrecache, true);
 
@@ -157,9 +164,10 @@ bool SkinChanger::ApplyGloves() noexcept {
     }
 
     // Write item view fields directly to the embedded C_EconItemView
+    mem_.Write<u64>(glove_iv + Offsets::m_iItemID, 0xFFFFFFFFFFFFFFFFull);
     mem_.Write<u32>(glove_iv + Offsets::m_iItemIDHigh, 0xFFFFFFFF);
+    mem_.Write<u32>(glove_iv + Offsets::m_iItemIDLow, 0xFFFFFFFF);
     mem_.Write<u32>(glove_iv + Offsets::m_iAccountID, account_id_);
-    mem_.Write<bool>(glove_iv + Offsets::m_bInitialized, false);
     mem_.Write<bool>(glove_iv + Offsets::m_bRestoreCustomMaterialAfterPrecache, true);
 
     // Attribute creation: use the item view address directly

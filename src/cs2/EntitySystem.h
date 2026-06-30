@@ -21,11 +21,17 @@ constexpr u32 kEntityIdentitySize = 0x70;
 /// The chunked entity list stores the entity pointer as the first 8 bytes
 /// of each CEntityIdentity slot (stride = kEntityIdentitySize).
 /// Returns 0 for invalid handles (0xFFFFFFFF, out-of-range, etc.).
+///
+/// Handle bit layout in CS2:
+///   bits 0-8:   entry index (0-511, within a chunk)
+///   bits 9-14:  chunk index (0-63, into the entity list array)
+///   bits 15-30: serial number (for lifetime validation)
+///   bit 31:     invalid flag
 inline u64 GetEntityByHandle(ProcessMemory& mem, u32 handle) {
     if (!handle || handle == 0xFFFFFFFF) return 0;
 
-    u32 chunk_idx = (handle & 0x7FFF) >> 9;
-    if (chunk_idx >= kChunkArraySize) return 0;
+    u32 entry_idx = handle & (kChunkSize - 1);   // 0x1FF (9 bits)
+    u32 chunk_idx = (handle >> 9) & 0x3F;          // 0x3F (6 bits, 0-63)
 
     auto entity_list = mem.ReadSafe<u64>(mem.Client() + Offsets::dwEntityList);
     if (!entity_list || !*entity_list) return 0;
@@ -33,8 +39,7 @@ inline u64 GetEntityByHandle(ProcessMemory& mem, u32 handle) {
     auto list_entry = mem.ReadSafe<u64>(*entity_list + sizeof(u64) * chunk_idx + 0x10);
     if (!list_entry || !*list_entry) return 0;
 
-    // Entity pointer is at the CEntityIdentity slot directly (offset 0, not +0x10)
-    u64 slot_addr = *list_entry + kEntityIdentitySize * (handle & (kChunkSize - 1));
+    u64 slot_addr = *list_entry + kEntityIdentitySize * entry_idx;
     return mem.ReadSafe<u64>(slot_addr).value_or(0);
 }
 
@@ -50,28 +55,55 @@ inline u64 GetLocalController(ProcessMemory& mem) {
     return val.value_or(0);
 }
 
-/// Get all weapons belonging to a player pawn.
-inline std::vector<u64> GetWeapons(ProcessMemory& mem, u64 local_player) {
-    std::vector<u64> weapons;
+/// Read a weapons vector from CPlayer_WeaponServices using a given
+/// C_NetworkUtlVectorBase layout and return resolved entity pointers.
+/// The offset `base` is `m_hMyWeapons` within weapon services.
+/// `size_offset` is the offset of m_nSize within the C_NetworkUtlVectorBase,
+/// `ptr_offset` is the offset of m_pElements.
+static std::vector<u64> ReadWeaponVector(ProcessMemory& mem, u64 services_base,
+                                          u64 size_offset, u64 ptr_offset) {
+    std::vector<u64> out;
+    auto count = mem.ReadSafe<u32>(services_base + Offsets::m_hMyWeapons + size_offset);
+    if (!count || !*count) return out;
 
-    auto weapon_services = mem.ReadSafe<u64>(local_player + Offsets::m_pWeaponServices);
-    if (!weapon_services || !*weapon_services) return weapons;
+    auto entry_ptr = mem.ReadSafe<u64>(services_base + Offsets::m_hMyWeapons + ptr_offset);
+    if (!entry_ptr || !*entry_ptr) return out;
 
-    auto weapon_count = mem.ReadSafe<u32>(*weapon_services + Offsets::m_hMyWeapons);
-    if (!weapon_count) return weapons;
-
-    auto weapon_entry = mem.ReadSafe<u64>(*weapon_services + Offsets::m_hMyWeapons + sizeof(u64));
-    if (!weapon_entry || !*weapon_entry) return weapons;
-
-    for (u64 i = 0; i < *weapon_count && i < 64; ++i) {
-        auto handle = mem.ReadSafe<u32>(*weapon_entry + sizeof(u32) * i);
+    for (u64 i = 0; i < *count && i < 64; ++i) {
+        auto handle = mem.ReadSafe<u32>(*entry_ptr + sizeof(u32) * i);
         if (!handle || !*handle) continue;
-
         u64 weapon = GetEntityByHandle(mem, *handle);
-        if (weapon) weapons.push_back(weapon);
+        if (weapon) out.push_back(weapon);
     }
+    return out;
+}
 
-    return weapons;
+/// Get all weapons belonging to a player pawn.
+/// Tries both known C_NetworkUtlVectorBase layouts.
+inline std::vector<u64> GetWeapons(ProcessMemory& mem, u64 local_player) {
+    auto weapon_services = mem.ReadSafe<u64>(local_player + Offsets::m_pWeaponServices);
+    if (!weapon_services || !*weapon_services) return {};
+
+    // Pattern A  (most common):  m_nSize at +0x00,  m_pElements at +0x08
+    auto weapons = ReadWeaponVector(mem, *weapon_services, 0x00, 0x08);
+    if (!weapons.empty()) return weapons;
+
+    // Pattern B (CUtlMemory-based): m_pMemory at +0x00, m_nAllocation at +0x08, m_Size at +0x10
+    weapons = ReadWeaponVector(mem, *weapon_services, 0x10, 0x00);
+    if (!weapons.empty()) return weapons;
+
+    return {};
+}
+
+/// Try to get the active weapon from CPlayer_WeaponServices directly.
+inline u64 GetActiveWeapon(ProcessMemory& mem, u64 local_player) {
+    auto weapon_services = mem.ReadSafe<u64>(local_player + Offsets::m_pWeaponServices);
+    if (!weapon_services || !*weapon_services) return 0;
+
+    auto handle = mem.ReadSafe<u32>(*weapon_services + Offsets::m_hActiveWeapon);
+    if (!handle || !*handle) return 0;
+
+    return GetEntityByHandle(mem, *handle);
 }
 
 /// Get the HUD view model arms.

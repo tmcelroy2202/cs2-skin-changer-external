@@ -102,7 +102,7 @@ void RunFrame(App& app) {
                          ImGuiWindowFlags_NoSavedSettings |
                          ImGuiWindowFlags_NoFocusOnAppearing |
                          ImGuiWindowFlags_NoNav)) {
-            ImGui::Text("VeneeR  v1.4.1");
+            ImGui::Text("VeneeR  v1.5.5");
             ImGui::Text("Active");
         }
         ImGui::End();
