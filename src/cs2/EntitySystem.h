@@ -1,6 +1,7 @@
 #pragma once
 
 #include "core/ProcessMemory.h"
+#include "core/Logging.h"
 #include "Offsets.h"
 #include "WeaponTypes.h"
 
@@ -14,11 +15,11 @@
 constexpr u32 kChunkSize       = 512;
 constexpr u32 kChunkArraySize  = 3;
 constexpr u32 kMaxEntities     = kChunkArraySize * kChunkSize;
-constexpr u32 kEntityIdentitySize = 0x78;
+constexpr u32 kEntityIdentitySize = 0x70;
 
 /// Resolve an entity handle (CHandle) to its C_BaseEntity pointer.
-/// Internally walks the chunked entity list, reads the CEntityIdentity,
-/// then follows the m_pEntity field to the actual entity object.
+/// The chunked entity list stores the entity pointer as the first 8 bytes
+/// of each CEntityIdentity slot (stride = kEntityIdentitySize).
 /// Returns 0 for invalid handles (0xFFFFFFFF, out-of-range, etc.).
 inline u64 GetEntityByHandle(ProcessMemory& mem, u32 handle) {
     if (!handle || handle == 0xFFFFFFFF) return 0;
@@ -32,10 +33,9 @@ inline u64 GetEntityByHandle(ProcessMemory& mem, u32 handle) {
     auto list_entry = mem.ReadSafe<u64>(*entity_list + sizeof(u64) * chunk_idx + 0x10);
     if (!list_entry || !*list_entry) return 0;
 
-    // CEntityIdentity at this slot — do NOT dereference it; read m_pEntity via offset
-    u64 identity = *list_entry + kEntityIdentitySize * (handle & (kChunkSize - 1));
-    auto entity = mem.ReadSafe<u64>(identity + Offsets::m_pEntity);
-    return entity.value_or(0);
+    // Entity pointer is at the CEntityIdentity slot directly (offset 0, not +0x10)
+    u64 slot_addr = *list_entry + kEntityIdentitySize * (handle & (kChunkSize - 1));
+    return mem.ReadSafe<u64>(slot_addr).value_or(0);
 }
 
 /// Get the local player pawn.
@@ -123,15 +123,17 @@ inline u64 FindGloveEntity(ProcessMemory& mem, u64 local_player) {
 
         for (u32 slot = 0; slot < kChunkSize; ++slot) {
             u64 identity = *list_entry + kEntityIdentitySize * slot;
-            auto entity = mem.ReadSafe<u64>(identity + Offsets::m_pEntity);
+            auto entity = mem.ReadSafe<u64>(identity);
             if (!entity || !*entity) continue;
             u64 ent = *entity;
             if (ent == local_player) continue;
 
             // Check if this entity's m_Item points to our embedded item view
             u64 item_addr = mem.Read<u64>(ent + Offsets::m_AttributeManager + Offsets::m_Item);
-            if (item_addr && item_addr != ~0ull && item_addr == target_iv)
+            if (item_addr && item_addr != ~0ull && item_addr == target_iv) {
+                LOG_INFO("FindGloveEntity — found at 0x{:X}", ent);
                 return ent;
+            }
         }
     }
     return 0;

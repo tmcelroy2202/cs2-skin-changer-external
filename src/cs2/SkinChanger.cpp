@@ -51,9 +51,6 @@ bool SkinChanger::Tick() noexcept {
     auto weapons = GetWeapons(mem_, local_player_val);
     bool applied = false;
 
-    // Check if we need to force re-apply
-    if (mgr_.NeedsUpdate()) force_update_ = true;
-
     for (u64 weapon : weapons) {
         u64 item = mem_.Read<u64>(weapon + Offsets::m_AttributeManager + Offsets::m_Item);
         if (!item || item == ~0ull) continue;
@@ -73,18 +70,7 @@ bool SkinChanger::Tick() noexcept {
 
         if (!skin.Paint) continue;
 
-        // Skip already-applied weapons unless force_update
-        auto item_id_raw = mem_.ReadSafe<u32>(item + Offsets::m_iItemIDHigh);
-        if (!item_id_raw) continue;
-        u32 item_id_high = *item_id_raw;
-
-        if (!force_update_ && item_id_high == 0xFFFFFFFF) continue;
-
-        // If force updating, reset itemIDHigh first so the game re-reads fallback
-        if (force_update_)
-            mem_.Write<u32>(item + Offsets::m_iItemIDHigh, 0);
-
-        // Fallback + item-view force
+        // Fallback + item-view force (written every frame for reliability)
         mem_.Write<u32>(weapon + Offsets::m_nFallbackPaintKit, static_cast<u32>(skin.Paint));
         mem_.Write<f32>(weapon + Offsets::m_flFallbackWear, skin.Wear);
         mem_.Write<u32>(weapon + Offsets::m_nFallbackSeed, static_cast<u32>(skin.Pattern));
@@ -100,7 +86,6 @@ bool SkinChanger::Tick() noexcept {
 
         mem_.Write<u32>(item + Offsets::m_iItemIDHigh, 0xFFFFFFFF);
         mem_.Write<u32>(item + Offsets::m_iAccountID, account_id_);
-        mem_.Write<bool>(item + Offsets::m_bInitialized, false);
         mem_.Write<bool>(item + Offsets::m_bRestoreCustomMaterialAfterPrecache, true);
 
         if (is_knife && knife_def > 0 && knife_def != cur_def)
@@ -130,11 +115,8 @@ bool SkinChanger::Tick() noexcept {
     if (ApplyGloves()) applied = true;
 
     if (applied) {
-        force_update_ = false;
         mgr_.ClearUpdate();
         last_tick_ = now;
-    } else {
-        force_update_ = false;
     }
 
     return applied;
@@ -236,29 +218,4 @@ void SkinChanger::DoMeshMask(u64 weapon, u64 node, bool old_model) noexcept {
     mem_.Write<u64>(*hud_node + Offsets::m_modelState + Offsets::m_MeshGroupMask, mask);
 }
 
-void SkinChanger::CallRegenerateWeaponSkins() noexcept {
-    if (!regenerate_addr_) {
-        regenerate_addr_ = mem_.SigScan(L"client.dll", Offsets::Sigs::RegenerateWeaponSkins);
-        if (!regenerate_addr_) {
-            LOG_ERROR("SkinChanger — failed to resolve RegenerateWeaponSkins signature");
-            return;
-        }
-        LOG_INFO("SkinChanger — resolved RegenerateWeaponSkins at 0x{:X}", regenerate_addr_);
-    }
 
-    // Patch the hardcoded offset inside RegenerateWeaponSkins so it uses
-    // the correct attribute list offset for the current game version.
-    if (!regenerate_patched_) {
-        u16 attr_offset = static_cast<u16>(
-            Offsets::m_AttributeManager + Offsets::m_Item +
-            Offsets::m_AttributeList + Offsets::m_Attributes);
-        mem_.Write<u16>(regenerate_addr_ + 0x52, attr_offset);
-        regenerate_patched_ = true;
-        LOG_INFO("SkinChanger — patched RegenerateWeaponSkins +0x52 with attr offset 0x{:04X}",
-                 attr_offset);
-    }
-
-    LOG_INFO("SkinChanger — calling RegenerateWeaponSkins remotely");
-    if (!mem_.CallRemoteThread(regenerate_addr_))
-        LOG_ERROR("SkinChanger — CallRemoteThread failed");
-}
