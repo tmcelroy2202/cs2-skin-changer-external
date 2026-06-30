@@ -1,5 +1,7 @@
-<h1 align="center">VeneeR</h1>
-<h3 align="center">External Skin Changer &middot; Counter-Strike 2</h3>
+<h1 align="center">
+<img width="1200" height="300" alt="ChatGPT Image Jun 30, 2026, 09_08_47 PM" src="https://github.com/user-attachments/assets/59e55e3f-7f1b-4793-8d46-442c84002517" />
+ </h1>
+<h3 align="center">VeneeR &middot; External Skin Changer &middot; Counter-Strike 2</h3>
 <p align="center">
   Standalone overlay &middot; D3D11 &middot; Dear ImGui &middot; No injection
 </p>
