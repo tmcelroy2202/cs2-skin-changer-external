@@ -156,40 +156,37 @@ bool SkinChanger::ApplyGloves() noexcept {
         return false;
     }
 
-    u64 glove_data = *local_player + Offsets::m_EconGloves;
-    auto handle = mem_.ReadSafe<u32>(glove_data);
-    if (!handle || !*handle) {
-        LOG_WARN("ApplyGloves — no glove handle found at 0x{:X}", glove_data);
-        return false;
+    // m_EconGloves is C_EconItemView embedded-by-value in the player pawn.
+    // Direct field access on the embedded item view:
+    u64 glove_iv = *local_player + Offsets::m_EconGloves;
+
+    // Find the glove entity (C_EconGloves) via entity list scan.
+    // Its m_Item pointer should match the embedded item view address.
+    u64 glove_entity = FindGloveEntity(mem_, *local_player);
+
+    if (glove_entity) {
+        // Write fallback values to the glove entity
+        mem_.Write<u32>(glove_entity + Offsets::m_nFallbackPaintKit, static_cast<u32>(glove_paint));
+        mem_.Write<f32>(glove_entity + Offsets::m_flFallbackWear, 0.01f);
+        mem_.Write<u32>(glove_entity + Offsets::m_nFallbackStatTrak, 0xFFFFFFFF);
+        mem_.Write<u32>(glove_entity + Offsets::m_OriginalOwnerXuidLow, 0);
+        mem_.Write<u32>(glove_entity + Offsets::m_OriginalOwnerXuidHigh, 0);
+    } else {
+        LOG_WARN("ApplyGloves — glove entity not found; writing fallback to item view only");
     }
 
-    u64 glove_entity = GetEntityByHandle(mem_, *handle);
-    if (!glove_entity) {
-        LOG_WARN("ApplyGloves — GetEntityByHandle failed for handle 0x{:X}", *handle);
-        return false;
-    }
+    // Write item view fields directly to the embedded C_EconItemView
+    mem_.Write<u32>(glove_iv + Offsets::m_iItemIDHigh, 0xFFFFFFFF);
+    mem_.Write<u32>(glove_iv + Offsets::m_iAccountID, account_id_);
+    mem_.Write<bool>(glove_iv + Offsets::m_bInitialized, false);
+    mem_.Write<bool>(glove_iv + Offsets::m_bRestoreCustomMaterialAfterPrecache, true);
 
-    u64 item = mem_.Read<u64>(glove_entity + Offsets::m_AttributeManager + Offsets::m_Item);
-    if (!item || item == ~0ull) {
-        LOG_WARN("ApplyGloves — no econ item at glove entity 0x{:X}", glove_entity);
-        return false;
-    }
-
-    mem_.Write<u32>(glove_entity + Offsets::m_nFallbackPaintKit, static_cast<u32>(glove_paint));
-    mem_.Write<f32>(glove_entity + Offsets::m_flFallbackWear, 0.01f);
-    mem_.Write<u32>(glove_entity + Offsets::m_nFallbackStatTrak, 0xFFFFFFFF);
-    mem_.Write<u32>(glove_entity + Offsets::m_OriginalOwnerXuidLow, 0);
-    mem_.Write<u32>(glove_entity + Offsets::m_OriginalOwnerXuidHigh, 0);
-
-    mem_.Write<u32>(item + Offsets::m_iItemIDHigh, 0xFFFFFFFF);
-    mem_.Write<u32>(item + Offsets::m_iAccountID, account_id_);
-    mem_.Write<bool>(item + Offsets::m_bInitialized, false);
-    mem_.Write<bool>(item + Offsets::m_bRestoreCustomMaterialAfterPrecache, true);
-
+    // Attribute creation: use the item view address directly
     SkinInfo_t glove_skin{glove_paint, 0.01f, 0, -1, "", false, "Glove", WeaponsEnum::None};
-    if (!attr_mgr_.Create(item, glove_skin))
-        LOG_WARN("ApplyGloves — attr_mgr_.Create failed for item 0x{:X} paint={}", item, glove_paint);
+    if (!attr_mgr_.Create(glove_iv, glove_skin))
+        LOG_WARN("ApplyGloves — attr_mgr_.Create failed for glove_iv 0x{:X} paint={}", glove_iv, glove_paint);
 
+    // Hide hud arms model mask
     u64 hud_arms = GetHudArms(mem_);
     if (hud_arms) {
         auto node = mem_.ReadSafe<u64>(hud_arms + Offsets::m_pGameSceneNode);

@@ -107,6 +107,36 @@ inline u64 GetHudWeapon(ProcessMemory& mem, u64 weapon) {
     return 0;
 }
 
+/// Find the C_EconGloves entity by scanning the entity list.
+/// The glove entity's m_Item pointer points to the embedded C_EconItemView
+/// at local_player + m_EconGloves.
+inline u64 FindGloveEntity(ProcessMemory& mem, u64 local_player) {
+    if (!local_player) return 0;
+    u64 target_iv = local_player + Offsets::m_EconGloves;
+
+    auto entity_list_base = mem.ReadSafe<u64>(mem.Client() + Offsets::dwEntityList);
+    if (!entity_list_base || !*entity_list_base) return 0;
+
+    for (u32 chunk_idx = 0; chunk_idx < kChunkArraySize; ++chunk_idx) {
+        auto list_entry = mem.ReadSafe<u64>(*entity_list_base + sizeof(u64) * chunk_idx + 0x10);
+        if (!list_entry || !*list_entry) continue;
+
+        for (u32 slot = 0; slot < kChunkSize; ++slot) {
+            u64 identity = *list_entry + kEntityIdentitySize * slot;
+            auto entity = mem.ReadSafe<u64>(identity + Offsets::m_pEntity);
+            if (!entity || !*entity) continue;
+            u64 ent = *entity;
+            if (ent == local_player) continue;
+
+            // Check if this entity's m_Item points to our embedded item view
+            u64 item_addr = mem.Read<u64>(ent + Offsets::m_AttributeManager + Offsets::m_Item);
+            if (item_addr && item_addr != ~0ull && item_addr == target_iv)
+                return ent;
+        }
+    }
+    return 0;
+}
+
 /// Get the active weapon definition from the player's weapon services.
 inline WeaponsEnum GetActiveWeaponDef(ProcessMemory& mem, u64 local_player) {
     auto weapon_services = mem.ReadSafe<u64>(local_player + Offsets::m_pWeaponServices);
