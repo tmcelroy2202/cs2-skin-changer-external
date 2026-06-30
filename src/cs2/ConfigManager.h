@@ -6,6 +6,8 @@
 #include <sstream>
 #include <filesystem>
 #include <charconv>
+#include <cstdlib>
+#include <vector>
 
 /* ── ConfigManager ──────────────────────────────────────────────────────────
  *
@@ -30,29 +32,44 @@ inline void SaveConfig(SkinManager& mgr, u16 music_kit_id) {
     f << "# VeneeR loadout\n";
     f << "# Format: weapon_def_id = paint_id, wear, pattern, name, old_model(0/1)\n\n";
 
-    // Per-weapon skins
+    // Per-weapon skins (format: def = paint, wear, pattern, name, old_model[, statTrak])
     for (auto& s : mgr.active_skins) {
         i32 def = static_cast<i32>(s.weaponType);
         if (def > 0 && s.Paint > 0) {
             f << def << " = " << s.Paint << ", " << s.Wear << ", " << s.Pattern
-              << ", " << s.name << ", " << (s.bUsesOldModel ? 1 : 0) << "\n";
+              << ", " << s.name << ", " << (s.bUsesOldModel ? 1 : 0)
+              << ", " << s.StatTrak << "\n";
         }
     }
 
     f << "\n";
 
-    // Knife
-    i32 kdef = static_cast<i32>(mgr.GetKnifeDef());
-    i32 kpnt = mgr.GetKnifePaint();
-    if (kpnt > 0) {
-        f << "knife = " << kdef << ", " << kpnt << "\n";
+    // Knife — CT and T
+    {
+        i32 kdef = static_cast<i32>(mgr.GetKnifeDef(true));
+        i32 kpnt = mgr.GetKnifePaint(true);
+        if (kpnt > 0)
+            f << "knife_ct = " << kdef << ", " << kpnt << "\n";
+    }
+    {
+        i32 kdef = static_cast<i32>(mgr.GetKnifeDef(false));
+        i32 kpnt = mgr.GetKnifePaint(false);
+        if (kpnt > 0)
+            f << "knife = " << kdef << ", " << kpnt << "\n";
     }
 
-    // Gloves
-    i32 gpnt = mgr.GetGlovePaint();
-    i32 gdef = static_cast<i32>(mgr.GetGloveDef());
-    if (gpnt > 0) {
-        f << "glove = " << gdef << ", " << gpnt << "\n";
+    // Gloves — CT and T
+    {
+        i32 gpnt = mgr.GetGlovePaint(true);
+        i32 gdef = static_cast<i32>(mgr.GetGloveDef(true));
+        if (gpnt > 0)
+            f << "glove_ct = " << gdef << ", " << gpnt << "\n";
+    }
+    {
+        i32 gpnt = mgr.GetGlovePaint(false);
+        i32 gdef = static_cast<i32>(mgr.GetGloveDef(false));
+        if (gpnt > 0)
+            f << "glove = " << gdef << ", " << gpnt << "\n";
     }
 
     // Music kit
@@ -83,14 +100,27 @@ inline void LoadConfig(SkinManager& mgr, u16& music_kit_id) {
             int kdef, kpnt;
             char comma;
             if (ss >> kdef >> comma >> kpnt) {
-                mgr.SetKnife(static_cast<WeaponsEnum>(kdef), kpnt);
+                mgr.SetTeamKnife(static_cast<WeaponsEnum>(kdef), kpnt, false);
+            }
+        } else if (key == "knife_ct") {
+            int kdef, kpnt;
+            char comma;
+            if (ss >> kdef >> comma >> kpnt) {
+                mgr.SetTeamKnife(static_cast<WeaponsEnum>(kdef), kpnt, true);
             }
         } else if (key == "glove") {
             int gdef, gpnt;
             char comma;
             if (ss >> gdef >> comma >> gpnt) {
-                SkinInfo_t glove_skin{gpnt, 0.01f, 0, false, "Glove", WeaponsEnum::None};
-                mgr.SetGloveSkin(glove_skin, static_cast<GlovesEnum>(gdef));
+                SkinInfo_t glove_skin{gpnt, 0.01f, 0, -1, "", false, "Glove", WeaponsEnum::None};
+                mgr.SetTeamGloveSkin(glove_skin, static_cast<GlovesEnum>(gdef), false);
+            }
+        } else if (key == "glove_ct") {
+            int gdef, gpnt;
+            char comma;
+            if (ss >> gdef >> comma >> gpnt) {
+                SkinInfo_t glove_skin{gpnt, 0.01f, 0, -1, "", false, "Glove", WeaponsEnum::None};
+                mgr.SetTeamGloveSkin(glove_skin, static_cast<GlovesEnum>(gdef), true);
             }
         } else if (key == "music_kit") {
             int mid;
@@ -106,16 +136,36 @@ inline void LoadConfig(SkinManager& mgr, u16& music_kit_id) {
             int paint;
             float wear;
             int pattern;
-            char c1, c2, c3;
-            std::string name;
-            int old_model = 0;
+            char c1, c2;
+            std::string rest;
             if (ss >> paint >> c1 >> wear >> c2 >> pattern) {
-                if (ss >> c3) {
-                    std::getline(ss, name, ',');
-                    if (!name.empty() && name.front() == ' ') name.erase(0, 1);
-                    ss >> old_model;
+                // Parse trailing name, old_model, statTrak (if present)
+                std::getline(ss, rest);
+                auto trim_front = [](std::string& s) {
+                    while (!s.empty() && s.front() == ' ') s.erase(0, 1);
+                };
+                trim_front(rest);
+
+                std::string name;
+                i32 old_model = 0;
+                i32 stat_trak = -1;
+
+                // Split rest by commas
+                std::vector<std::string> parts;
+                std::stringstream rs(rest);
+                std::string part;
+                while (std::getline(rs, part, ',')) {
+                    trim_front(part);
+                    if (!part.empty())
+                        parts.push_back(part);
                 }
-                SkinInfo_t skin{paint, wear, pattern, old_model != 0, name, static_cast<WeaponsEnum>(def)};
+
+                if (parts.size() >= 1) name = parts[0];
+                if (parts.size() >= 2) old_model = std::atoi(parts[1].c_str());
+                if (parts.size() >= 3) stat_trak = std::atoi(parts[2].c_str());
+
+                SkinInfo_t skin{paint, wear, pattern, stat_trak, "",
+                                old_model != 0, name, static_cast<WeaponsEnum>(def)};
                 mgr.SetSkin(skin);
             }
         }

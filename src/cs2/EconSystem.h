@@ -1,6 +1,7 @@
 #pragma once
 
 #include "core/ProcessMemory.h"
+#include "core/Logging.h"
 #include "Offsets.h"
 #include "WeaponTypes.h"
 #include "EntitySystem.h"
@@ -10,6 +11,18 @@
  * Manages econ item attributes (paint kit, pattern, wear) on weapon items.
  * Reads a valid vtable from existing attributes in the CS2 process so that
  * the game doesn't crash when iterating the attribute list.
+ *
+ * ── Layout note ──────────────────────────────────────────────────────────
+ * CAttributeList::m_Attributes is CUtlVector<CEconItemAttribute*>
+ * (a vector of pointers to individually-allocated attribute structs).
+ * This implementation uses a single allocation per batch:
+ *
+ *    block[0 .. kAttrCount * sizeof(CEconItemAttribute))
+ *      ─ the kAttrCount attribute structs, laid out consecutively
+ *    block[offset .. offset + kAttrCount * sizeof(u64))
+ *      ─ the pointer array, each entry pointing into the struct area above
+ *
+ *    vec.ptr = block + ptr_array_offset
  * ──────────────────────────────────────────────────────────────────────────── */
 
 struct CPtrGameVector {
@@ -22,7 +35,7 @@ struct CEconItemAttribute {
     u64     vtable{};          // 0x00  — must point to valid CEconItemAttribute vtable
     u64     owner{};           // 0x08  — pointer to the owning C_EconItemView
     u8      pad_0010[32]{};   // 0x10
-    u16     defIndex{};        // 0x30  — attribute definition index
+    u16     defIndex{};        // 0x30  — attribute definition index (CUtlStringToken)
     u8      pad_0032[2]{};
     f32     value{};           // 0x34
     f32     initValue{};       // 0x38
@@ -45,50 +58,81 @@ public:
     bool Create(u64 item, const SkinInfo_t& skin) noexcept {
         if (!skin.Paint) return false;
 
-        // Must have a valid vtable — without it CS2 crashes when iterating attrs
-        if (!ResolveVtable()) return false;
-
-        std::vector<CEconItemAttribute> attrs;
-        attrs.push_back(MakeAttribute(Attr_Paint,   static_cast<f32>(skin.Paint), item));
-        attrs.push_back(MakeAttribute(Attr_Pattern, static_cast<f32>(skin.Pattern), item));
-        attrs.push_back(MakeAttribute(Attr_Wear,    skin.Wear, item));
-
-        auto existing = mem_.ReadSafe<CPtrGameVector>(
-            item + Offsets::m_AttributeList + Offsets::m_Attributes);
-        if (!existing) return false;
-        if (existing->size || existing->ptr) {
-            Remove(item);
+        if (!ResolveVtable()) {
+            LOG_WARN("EconItemAttributeManager::Create — failed to resolve vtable");
+            return false;
         }
 
-        u64 block = mem_.Allocate();
-        if (!block) return false;
+        constexpr u32 kPtrArrayOffset = kAttrCount * kAttrSize;
+        constexpr u32 kBlockSize = kPtrArrayOffset + kAttrCount * sizeof(u64);
 
-        for (usize i = 0; i < attrs.size(); ++i) {
-            if (!mem_.Write(block + i * sizeof(CEconItemAttribute), attrs[i])) {
+        CEconItemAttribute attrs[kAttrCount];
+        attrs[0] = MakeAttribute(Attr_Paint,   static_cast<f32>(skin.Paint),   item);
+        attrs[1] = MakeAttribute(Attr_Pattern, static_cast<f32>(skin.Pattern), item);
+        attrs[2] = MakeAttribute(Attr_Wear,    skin.Wear,                      item);
+
+        // Remove any existing attributes first
+        if (!RemoveInternal(item)) return false;
+
+        u64 block = mem_.Allocate(0, kBlockSize);
+        if (!block) {
+            LOG_WARN("EconItemAttributeManager::Create — VirtualAllocEx failed");
+            return false;
+        }
+
+        // Write attribute structs
+        for (u32 i = 0; i < kAttrCount; ++i) {
+            if (!mem_.Write(block + i * kAttrSize, attrs[i])) {
+                LOG_WARN("EconItemAttributeManager::Create — Write attrs failed at i={}", i);
                 mem_.Free(block);
                 return false;
             }
         }
 
+        // Write pointer array (each entry points into the struct area above)
+        for (u32 i = 0; i < kAttrCount; ++i) {
+            u64 p = block + i * kAttrSize;
+            if (!mem_.Write<u64>(block + kPtrArrayOffset + i * sizeof(u64), p)) {
+                LOG_WARN("EconItemAttributeManager::Create — Write ptrs failed at i={}", i);
+                mem_.Free(block);
+                return false;
+            }
+        }
+
+        // Set the game's attribute vector: ptr → pointer array inside our block
         CPtrGameVector vec;
-        vec.size = attrs.size();
-        vec.ptr  = block;
+        vec.size = kAttrCount;
+        vec.ptr  = block + kPtrArrayOffset;
         mem_.Write(item + Offsets::m_AttributeList + Offsets::m_Attributes, vec);
         return true;
     }
 
     void Remove(u64 item) noexcept {
-        u64 attr_addr = item + Offsets::m_AttributeList + Offsets::m_Attributes;
-        auto attrs = mem_.ReadSafe<CPtrGameVector>(attr_addr);
-        if (!attrs || !attrs->size || !attrs->ptr) return;
-
-        mem_.Write(attr_addr, CPtrGameVector{});
-        mem_.Free(attrs->ptr);
+        RemoveInternal(item);
     }
 
 private:
     ProcessMemory& mem_;
     u64 cached_vtable_ = 0;
+    static constexpr u32 kAttrCount = 3;
+    static constexpr u32 kAttrSize  = sizeof(CEconItemAttribute);
+
+    // Remove the attribute list and try to free our allocation.
+    // Returns true on success or if nothing to remove.
+    bool RemoveInternal(u64 item) noexcept {
+        u64 attr_addr = item + Offsets::m_AttributeList + Offsets::m_Attributes;
+        auto attrs = mem_.ReadSafe<CPtrGameVector>(attr_addr);
+        if (!attrs || !attrs->size || !attrs->ptr) return true;
+
+        mem_.Write(attr_addr, CPtrGameVector{});
+
+        // Only free if this is OUR allocation (matches our attribute count)
+        if (attrs->size == kAttrCount) {
+            u64 block = attrs->ptr - static_cast<u64>(kAttrCount) * kAttrSize;
+            mem_.Free(block);
+        }
+        return true;
+    }
 
     // Walk the player's weapons to find an existing CEconItemAttribute
     // and cache its vtable.  Called once; subsequent calls are no-ops.
@@ -112,25 +156,23 @@ private:
             auto handle = mem_.ReadSafe<u32>(*list_ptr + sizeof(u32) * i);
             if (!handle || !*handle) continue;
 
-            // Resolve handle → entity pointer (same formula as GetEntityByHandle)
-            auto entity_list = mem_.ReadSafe<u64>(mem_.Client() + Offsets::dwEntityList);
-            if (!entity_list || !*entity_list) continue;
+            u64 weapon = GetEntityByHandle(mem_, *handle);
+            if (!weapon) continue;
 
-            auto list_entry = mem_.ReadSafe<u64>(*entity_list + sizeof(u64) * ((*handle & 0x7FFF) >> 9) + 0x10);
-            if (!list_entry || !*list_entry) continue;
-
-            auto weapon = mem_.ReadSafe<u64>(*list_entry + kEntityIdentitySize * (*handle & (kChunkSize - 1)));
-            if (!weapon || !*weapon) continue;
-
-            u64 item_addr = mem_.Read<u64>(*weapon + Offsets::m_AttributeManager + Offsets::m_Item);
+            u64 item_addr = mem_.Read<u64>(weapon + Offsets::m_AttributeManager + Offsets::m_Item);
             if (!item_addr || item_addr == ~0ull) continue;
             auto attrs = mem_.ReadSafe<CPtrGameVector>(
                 item_addr + Offsets::m_AttributeList + Offsets::m_Attributes);
             if (attrs && attrs->size > 0 && attrs->ptr) {
                 auto vtable = mem_.ReadSafe<u64>(attrs->ptr);
                 if (vtable && *vtable) {
-                    cached_vtable_ = *vtable;
-                    return true;
+                    // Validate: vtable must be in readable memory
+                    if (mem_.ReadSafe<u8>(*vtable)) {
+                        cached_vtable_ = *vtable;
+                        LOG_INFO("EconItemAttributeManager — resolved vtable to 0x{:X}", *vtable);
+                        return true;
+                    }
+                    LOG_WARN("EconItemAttributeManager — vtable 0x{:X} not readable", *vtable);
                 }
             }
         }

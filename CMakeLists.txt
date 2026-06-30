@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(CS2SkinChanger VERSION 1.4.1 LANGUAGES C CXX)
+project(CS2SkinChanger VERSION 1.5.0 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -13,7 +13,6 @@ endif()
 # ── Build mode ─────────────────────────────────────────────────────────────────
 option(CSC_BUILD_STANDALONE
     "Build as standalone overlay EXE (OFF = injected DLL)" ON)
-
 message(STATUS "Build mode: ${CSC_BUILD_STANDALONE}"
                "  (standalone=${CSC_BUILD_STANDALONE})")
 
@@ -29,7 +28,7 @@ if(CSC_BUILD_STANDALONE)
         target_link_options(CS2SkinChanger PRIVATE /ENTRY:mainCRTStartup)
     endif()
 else()
-    add_library(CS2SkinChanger SHARED)
+    add_library(CS2SkinChanger SHARED) 
 
     # MinHook sources (C files compiled as C by MSVC)
     target_sources(CS2SkinChanger PRIVATE
@@ -46,6 +45,7 @@ else()
         PROPERTIES LANGUAGE C
     )
 endif()
+
 
 target_include_directories(CS2SkinChanger PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/src"

@@ -6,6 +6,9 @@
 #include <fstream>
 #include <sstream>
 #include <vector>
+#include <thread>
+#include <mutex>
+#include <set>
 #include <objbase.h>
 #include <d3d11.h>
 #include <wincodec.h>
@@ -44,24 +47,68 @@ public:
     }
 
     /// Request async texture load (queued for next ProcessPending call).
+    /// If not cached on disk, spawns a background download thread.
+    /// Retries failed loads on subsequent Request calls.
     void Request(i32 paint_id, WeaponsEnum weapon) {
-        if (map_.contains(paint_id)) return;
-        auto& e = map_[paint_id];
-        if (e.pending) return;
-        e.pending = true;
-        e.weapon = weapon;
-        pending_.push_back(paint_id);
+        auto it = map_.find(paint_id);
+        if (it != map_.end()) {
+            if (it->second.srv) return;         // already loaded
+            if (it->second.pending) return;     // already queued for load
+            if (downloading_.count(paint_id)) return; // already downloading
+            // Not cached, not pending, not downloading — start download
+            if (!std::filesystem::exists(ImagePath(paint_id))) {
+                downloading_.insert(paint_id);
+                StartDownload(paint_id, weapon);
+                return;
+            }
+            // File is now cached — queue for SRV creation on render thread
+            it->second.pending = true;
+            it->second.weapon = weapon;
+            pending_.push_back(paint_id);
+            return;
+        }
+        // First request
+        if (std::filesystem::exists(ImagePath(paint_id))) {
+            map_[paint_id] = Entry{nullptr, weapon, true};
+            pending_.push_back(paint_id);
+        } else {
+            map_[paint_id] = Entry{nullptr, weapon, false};
+            if (!downloading_.count(paint_id)) {
+                downloading_.insert(paint_id);
+                StartDownload(paint_id, weapon);
+            }
+        }
     }
 
-    /// Load one pending texture (call each frame until queue empty).
+    /// Load pending textures that have been downloaded to disk.
+    /// Call each frame until queue empty.
     void ProcessPending() {
+        // Pick up newly completed downloads
+        std::vector<i32> batch;
+        {
+            std::lock_guard lock(download_state_->mutex);
+            batch.swap(download_state_->completed);
+        }
+        for (i32 pid : batch) {
+            downloading_.erase(pid);
+            auto it = map_.find(pid);
+            if (it != map_.end() && !it->second.srv) {
+                it->second.pending = true;
+                pending_.push_back(pid);
+            }
+        }
+
+        // Process one pending item per frame (non-blocking)
         if (pending_.empty()) return;
         i32 pid = pending_.back();
         pending_.pop_back();
 
         auto& e = map_[pid];
         e.pending = false;
-        e.srv = LoadTexture(pid, e.weapon);
+
+        if (std::filesystem::exists(ImagePath(pid))) {
+            e.srv = LoadTexture(pid, e.weapon);
+        }
     }
 
     void Clear() {
@@ -71,6 +118,7 @@ public:
         map_.clear();
         names_.clear();
         pending_.clear();
+        downloading_.clear();
     }
 
     bool IsLoaded(i32 paint_id) const {
@@ -89,6 +137,13 @@ private:
     std::unordered_map<i32, Entry> map_;
     std::unordered_map<i32, std::string> names_;
     std::vector<i32> pending_;
+    std::set<i32> downloading_;          // paint_ids currently being downloaded (render thread only)
+
+    struct DownloadState {
+        std::mutex mutex;
+        std::vector<i32> completed;
+    };
+    std::shared_ptr<DownloadState> download_state_ = std::make_shared<DownloadState>();
 
     static std::filesystem::path CacheDir() {
         const char* appdata = getenv("APPDATA");
@@ -228,6 +283,21 @@ private:
              + std::string(wname) + "_" + name_it->second + "_light_large.256x256.png";
     }
 
+    // ── Async download ─────────────────────────────────────────────────────
+
+    void StartDownload(i32 paint_id, WeaponsEnum weapon) {
+        auto url = MakeURL(paint_id, weapon);
+        if (url.empty()) return;
+        auto path = ImagePath(paint_id);
+        auto state = download_state_;
+        std::thread t([paint_id, url, path, state]() {
+            Offsets::DownloadUrl(url.c_str(), path);
+            std::lock_guard lock(state->mutex);
+            state->completed.push_back(paint_id);
+        });
+        t.detach();
+    }
+
     // ── Texture loading ────────────────────────────────────────────────────
 
     ID3D11ShaderResourceView* LoadTexture(i32 paint_id, WeaponsEnum weapon) {
@@ -244,27 +314,32 @@ private:
     }
 
     ID3D11ShaderResourceView* CreateSRVFromFile(const std::filesystem::path& path) {
+        // WIC requires COM on this thread. Safe to call even if already init'd
+        // (returns S_FALSE, needs matching CoUninitialize).
+        HRESULT coInit = CoInitializeEx(nullptr, COINIT_MULTITHREADED);
+        auto comCleanup = [coInit] { if (SUCCEEDED(coInit)) CoUninitialize(); };
+
         IWICImagingFactory* factory = nullptr;
         HRESULT hr = CoCreateInstance(CLSID_WICImagingFactory, nullptr,
             CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&factory));
-        if (FAILED(hr)) return nullptr;
+        if (FAILED(hr)) { comCleanup(); return nullptr; }
 
         IWICBitmapDecoder* decoder = nullptr;
         hr = factory->CreateDecoderFromFilename(path.wstring().c_str(), nullptr,
             GENERIC_READ, WICDecodeMetadataCacheOnDemand, &decoder);
-        if (FAILED(hr)) { factory->Release(); return nullptr; }
+        if (FAILED(hr)) { factory->Release(); comCleanup(); return nullptr; }
 
         IWICBitmapFrameDecode* frame = nullptr;
         hr = decoder->GetFrame(0, &frame);
-        if (FAILED(hr)) { decoder->Release(); factory->Release(); return nullptr; }
+        if (FAILED(hr)) { decoder->Release(); factory->Release(); comCleanup(); return nullptr; }
 
         IWICFormatConverter* converter = nullptr;
         hr = factory->CreateFormatConverter(&converter);
-        if (FAILED(hr)) { frame->Release(); decoder->Release(); factory->Release(); return nullptr; }
+        if (FAILED(hr)) { frame->Release(); decoder->Release(); factory->Release(); comCleanup(); return nullptr; }
 
         hr = converter->Initialize(frame, GUID_WICPixelFormat32bppRGBA,
             WICBitmapDitherTypeNone, nullptr, 0.0, WICBitmapPaletteTypeCustom);
-        if (FAILED(hr)) { converter->Release(); frame->Release(); decoder->Release(); factory->Release(); return nullptr; }
+        if (FAILED(hr)) { converter->Release(); frame->Release(); decoder->Release(); factory->Release(); comCleanup(); return nullptr; }
 
         UINT width = 0, height = 0;
         converter->GetSize(&width, &height);
@@ -276,6 +351,7 @@ private:
         frame->Release();
         decoder->Release();
         factory->Release();
+        comCleanup();
 
         if (FAILED(hr)) return nullptr;
 

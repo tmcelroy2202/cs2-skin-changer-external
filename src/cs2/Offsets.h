@@ -54,6 +54,7 @@ inline std::ptrdiff_t m_pEntity                = 0x10;
 inline std::ptrdiff_t m_flags                  = 0x30;
 
 // ── C_CSPlayerPawn ────────────────────────────────────────────────────────────
+inline std::ptrdiff_t m_iTeamNum               = 0x3BB;
 inline std::ptrdiff_t m_pClippingWeapon        = 0x15D0;
 inline std::ptrdiff_t m_hHudModelArms          = 0x1600;
 inline std::ptrdiff_t m_bNeedToReApplyGloves   = 0x15F7;
@@ -152,6 +153,7 @@ inline bool LoadFromFile(const std::filesystem::path& path) {
         {"m_hOwnerEntity",           &m_hOwnerEntity},
         {"m_pEntity",                &m_pEntity},
         {"m_flags",                  &m_flags},
+        {"m_iTeamNum",               &m_iTeamNum},
         {"m_pClippingWeapon",        &m_pClippingWeapon},
         {"m_hHudModelArms",          &m_hHudModelArms},
         {"m_bNeedToReApplyGloves",   &m_bNeedToReApplyGloves},
@@ -253,6 +255,7 @@ inline bool SaveToFile(const std::filesystem::path& path) {
     write("m_hOwnerEntity",           m_hOwnerEntity);
     write("m_pEntity",                m_pEntity);
     write("m_flags",                  m_flags);
+    write("m_iTeamNum",               m_iTeamNum);
     f << "\n";
     write("m_pClippingWeapon",        m_pClippingWeapon);
     write("m_hHudModelArms",          m_hHudModelArms);
@@ -317,13 +320,13 @@ inline bool DownloadUrl(const char* url, const std::filesystem::path& out) noexc
     HMODULE urlmon = ::LoadLibraryW(L"urlmon.dll");
     if (!urlmon) return false;
 
-    // "URLDownloadToFileA" XOR 0xAB
+    // "URLDownloadToFileA" XOR 0x5C
     static constexpr unsigned char kName[] = {
-        0xFE, 0xF9, 0xE7, 0xEF, 0xC4, 0xDC, 0xC5, 0xC7,
-        0xC4, 0xCA, 0xCF, 0xFF, 0xC4, 0xED, 0xC2, 0xC7,
-        0xCE, 0xEA };
+        0x09, 0x0E, 0x10, 0x18, 0x33, 0x2B, 0x32, 0x30,
+        0x33, 0x3D, 0x38, 0x08, 0x33, 0x1A, 0x35, 0x30,
+        0x39, 0x1D };
     char name[19]{};
-    for (int i = 0; i < 18; ++i) name[i] = static_cast<char>(kName[i] ^ 0xAB);
+    for (int i = 0; i < 18; ++i) name[i] = static_cast<char>(kName[i] ^ 0x5C);
 
     using Fn = HRESULT(STDAPICALLTYPE*)(void*, const char*, const char*, DWORD, void*);
     auto fn = reinterpret_cast<Fn>(::GetProcAddress(urlmon, name));
@@ -444,6 +447,7 @@ inline bool UpdateFromRemote() noexcept {
         {"m_hOwnerEntity",           &m_hOwnerEntity},
         {"m_pEntity",                &m_pEntity},
         {"m_flags",                  &m_flags},
+        {"m_iTeamNum",               &m_iTeamNum},
         {"m_pClippingWeapon",        &m_pClippingWeapon},
         {"m_hHudModelArms",          &m_hHudModelArms},
         {"m_bNeedToReApplyGloves",   &m_bNeedToReApplyGloves},

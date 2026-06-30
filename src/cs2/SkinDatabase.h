@@ -34,7 +34,7 @@ public:
     {
         std::vector<SkinInfo_t> results;
         if (include_vanilla)
-            results.push_back({0, 0.01f, 0, false, "Vanilla", WeaponsEnum::None});
+            results.push_back({0, 0.01f, 0, -1, "", false, "Vanilla", WeaponsEnum::None});
 
         i32 def = static_cast<i32>(weapon);
         auto it = db_.find(def);
@@ -45,7 +45,7 @@ public:
         for (auto& entry : it->second) {
             if (seen.count(entry.paint_id)) continue;
             seen.insert(entry.paint_id);
-            results.push_back({entry.paint_id, 0.01f, 0, entry.legacy_model, entry.name, weapon});
+            results.push_back({entry.paint_id, 0.01f, 0, -1, "", entry.legacy_model, entry.name, weapon});
         }
         return results;
     }
@@ -58,7 +58,7 @@ public:
 
         for (auto& entry : it->second) {
             if (entry.name.find(name) != std::string::npos) {
-                return {entry.paint_id, 0.01f, 0, entry.legacy_model, entry.name, weapon};
+                return {entry.paint_id, 0.01f, 0, -1, "", entry.legacy_model, entry.name, weapon};
             }
         }
         return {};
@@ -70,13 +70,13 @@ public:
     {
         std::vector<SkinInfo_t> results;
         if (include_default)
-            results.push_back({0, 0.01f, 0, false, "Default", WeaponsEnum::None});
+            results.push_back({0, 0.01f, 0, -1, "", false, "Default", WeaponsEnum::None});
 
         auto it = gloves_.find(static_cast<i32>(glove));
         if (it == gloves_.end()) return results;
 
         for (auto& entry : it->second) {
-            results.push_back({entry.paint_id, 0.01f, 0, false, entry.name, WeaponsEnum::None});
+            results.push_back({entry.paint_id, 0.01f, 0, -1, "", false, entry.name, WeaponsEnum::None});
         }
         return results;
     }
@@ -603,23 +603,43 @@ public:
     }
 
     void SetGloveSkin(const SkinInfo_t& skin, GlovesEnum glove_def = GlovesEnum{}) noexcept {
-        glove_paint_ = skin.Paint;
-        glove_def_ = glove_def;
+        SetTeamGloveSkin(skin, glove_def, false);
+    }
+
+    void SetTeamGloveSkin(const SkinInfo_t& skin, GlovesEnum glove_def, bool ct_team) noexcept {
+        auto& gp = ct_team ? ct_glove_paint_ : t_glove_paint_;
+        auto& gd = ct_team ? ct_glove_def_ : t_glove_def_;
+        gp = skin.Paint;
+        gd = glove_def;
         force_update_ = true;
     }
 
-    i32 GetGlovePaint() const noexcept { return glove_paint_; }
-    GlovesEnum GetGloveDef() const noexcept { return glove_def_; }
+    i32 GetGlovePaint(bool ct_team = false) const noexcept {
+        return ct_team ? ct_glove_paint_ : t_glove_paint_;
+    }
+    GlovesEnum GetGloveDef(bool ct_team = false) const noexcept {
+        return ct_team ? ct_glove_def_ : t_glove_def_;
+    }
 
     // ── Knife selection ──────────────────────────────────────────────────
     void SetKnife(WeaponsEnum knife_def, i32 paint) noexcept {
-        knife_def_   = knife_def;
-        knife_paint_ = paint;
+        SetTeamKnife(knife_def, paint, false);
+    }
+
+    void SetTeamKnife(WeaponsEnum knife_def, i32 paint, bool ct_team) noexcept {
+        auto& kd = ct_team ? ct_knife_def_ : t_knife_def_;
+        auto& kp = ct_team ? ct_knife_paint_ : t_knife_paint_;
+        kd = knife_def;
+        kp = paint;
         force_update_ = true;
     }
 
-    WeaponsEnum GetKnifeDef() const noexcept { return knife_def_; }
-    i32 GetKnifePaint() const noexcept { return knife_paint_; }
+    WeaponsEnum GetKnifeDef(bool ct_team = false) const noexcept {
+        return ct_team ? ct_knife_def_ : t_knife_def_;
+    }
+    i32 GetKnifePaint(bool ct_team = false) const noexcept {
+        return ct_team ? ct_knife_paint_ : t_knife_paint_;
+    }
 
     bool IsKnifeDef(i32 def) const noexcept {
         return def == static_cast<i32>(WeaponsEnum::CtKnife) ||
@@ -645,8 +665,12 @@ public:
 
 private:
     bool force_update_ = false;
-    i32  glove_paint_  = 0;
-    GlovesEnum glove_def_ = GlovesEnum{};
-    WeaponsEnum knife_def_   = WeaponsEnum{};
-    i32         knife_paint_ = 0;
+    i32  ct_glove_paint_  = 0;
+    i32  t_glove_paint_   = 0;
+    GlovesEnum ct_glove_def_ = GlovesEnum{};
+    GlovesEnum t_glove_def_  = GlovesEnum{};
+    WeaponsEnum ct_knife_def_   = WeaponsEnum{};
+    WeaponsEnum t_knife_def_    = WeaponsEnum{};
+    i32         ct_knife_paint_ = 0;
+    i32         t_knife_paint_  = 0;
 };

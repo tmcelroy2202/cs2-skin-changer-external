@@ -16,16 +16,26 @@ constexpr u32 kChunkArraySize  = 3;
 constexpr u32 kMaxEntities     = kChunkArraySize * kChunkSize;
 constexpr u32 kEntityIdentitySize = 0x78;
 
-/// Resolve an entity handle (CHandle) to its pointer address.
+/// Resolve an entity handle (CHandle) to its C_BaseEntity pointer.
+/// Internally walks the chunked entity list, reads the CEntityIdentity,
+/// then follows the m_pEntity field to the actual entity object.
+/// Returns 0 for invalid handles (0xFFFFFFFF, out-of-range, etc.).
 inline u64 GetEntityByHandle(ProcessMemory& mem, u32 handle) {
+    if (!handle || handle == 0xFFFFFFFF) return 0;
+
+    u32 chunk_idx = (handle & 0x7FFF) >> 9;
+    if (chunk_idx >= kChunkArraySize) return 0;
+
     auto entity_list = mem.ReadSafe<u64>(mem.Client() + Offsets::dwEntityList);
     if (!entity_list || !*entity_list) return 0;
 
-    auto list_entry = mem.ReadSafe<u64>(*entity_list + sizeof(u64) * ((handle & 0x7FFF) >> 9) + 0x10);
+    auto list_entry = mem.ReadSafe<u64>(*entity_list + sizeof(u64) * chunk_idx + 0x10);
     if (!list_entry || !*list_entry) return 0;
 
-    auto result = mem.ReadSafe<u64>(*list_entry + kEntityIdentitySize * (handle & (kChunkSize - 1)));
-    return result.value_or(0);
+    // CEntityIdentity at this slot — do NOT dereference it; read m_pEntity via offset
+    u64 identity = *list_entry + kEntityIdentitySize * (handle & (kChunkSize - 1));
+    auto entity = mem.ReadSafe<u64>(identity + Offsets::m_pEntity);
+    return entity.value_or(0);
 }
 
 /// Get the local player pawn.
@@ -86,16 +96,12 @@ inline u64 GetHudWeapon(ProcessMemory& mem, u64 weapon) {
          view_model = mem.Read<u64>(view_model + Offsets::m_pNextSibling)) {
 
         if (!view_model) continue;
-        auto owner = mem.ReadSafe<u64>(view_model + Offsets::m_pOwner);
-        if (!owner || !*owner) continue;
-
-        auto h_owner = mem.ReadSafe<u32>(*owner + Offsets::m_hOwnerEntity);
-        if (!h_owner) continue;
-        u64 owner_entity = GetEntityByHandle(mem, *h_owner);
-        if (owner_entity == weapon) {
-            auto result = mem.ReadSafe<u64>(view_model + Offsets::m_pOwner);
-            return result.value_or(0);
-        }
+        // m_pOwner in CGameSceneNode is a CEntityHandle (u32), not a pointer
+        auto owner_handle = mem.ReadSafe<u32>(view_model + Offsets::m_pOwner);
+        if (!owner_handle || !*owner_handle) continue;
+        u64 owner_entity = GetEntityByHandle(mem, *owner_handle);
+        if (owner_entity == weapon)
+            return view_model;
     }
 
     return 0;
@@ -103,10 +109,14 @@ inline u64 GetHudWeapon(ProcessMemory& mem, u64 weapon) {
 
 /// Get the active weapon definition from local player's clipping weapon.
 inline WeaponsEnum GetActiveWeaponDef(ProcessMemory& mem, u64 local_player) {
-    auto active_weapon = mem.ReadSafe<u64>(local_player + Offsets::m_pClippingWeapon);
-    if (!active_weapon || !*active_weapon) return WeaponsEnum::None;
+    // m_pClippingWeapon is a CHandle (u32) despite the "m_p" naming
+    auto handle = mem.ReadSafe<u32>(local_player + Offsets::m_pClippingWeapon);
+    if (!handle || !*handle) return WeaponsEnum::None;
 
-    u64 item = mem.Read<u64>(*active_weapon + Offsets::m_AttributeManager + Offsets::m_Item);
+    u64 weapon = GetEntityByHandle(mem, *handle);
+    if (!weapon) return WeaponsEnum::None;
+
+    u64 item = mem.Read<u64>(weapon + Offsets::m_AttributeManager + Offsets::m_Item);
     if (!item || item == ~0ull) return WeaponsEnum::None;
     auto def = mem.ReadSafe<u16>(item + Offsets::m_iItemDefinitionIndex);
     return static_cast<WeaponsEnum>(def.value_or(0));

@@ -139,6 +139,8 @@ struct SkinInfo_t {
     i32         Paint           = 0;
     f32         Wear            = 0.01f;
     i32         Pattern         = 0;
+    i32         StatTrak        = -1;   // -1 = disabled (writes 0xFFFFFFFF)
+    std::string NameTag;                // empty = no nametag
     bool        bUsesOldModel   = false;
     std::string name;
     WeaponsEnum weaponType      = WeaponsEnum{};

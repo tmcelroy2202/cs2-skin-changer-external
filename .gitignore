@@ -1,6 +1,7 @@
 build/
 build-dll/
 build-mingw/
+build-mingw-exe/
 build-mingw-dll/
 out/
 .cache/

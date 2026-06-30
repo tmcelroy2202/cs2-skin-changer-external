@@ -19,12 +19,15 @@
 
 namespace detail {
 
-static constexpr char XOR_KEY = 0xAB;
+// Per-group XOR keys — no single key spans all APIs, defeating
+// simple 0xAB-pattern scanners used by most anti-cheats.
+static constexpr u8 XOR_KEY_MEM  = 0x5C;  // memory R/W APIs
+static constexpr u8 XOR_KEY_SNAP = 0xB3;  // snapshot/enumeration APIs
 
 template <typename Fn, size_t N>
-Fn ResolveApi(HMODULE mod, const unsigned char (&enc)[N]) noexcept {
+Fn ResolveApi(HMODULE mod, const unsigned char (&enc)[N], u8 key) noexcept {
     char name[64];
-    for (size_t i = 0; i < N; ++i) name[i] = static_cast<char>(enc[i] ^ XOR_KEY);
+    for (size_t i = 0; i < N; ++i) name[i] = static_cast<char>(enc[i] ^ key);
     name[N] = '\0';
     return reinterpret_cast<Fn>(::GetProcAddress(mod, name));
 }
@@ -41,8 +44,6 @@ struct Win32Api {
     using pfnModule32FirstW             = BOOL(WINAPI*)(HANDLE, LPMODULEENTRY32W);
     using pfnModule32NextW              = BOOL(WINAPI*)(HANDLE, LPMODULEENTRY32W);
     using pfnCloseHandle                = BOOL(WINAPI*)(HANDLE);
-    using pfnWaitForSingleObject        = DWORD(WINAPI*)(HANDLE, DWORD);
-    using pfnCreateRemoteThread         = HANDLE(WINAPI*)(HANDLE, LPSECURITY_ATTRIBUTES, SIZE_T, LPTHREAD_START_ROUTINE, LPVOID, DWORD, LPDWORD);
 
     pfnOpenProcess              OpenProcess;
     pfnReadProcessMemory        ReadProcessMemory;
@@ -55,8 +56,6 @@ struct Win32Api {
     pfnModule32FirstW           Module32FirstW;
     pfnModule32NextW            Module32NextW;
     pfnCloseHandle              CloseHandle;
-    pfnWaitForSingleObject      WaitForSingleObject;
-    pfnCreateRemoteThread       CreateRemoteThread;
 
     static Win32Api& Instance() noexcept {
         static Win32Api inst;
@@ -67,49 +66,34 @@ private:
     Win32Api() noexcept {
         HMODULE k32 = ::GetModuleHandleW(L"kernel32.dll");
 
-        // ── XOR-obfuscated API names ────────────────────────────────────────
-        // key = 0xAB
+        // ── Memory-operation APIs (key=0x5C) ────────────────────────────────
 
-        // OpenProcess (11 chars)
-        static constexpr unsigned char kOpenProcess[] = { 0xE4, 0xDB, 0xCE, 0xC5, 0xFB, 0xD9, 0xC4, 0xC8, 0xCE, 0xD8, 0xD8 };
-        // ReadProcessMemory (17 chars)
-        static constexpr unsigned char kReadProcessMemory[] = { 0xF9, 0xCE, 0xCA, 0xCF, 0xFB, 0xD9, 0xC4, 0xC8, 0xCE, 0xD8, 0xD8, 0xE6, 0xCE, 0xC6, 0xC4, 0xD9, 0xD2 };
-        // WriteProcessMemory (18 chars)
-        static constexpr unsigned char kWriteProcessMemory[] = { 0xFC, 0xD9, 0xC2, 0xDF, 0xCE, 0xFB, 0xD9, 0xC4, 0xC8, 0xCE, 0xD8, 0xD8, 0xE6, 0xCE, 0xC6, 0xC4, 0xD9, 0xD2 };
-        // VirtualAllocEx (14 chars)
-        static constexpr unsigned char kVirtualAllocEx[] = { 0xFD, 0xC2, 0xD9, 0xDF, 0xDE, 0xCA, 0xC7, 0xEA, 0xC7, 0xC7, 0xC4, 0xC8, 0xEE, 0xD3 };
-        // VirtualFreeEx (13 chars)
-        static constexpr unsigned char kVirtualFreeEx[] = { 0xFD, 0xC2, 0xD9, 0xDF, 0xDE, 0xCA, 0xC7, 0xED, 0xD9, 0xCE, 0xCE, 0xEE, 0xD3 };
-        // CreateToolhelp32Snapshot (24 chars)
-        static constexpr unsigned char kCreateToolhelp32Snapshot[] = { 0xE8, 0xD9, 0xCE, 0xCA, 0xDF, 0xCE, 0xFF, 0xC4, 0xC4, 0xC7, 0xC3, 0xCE, 0xC7, 0xDB, 0x98, 0x99, 0xF8, 0xC5, 0xCA, 0xDB, 0xD8, 0xC3, 0xC4, 0xDF };
-        // Process32FirstW (15 chars)
-        static constexpr unsigned char kProcess32FirstW[] = { 0xFB, 0xD9, 0xC4, 0xC8, 0xCE, 0xD8, 0xD8, 0x98, 0x99, 0xED, 0xC2, 0xD9, 0xD8, 0xDF, 0xFC };
-        // Process32NextW (14 chars)
-        static constexpr unsigned char kProcess32NextW[] = { 0xFB, 0xD9, 0xC4, 0xC8, 0xCE, 0xD8, 0xD8, 0x98, 0x99, 0xE5, 0xCE, 0xD3, 0xDF, 0xFC };
-        // Module32FirstW (14 chars)
-        static constexpr unsigned char kModule32FirstW[] = { 0xE6, 0xC4, 0xCF, 0xDE, 0xC7, 0xCE, 0x98, 0x99, 0xED, 0xC2, 0xD9, 0xD8, 0xDF, 0xFC };
-        // Module32NextW (13 chars)
-        static constexpr unsigned char kModule32NextW[] = { 0xE6, 0xC4, 0xCF, 0xDE, 0xC7, 0xCE, 0x98, 0x99, 0xE5, 0xCE, 0xD3, 0xDF, 0xFC };
-        // CloseHandle (11 chars)
-        static constexpr unsigned char kCloseHandle[] = { 0xE8, 0xC7, 0xC4, 0xD8, 0xCE, 0xE3, 0xCA, 0xC5, 0xCF, 0xC7, 0xCE };
-        // WaitForSingleObject (19 chars)
-        static constexpr unsigned char kWaitForSingleObject[] = { 0xFC, 0xCA, 0xC2, 0xDF, 0xED, 0xC4, 0xD9, 0xF8, 0xC2, 0xC5, 0xCC, 0xC7, 0xCE, 0xE4, 0xC9, 0xC1, 0xCE, 0xC8, 0xDF };
-        // CreateRemoteThread (18 chars)
-        static constexpr unsigned char kCreateRemoteThread[] = { 0xE8, 0xD9, 0xCE, 0xCA, 0xDF, 0xCE, 0xF9, 0xCE, 0xC6, 0xC4, 0xDF, 0xCE, 0xFF, 0xC3, 0xD9, 0xCE, 0xCA, 0xCF };
+        static constexpr unsigned char kOpenProcess[] = { 0x13, 0x2C, 0x39, 0x32, 0x0C, 0x2E, 0x33, 0x3F, 0x39, 0x2F, 0x2F };
+        static constexpr unsigned char kReadProcessMemory[] = { 0x0E, 0x39, 0x3D, 0x38, 0x0C, 0x2E, 0x33, 0x3F, 0x39, 0x2F, 0x2F, 0x11, 0x39, 0x31, 0x33, 0x2E, 0x25 };
+        static constexpr unsigned char kWriteProcessMemory[] = { 0x0B, 0x2E, 0x35, 0x28, 0x39, 0x0C, 0x2E, 0x33, 0x3F, 0x39, 0x2F, 0x2F, 0x11, 0x39, 0x31, 0x33, 0x2E, 0x25 };
+        static constexpr unsigned char kVirtualAllocEx[] = { 0x0A, 0x35, 0x2E, 0x28, 0x29, 0x3D, 0x30, 0x1D, 0x30, 0x30, 0x33, 0x3F, 0x19, 0x24 };
+        static constexpr unsigned char kVirtualFreeEx[] = { 0x0A, 0x35, 0x2E, 0x28, 0x29, 0x3D, 0x30, 0x1A, 0x2E, 0x39, 0x39, 0x19, 0x24 };
+        static constexpr unsigned char kCloseHandle[] = { 0x1F, 0x30, 0x33, 0x2F, 0x39, 0x14, 0x3D, 0x32, 0x38, 0x30, 0x39 };
 
-        OpenProcess              = ResolveApi<pfnOpenProcess>(k32, kOpenProcess);
-        ReadProcessMemory        = ResolveApi<pfnReadProcessMemory>(k32, kReadProcessMemory);
-        WriteProcessMemory       = ResolveApi<pfnWriteProcessMemory>(k32, kWriteProcessMemory);
-        VirtualAllocEx           = ResolveApi<pfnVirtualAllocEx>(k32, kVirtualAllocEx);
-        VirtualFreeEx            = ResolveApi<pfnVirtualFreeEx>(k32, kVirtualFreeEx);
-        CreateToolhelp32Snapshot = ResolveApi<pfnCreateToolhelp32Snapshot>(k32, kCreateToolhelp32Snapshot);
-        Process32FirstW          = ResolveApi<pfnProcess32FirstW>(k32, kProcess32FirstW);
-        Process32NextW           = ResolveApi<pfnProcess32NextW>(k32, kProcess32NextW);
-        Module32FirstW           = ResolveApi<pfnModule32FirstW>(k32, kModule32FirstW);
-        Module32NextW            = ResolveApi<pfnModule32NextW>(k32, kModule32NextW);
-        CloseHandle              = ResolveApi<pfnCloseHandle>(k32, kCloseHandle);
-        WaitForSingleObject      = ResolveApi<pfnWaitForSingleObject>(k32, kWaitForSingleObject);
-        CreateRemoteThread       = ResolveApi<pfnCreateRemoteThread>(k32, kCreateRemoteThread);
+        // ── Snapshot/enumeration APIs (key=0xB3) ────────────────────────────
+
+        static constexpr unsigned char kCreateToolhelp32Snapshot[] = { 0xF0, 0xC1, 0xD6, 0xD2, 0xC7, 0xD6, 0xE7, 0xDC, 0xDC, 0xDF, 0xDB, 0xD6, 0xDF, 0xC3, 0x80, 0x81, 0xE0, 0xDD, 0xD2, 0xC3, 0xC0, 0xDB, 0xDC, 0xC7 };
+        static constexpr unsigned char kProcess32FirstW[] = { 0xE3, 0xC1, 0xDC, 0xD0, 0xD6, 0xC0, 0xC0, 0x80, 0x81, 0xF5, 0xDA, 0xC1, 0xC0, 0xC7, 0xE4 };
+        static constexpr unsigned char kProcess32NextW[] = { 0xE3, 0xC1, 0xDC, 0xD0, 0xD6, 0xC0, 0xC0, 0x80, 0x81, 0xFD, 0xD6, 0xCB, 0xC7, 0xE4 };
+        static constexpr unsigned char kModule32FirstW[] = { 0xFE, 0xDC, 0xD7, 0xC6, 0xDF, 0xD6, 0x80, 0x81, 0xF5, 0xDA, 0xC1, 0xC0, 0xC7, 0xE4 };
+        static constexpr unsigned char kModule32NextW[] = { 0xFE, 0xDC, 0xD7, 0xC6, 0xDF, 0xD6, 0x80, 0x81, 0xFD, 0xD6, 0xCB, 0xC7, 0xE4 };
+
+        OpenProcess              = ResolveApi<pfnOpenProcess>(k32, kOpenProcess, XOR_KEY_MEM);
+        ReadProcessMemory        = ResolveApi<pfnReadProcessMemory>(k32, kReadProcessMemory, XOR_KEY_MEM);
+        WriteProcessMemory       = ResolveApi<pfnWriteProcessMemory>(k32, kWriteProcessMemory, XOR_KEY_MEM);
+        VirtualAllocEx           = ResolveApi<pfnVirtualAllocEx>(k32, kVirtualAllocEx, XOR_KEY_MEM);
+        VirtualFreeEx            = ResolveApi<pfnVirtualFreeEx>(k32, kVirtualFreeEx, XOR_KEY_MEM);
+        CreateToolhelp32Snapshot = ResolveApi<pfnCreateToolhelp32Snapshot>(k32, kCreateToolhelp32Snapshot, XOR_KEY_SNAP);
+        Process32FirstW          = ResolveApi<pfnProcess32FirstW>(k32, kProcess32FirstW, XOR_KEY_SNAP);
+        Process32NextW           = ResolveApi<pfnProcess32NextW>(k32, kProcess32NextW, XOR_KEY_SNAP);
+        Module32FirstW           = ResolveApi<pfnModule32FirstW>(k32, kModule32FirstW, XOR_KEY_SNAP);
+        Module32NextW            = ResolveApi<pfnModule32NextW>(k32, kModule32NextW, XOR_KEY_SNAP);
+        CloseHandle              = ResolveApi<pfnCloseHandle>(k32, kCloseHandle, XOR_KEY_MEM);
     }
 };
 
@@ -122,7 +106,9 @@ public:
     bool OpenCurrentProcess() noexcept {
         Close();
         process_id_ = ::GetCurrentProcessId();
-        handle_ = s_Api.OpenProcess(PROCESS_ALL_ACCESS, FALSE, static_cast<DWORD>(process_id_));
+        handle_ = s_Api.OpenProcess(
+            PROCESS_VM_READ | PROCESS_VM_WRITE | PROCESS_VM_OPERATION,
+            FALSE, static_cast<DWORD>(process_id_));
         if (!handle_) return false;
 
         client_ = reinterpret_cast<u64>(::GetModuleHandleW(L"client.dll"));
@@ -137,8 +123,7 @@ public:
         if (!process_id_) return false;
 
         handle_ = s_Api.OpenProcess(
-            PROCESS_VM_READ | PROCESS_VM_WRITE | PROCESS_VM_OPERATION |
-            PROCESS_CREATE_THREAD,
+            PROCESS_VM_READ | PROCESS_VM_WRITE | PROCESS_VM_OPERATION,
             FALSE, static_cast<DWORD>(process_id_));
         if (!handle_) return false;
 
@@ -218,7 +203,7 @@ public:
     }
 
     [[nodiscard]] u64 Allocate(u64 address = 0, usize size = 0x1000,
-                               u32 protection = PAGE_EXECUTE_READWRITE) const noexcept {
+                               u32 protection = PAGE_READWRITE) const noexcept {
         return reinterpret_cast<u64>(
             s_Api.VirtualAllocEx(handle_, reinterpret_cast<LPVOID>(address), size,
                                  MEM_COMMIT | MEM_RESERVE, protection));
@@ -236,24 +221,6 @@ public:
     }
 
     u64 SigScan(std::wstring_view module, std::string_view pattern) const noexcept;
-
-    HANDLE SpawnRemoteThread(u64 func_addr, void* param = nullptr) const noexcept {
-        return RemoteThreadWrap(func_addr, param, false);
-    }
-
-    void CallRemoteThread(u64 func_addr, void* param = nullptr) const noexcept {
-        HANDLE h = RemoteThreadWrap(func_addr, param, true);
-        if (h) { s_Api.WaitForSingleObject(h, INFINITE); s_Api.CloseHandle(h); }
-    }
-
-    void CallRemoteThreadAsync(u64 func_addr, void* param = nullptr) const noexcept {
-        HANDLE h = s_Api.CreateRemoteThread(handle_, nullptr, 0,
-            reinterpret_cast<LPTHREAD_START_ROUTINE>(func_addr), param,
-            0, nullptr);
-        if (h) {
-            s_Api.CloseHandle(h);
-        }
-    }
 
 private:
     HANDLE handle_      = nullptr;
@@ -307,11 +274,6 @@ private:
         return base;
     }
 
-    HANDLE RemoteThreadWrap(u64 func_addr, void* param, bool suspended) const noexcept {
-        return s_Api.CreateRemoteThread(handle_, nullptr, 0,
-            reinterpret_cast<LPTHREAD_START_ROUTINE>(func_addr), param,
-            suspended ? CREATE_SUSPENDED : 0, nullptr);
-    }
 };
 
 inline detail::Win32Api& ProcessMemory::s_Api = detail::Win32Api::Instance();

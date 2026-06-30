@@ -31,6 +31,8 @@ private:
     enum class Category { Pistols, Rifles, Smgs, Snipers, Heavy, Knives, Gloves, Music };
     Category active_cat_ = Category::Rifles;
 
+    bool ct_selected_ = true;  // true = CT config, false = T config
+
     i32 selected_weapon_idx_ = 0;
     i32 selected_skin_idx_  = 0;
     i32 selected_glove_type_idx_ = 0;
@@ -53,8 +55,8 @@ private:
     void DrawSkinsContent() noexcept;
     void DrawGlovesContent() noexcept;
     void DrawMusicContent() noexcept;
-    void DrawSkinCards(std::span<const SkinInfo_t> skins) noexcept;
-    void DrawSkinCard(i32 idx, const SkinInfo_t& skin, bool selected) noexcept;
+    void DrawSkinCards(std::span<const SkinInfo_t> skins, WeaponsEnum weapon, bool is_knife) noexcept;
+    void DrawSkinCard(i32 idx, const SkinInfo_t& skin, bool selected, WeaponsEnum weapon, bool is_knife) noexcept;
     void DrawWearControls(SkinInfo_t& skin, bool& changed) noexcept;
     void SaveAndSync() noexcept;
 

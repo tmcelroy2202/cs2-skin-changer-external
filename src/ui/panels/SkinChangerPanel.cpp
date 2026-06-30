@@ -168,7 +168,7 @@ void SkinChangerPanel::DrawTitleBar() noexcept {
     ImGui::SetCursorScreenPos(ImVec2(pos.x + 16, pos.y + 10));
     ImGui::TextColored(Palette::Accent, "VeneeR");
     ImGui::SameLine(0, 2);
-    ImGui::TextColored(Palette::TextDim, "v1.4.1");
+    ImGui::TextColored(Palette::TextDim, "v1.5.0");
 
     ImGui::SetCursorScreenPos(ImVec2(pos.x, pos.y + 44));
 }
@@ -208,6 +208,29 @@ void SkinChangerPanel::DrawCategories() noexcept {
     float avail = ImGui::GetContentRegionAvail().x;
     float btn_w = (avail - 8.0f * 7.0f) / 8.0f;
     if (btn_w < 60.0f) btn_w = 60.0f;
+
+    // CT / T toggle
+    {
+        ImU32 bg_ct = ct_selected_ ? ImColor(Palette::Accent) : ImColor(0,0,0,0);
+        ImU32 bg_t  = !ct_selected_ ? ImColor(Palette::Accent) : ImColor(0,0,0,0);
+        ImU32 bg_ho = ImColor(Palette::Accent);
+
+        ImGui::PushStyleColor(ImGuiCol_Button, bg_ct);
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, bg_ho);
+        ImGui::PushStyleColor(ImGuiCol_Text, ct_selected_ ? ImVec4(1,1,1,1) : Palette::TextDim);
+        if (ImGui::Button("CT", ImVec2(30, 30))) { ct_selected_ = true; }
+        ImGui::PopStyleColor(3);
+
+        ImGui::SameLine(0, 4);
+
+        ImGui::PushStyleColor(ImGuiCol_Button, bg_t);
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, bg_ho);
+        ImGui::PushStyleColor(ImGuiCol_Text, !ct_selected_ ? ImVec4(1,1,1,1) : Palette::TextDim);
+        if (ImGui::Button("T", ImVec2(30, 30))) { ct_selected_ = false; }
+        ImGui::PopStyleColor(3);
+
+        ImGui::SameLine(0, 12);
+    }
 
     for (i32 i = 0; i < 8; ++i) {
         if (i > 0) ImGui::SameLine(0, 8);
@@ -267,8 +290,9 @@ void SkinChangerPanel::DrawSkinsContent() noexcept {
     float cx = ImGui::GetCursorPosX();
     float cw = ImGui::GetContentRegionAvail().x;
 
-    selected_weapon_idx_ = std::clamp<i32>(selected_weapon_idx_, 0,
-        static_cast<i32>(filtered.size()) - 1);
+    if (!filtered.empty())
+        selected_weapon_idx_ = std::clamp<i32>(selected_weapon_idx_, 0,
+            static_cast<i32>(filtered.size()) - 1);
 
     float chip_x = cx;
     for (i32 i = 0; i < static_cast<i32>(filtered.size()); ++i) {
@@ -304,6 +328,13 @@ void SkinChangerPanel::DrawSkinsContent() noexcept {
 
     ImGui::Spacing();
 
+    // Show team indicator when editing knives
+    if (active_cat_ == Category::Knives) {
+        ImGui::TextColored(ct_selected_ ? Palette::TextGood : Palette::TextDim,
+                           "Editing: %s Knife", ct_selected_ ? "CT" : "T");
+        ImGui::Spacing();
+    }
+
     // ── Skin cards ───────────────────────────────────────────────────────────
     WeaponsEnum weapon = filtered.empty() ? cat_weapons_[0] : filtered[selected_weapon_idx_];
     bool is_knife = mgr_.IsKnifeDef(static_cast<i32>(weapon));
@@ -329,11 +360,16 @@ void SkinChangerPanel::DrawSkinsContent() noexcept {
             filtered_skins.push_back(s);
     }
 
+    if (filtered_skins.empty()) {
+        ImGui::TextColored(Palette::TextDim, "No matching skins");
+        return;
+    }
+
     selected_skin_idx_ = std::clamp<i32>(selected_skin_idx_, 0,
         static_cast<i32>(filtered_skins.size()) - 1);
 
     // Grid of skin cards
-    DrawSkinCards(filtered_skins);
+    DrawSkinCards(filtered_skins, weapon, is_knife);
 
     ImGui::Spacing();
     ImGui::Separator();
@@ -342,14 +378,15 @@ void SkinChangerPanel::DrawSkinsContent() noexcept {
     auto& chosen = filtered_skins[selected_skin_idx_];
     SkinInfo_t skin = chosen;
 
-    // Pre-fill wear/pattern from existing selection
+    // Pre-fill wear/pattern/statTrak from existing selection
     SkinInfo_t existing{};
     if (is_knife) {
-        i32 kp = mgr_.GetKnifePaint();
+        i32 kp = mgr_.GetKnifePaint(ct_selected_);
         if (kp > 0) {
             existing.Paint = kp;
             existing.Wear = 0.01f;
             existing.Pattern = 0;
+            existing.StatTrak = -1;
             existing.weaponType = weapon;
         }
     } else {
@@ -358,6 +395,7 @@ void SkinChangerPanel::DrawSkinsContent() noexcept {
     if (existing.Paint > 0) {
         skin.Wear = existing.Wear;
         skin.Pattern = existing.Pattern;
+        skin.StatTrak = existing.StatTrak;
     }
 
     // Name header
@@ -368,6 +406,23 @@ void SkinChangerPanel::DrawSkinsContent() noexcept {
     bool changed = false;
     DrawWearControls(skin, changed);
 
+    // StatTrak input
+    ImGui::Spacing();
+    ImGui::SetNextItemWidth(120.0f);
+    int st = (skin.StatTrak >= 0) ? skin.StatTrak : 0;
+    if (ImGui::InputInt("##stattrak", &st, 1, 100)) {
+        skin.StatTrak = std::clamp(st, -1, 999999);
+        changed = true;
+    }
+    ImGui::SameLine(0, 8);
+    bool st_enabled = (skin.StatTrak >= 0);
+    if (ImGui::Checkbox("StatTrak##st_en", &st_enabled)) {
+        skin.StatTrak = st_enabled ? 0 : -1;
+        changed = true;
+    }
+    if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal))
+        ImGui::SetTooltip("Enable StatTrak counter on this weapon");
+
     // Apply button
     ImGui::Spacing();
     ImGui::SetCursorPosX(ImGui::GetContentRegionAvail().x * 0.5f - 50);
@@ -376,7 +431,7 @@ void SkinChangerPanel::DrawSkinsContent() noexcept {
     ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1, 1, 1, 1));
     if (ImGui::Button("Apply Skin", ImVec2(120, 32))) {
         if (is_knife) {
-            mgr_.SetKnife(weapon, skin.Paint);
+            mgr_.SetTeamKnife(weapon, skin.Paint, ct_selected_);
         } else {
             mgr_.SetSkin(skin);
         }
@@ -387,7 +442,8 @@ void SkinChangerPanel::DrawSkinsContent() noexcept {
 
 // ── Skin cards grid ────────────────────────────────────────────────────────────
 
-void SkinChangerPanel::DrawSkinCards(std::span<const SkinInfo_t> skins) noexcept {
+void SkinChangerPanel::DrawSkinCards(std::span<const SkinInfo_t> skins,
+                                      WeaponsEnum weapon, bool is_knife) noexcept {
     float avail_w = ImGui::GetContentRegionAvail().x;
     int cols = std::max(2, static_cast<int>(avail_w / 175.0f));
     if (cols > static_cast<int>(skins.size())) cols = static_cast<int>(skins.size());
@@ -399,7 +455,7 @@ void SkinChangerPanel::DrawSkinCards(std::span<const SkinInfo_t> skins) noexcept
                           ImGuiTableFlags_NoPadOuterX)) {
         for (i32 i = 0; i < static_cast<i32>(skins.size()); ++i) {
             ImGui::TableNextColumn();
-            DrawSkinCard(i, skins[i], i == selected_skin_idx_);
+            DrawSkinCard(i, skins[i], i == selected_skin_idx_, weapon, is_knife);
         }
         ImGui::EndTable();
     }
@@ -407,7 +463,8 @@ void SkinChangerPanel::DrawSkinCards(std::span<const SkinInfo_t> skins) noexcept
 
 // ── Single skin card ───────────────────────────────────────────────────────────
 
-void SkinChangerPanel::DrawSkinCard(i32 idx, const SkinInfo_t& skin, bool selected) noexcept {
+void SkinChangerPanel::DrawSkinCard(i32 idx, const SkinInfo_t& skin, bool selected,
+                                     WeaponsEnum weapon, bool is_knife) noexcept {
     ImGui::PushID(idx);
 
     float card_w = ImGui::GetContentRegionAvail().x;
@@ -473,11 +530,16 @@ void SkinChangerPanel::DrawSkinCard(i32 idx, const SkinInfo_t& skin, bool select
     ImGui::PopTextWrapPos();
     ImGui::PopStyleColor();
 
-    // Clickable area
+    // Clickable area — applies immediately (consistent with gloves / music UX)
     ImGui::SetCursorScreenPos(pos);
     ImGui::InvisibleButton("##card", ImVec2(card_w, total_h));
     if (ImGui::IsItemClicked()) {
         selected_skin_idx_ = idx;
+        if (is_knife)
+            mgr_.SetTeamKnife(weapon, skin.Paint, ct_selected_);
+        else
+            mgr_.SetSkin(skin);
+        SaveAndSync();
     }
     if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal)) {
         ImGui::SetTooltip("%s\nPaint Kit #%d", skin.name.c_str(), skin.Paint);
@@ -584,6 +646,8 @@ void SkinChangerPanel::DrawGlovesContent() noexcept {
     }
 
     ImGui::Spacing();
+    ImGui::TextColored(ct_selected_ ? Palette::TextGood : Palette::TextDim,
+                       "Editing: %s Gloves", ct_selected_ ? "CT" : "T");
     ImGui::Separator();
     ImGui::Spacing();
 
@@ -603,8 +667,9 @@ void SkinChangerPanel::DrawGlovesContent() noexcept {
             filtered.push_back(s);
     }
 
-    selected_glove_skin_idx_ = std::clamp<i32>(selected_glove_skin_idx_, 0,
-        static_cast<i32>(filtered.size()) - 1);
+    if (!filtered.empty())
+        selected_glove_skin_idx_ = std::clamp<i32>(selected_glove_skin_idx_, 0,
+            static_cast<i32>(filtered.size()) - 1);
 
     // Glove skin cards (table-based grid)
     {
@@ -675,8 +740,8 @@ void SkinChangerPanel::DrawGlovesContent() noexcept {
                 ImGui::InvisibleButton("##gcard", ImVec2(card_w, total_h));
                 if (ImGui::IsItemClicked()) {
                     selected_glove_skin_idx_ = i;
-                    SkinInfo_t gs{filtered[i].Paint, 0.01f, 0, false, "Glove", WeaponsEnum{}};
-                    mgr_.SetGloveSkin(gs, glove);
+                    SkinInfo_t gs{filtered[i].Paint, 0.01f, 0, -1, "", false, "Glove", WeaponsEnum{}};
+                    mgr_.SetTeamGloveSkin(gs, glove, ct_selected_);
                     SaveAndSync();
                 }
                 if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal)) {
@@ -692,11 +757,21 @@ void SkinChangerPanel::DrawGlovesContent() noexcept {
     ImGui::Spacing();
     ImGui::Separator();
 
-    i32 active = mgr_.GetGlovePaint();
-    if (active > 0) {
-        ImGui::TextColored(Palette::TextDim, "Active paint:");
+    {
+        i32 ct_active = mgr_.GetGlovePaint(true);
+        i32 t_active  = mgr_.GetGlovePaint(false);
+        ImGui::TextColored(Palette::TextDim, "Active:");
         ImGui::SameLine(0, 6);
-        ImGui::TextColored(Palette::TextGood, "#%d", active);
+        if (ct_active > 0) {
+            ImGui::TextColored(Palette::TextGood, "CT #%d", ct_active);
+            ImGui::SameLine(0, 10);
+        }
+        if (t_active > 0) {
+            ImGui::TextColored(Palette::TextGood, "T #%d", t_active);
+        }
+        if (ct_active <= 0 && t_active <= 0) {
+            ImGui::TextColored(Palette::TextDim, "None");
+        }
     }
 }
 
