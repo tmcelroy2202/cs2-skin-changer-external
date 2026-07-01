@@ -41,10 +41,9 @@ An external skin changer for Counter-Strike 2 using process memory access. Stand
 
 ## Screenshots
 
-<p align="center">
-  <img src="assets/veneer-ui.png" alt="VeneeR UI Preview — Rifles category" width="820"/>
-</p>
-<p align="center"><em>VeneeR main UI — sidebar categories, weapon list, skin cards, and wear/StatTrak controls</em></p>
+![VeneeR UI — Rifles category with AK-47 Fire Serpent selected](https://raw.githubusercontent.com/mrch4n725/cs2-skin-changer-external/main/assets/veneer-ui.png)
+
+*VeneeR main UI — sidebar categories, weapon list, skin cards, and wear/StatTrak controls*
 
 ## How It Works
 
@@ -123,13 +122,7 @@ For release checklist details and the DLL preset, see [BUILD.md](BUILD.md).
 1. **Launch Counter-Strike 2** and join a game (official or community).
 2. **Run the overlay as Administrator** — required for `OpenProcess` access to `cs2.exe`.
 3. **Press `Insert`** to toggle the overlay UI on/off (overlay is visible by default).
-4. **Use the overlay window**:
-
-   <p align="center">
-     <img src="assets/veneer-ui.png" alt="VeneeR UI Preview" width="820"/>
-   </p>
-
-   A vertical sidebar organises 8 categories on the left with the active category highlighted in teal. The main panel shows a searchable weapon list and a grid of skin cards. Adjust wear, pattern seed, and StatTrak, then click **Apply Skin**.
+4. **Use the overlay window** — a vertical sidebar organises 8 categories on the left with the active category highlighted in teal. The main panel shows a searchable weapon list and a grid of skin cards. Adjust wear, pattern seed, and StatTrak, then click **Apply Skin**.
 
 5. **Click "Apply Skin"** to save weapon/knife changes, or select a glove/music kit for immediate apply.
 

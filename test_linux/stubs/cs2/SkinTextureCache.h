@@ -4,9 +4,10 @@
 
 class SkinTextureCache {
 public:
-    void ProcessPending() noexcept {}
-    ImTextureID Get(i32) noexcept { return ImTextureID(0); }
-    bool IsLoaded(i32) noexcept { return false; }
-    void Request(i32, WeaponsEnum) noexcept {}
-    void InitMapping() noexcept {}
+    virtual ~SkinTextureCache() noexcept = default;
+    virtual void ProcessPending() noexcept {}
+    virtual ImTextureID Get(i32) noexcept { return ImTextureID(0); }
+    virtual bool IsLoaded(i32) noexcept { return false; }
+    virtual void Request(i32, WeaponsEnum) noexcept {}
+    virtual void InitMapping() noexcept {}
 };
