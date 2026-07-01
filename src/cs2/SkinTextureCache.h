@@ -135,7 +135,7 @@ private:
 
     ID3D11Device* device_;
     std::unordered_map<i32, Entry> map_;
-    std::unordered_map<i32, std::string> names_;
+    std::unordered_map<i32, std::string> names_;            // paint_id → internal name (from items_game)
     std::vector<i32> pending_;
     std::set<i32> downloading_;          // paint_ids currently being downloaded (render thread only)
 
@@ -161,6 +161,51 @@ private:
 
     static std::filesystem::path ImagePath(i32 paint_id) {
         return CacheDir() / (std::to_string(paint_id) + ".png");
+    }
+
+    /// Build a display name hint from the internal paint name.
+    /// E.g. "cu_fireserpent_ak47_bravo" → "Fire Serpent"
+    static std::string PaintInternalToDisplay(std::string_view in) {
+        // Strip known prefixes
+        std::string s(in);
+        static const char* prefixes[] = {
+            "cu_", "am_", "sp_", "hy_", "gs_", "aq_", "so_", "tt_", "ua_"
+        };
+        for (auto pfx : prefixes) {
+            if (s.find(pfx) == 0) {
+                s = s.substr(3);
+                break;
+            }
+        }
+        // Strip weapon suffix after last underscore (e.g. "_ak47", "_m4a1")
+        auto last_us = s.rfind('_');
+        if (last_us != std::string::npos) {
+            auto suffix = s.substr(last_us + 1);
+            static const char* weapon_suffixes[] = {
+                "ak47", "awp", "m4a1", "m4a4", "deagle", "glock", "usp",
+                "p250", "famas", "galil", "aug", "sg556", "p90", "mp7",
+                "mp9", "mac10", "mp5sd", "bizon", "ump45", "nova",
+                "xm1014", "mag7", "sawedoff", "m249", "negev", "tec9",
+                "fiveseven", "elite", "cz75a", "revolver", "hkp2000",
+                "scar20", "g3sg1", "ssg08", "usp_silencer", "bravo"
+            };
+            for (auto ws : weapon_suffixes) {
+                if (suffix == ws) {
+                    s = s.substr(0, last_us);
+                    break;
+                }
+            }
+        }
+        // Replace underscores with spaces and title-case
+        for (auto& c : s) {
+            if (c == '_') c = ' ';
+        }
+        if (!s.empty()) s[0] = (char)std::toupper((unsigned char)s[0]);
+        for (size_t i = 1; i < s.size(); ++i) {
+            if (s[i-1] == ' ' && s[i] != ' ')
+                s[i] = (char)std::toupper((unsigned char)s[i]);
+        }
+        return s;
     }
 
     // ── items_game.txt parser ──────────────────────────────────────────────
@@ -286,14 +331,72 @@ private:
     // ── Async download ─────────────────────────────────────────────────────
 
     void StartDownload(i32 paint_id, WeaponsEnum weapon) {
-        auto url = MakeURL(paint_id, weapon);
-        if (url.empty()) return;
         auto path = ImagePath(paint_id);
         auto state = download_state_;
-        std::thread t([paint_id, url, path, state]() {
-            Offsets::DownloadUrl(url.c_str(), path);
-            std::lock_guard lock(state->mutex);
-            state->completed.push_back(paint_id);
+
+        // Look up data on the caller thread (safe) for the async worker
+        std::string wname_str;
+        std::string paint_internal;
+        {
+            auto wname = WeaponToInternal(weapon);
+            if (!wname.empty()) wname_str = std::string(wname);
+            auto name_it = names_.find(paint_id);
+            if (name_it != names_.end()) paint_internal = name_it->second;
+        }
+
+        std::thread t([paint_id, path, state, wname_str, paint_internal]() {
+            // 1) Try old CS:GO CDN URL first
+            if (!wname_str.empty() && !paint_internal.empty()) {
+                std::string url = "https://steamcdn-a.akamaihd.net/apps/730/icons/econ/default_generated/"
+                                + wname_str + "_" + paint_internal + "_light_large.256x256.png";
+                Offsets::DownloadUrl(url.c_str(), path);
+                if (std::filesystem::exists(path) && std::filesystem::file_size(path) > 1000) {
+                    std::lock_guard lock(state->mutex);
+                    state->completed.push_back(paint_id);
+                    return;
+                }
+                std::filesystem::remove(path);
+            }
+
+            // 2) Try economy image API — fetch hash per-item from Steam market
+            if (!paint_internal.empty()) {
+                std::string display = PaintInternalToDisplay(paint_internal);
+                std::string encoded;
+                for (char c : display) {
+                    if (c == ' ') encoded += '+';
+                    else encoded += c;
+                }
+                std::string search_url = "https://steamcommunity.com/market/search/render/?query=+"
+                                       + encoded + "+&appid=730&start=0&count=1&norender=1";
+
+                auto tmp = std::filesystem::path(path).parent_path() / "_search.json";
+                Offsets::DownloadUrl(search_url.c_str(), tmp);
+                if (std::filesystem::exists(tmp)) {
+                    std::ifstream f(tmp);
+                    std::string json((std::istreambuf_iterator<char>(f)),
+                                      std::istreambuf_iterator<char>());
+                    f.close();
+                    std::filesystem::remove(tmp);
+
+                    auto pos = json.find("\"icon_url\":\"");
+                    if (pos != std::string::npos) {
+                        pos += 12;
+                        auto end = json.find('"', pos);
+                        if (end != std::string::npos) {
+                            std::string hash = json.substr(pos, end - pos);
+                            if (!hash.empty()) {
+                                std::string url = "https://community.cloudflare.steamstatic.com/economy/image/"
+                                                + hash + "/256x196.jpg";
+                                Offsets::DownloadUrl(url.c_str(), path);
+                                if (std::filesystem::exists(path) && std::filesystem::file_size(path) > 1000) {
+                                    std::lock_guard lock(state->mutex);
+                                    state->completed.push_back(paint_id);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         });
         t.detach();
     }

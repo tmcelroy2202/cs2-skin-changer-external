@@ -179,16 +179,19 @@ void SkinChangerPanel::Draw() noexcept {
         ImGui::PopStyleColor();
     }
 
-    // CT/T toggle at bottom of sidebar
+    // CT/T toggle — affects knife and glove config only
     ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 8);
     ImGui::Separator();
     ImGui::Dummy(ImVec2(0, 4));
 
+    ImGui::TextColored(Palette::TextDim, "Knife/Glove");
     float half = (sidebar_w - 8.0f) / 2.0f;
 
     ImGui::PushStyleColor(ImGuiCol_Button, ct_selected_ ? Palette::Accent : Palette::Card);
     ImGui::PushStyleColor(ImGuiCol_ButtonHovered, Palette::AccentDim);
     if (ImGui::Button("CT", ImVec2(half, 24))) ct_selected_ = true;
+    if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal))
+        ImGui::SetTooltip("Selects knife and glove config for Counter-Terrorist side.\nWeapon skins apply to both teams.");
     ImGui::PopStyleColor(2);
 
     ImGui::SameLine(0, 2);
@@ -196,6 +199,8 @@ void SkinChangerPanel::Draw() noexcept {
     ImGui::PushStyleColor(ImGuiCol_Button, !ct_selected_ ? Palette::Accent : Palette::Card);
     ImGui::PushStyleColor(ImGuiCol_ButtonHovered, Palette::AccentDim);
     if (ImGui::Button("T", ImVec2(half, 24))) ct_selected_ = false;
+    if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal))
+        ImGui::SetTooltip("Selects knife and glove config for Terrorist side.\nWeapon skins apply to both teams.");
     ImGui::PopStyleColor(2);
 
     ImGui::EndChild();
@@ -317,6 +322,29 @@ void SkinChangerPanel::DrawSkinsContent() noexcept {
     selected_skin_idx_ = std::clamp<i32>(selected_skin_idx_, 0,
         static_cast<i32>(filtered_skins.size()) - 1);
 
+    // Sync selection highlight with the actually-applied skin
+    SkinInfo_t applied{};
+    if (is_knife) {
+        i32 kp = mgr_.GetKnifePaint(ct_selected_);
+        if (kp > 0) {
+            applied.Paint = kp;
+            applied.Wear = 0.01f;
+            applied.Pattern = 0;
+            applied.StatTrak = -1;
+            applied.weaponType = weapon;
+        }
+    } else {
+        applied = mgr_.GetSkin(weapon);
+    }
+    if (applied.Paint > 0) {
+        for (i32 i = 0; i < static_cast<i32>(filtered_skins.size()); ++i) {
+            if (filtered_skins[i].Paint == applied.Paint) {
+                selected_skin_idx_ = i;
+                break;
+            }
+        }
+    }
+
     // ── Weapon list ──────────────────────────────────────────────────────────
     ImGui::BeginChild("##weapon_list", ImVec2(list_w, 0), true);
     for (i32 i = 0; i < static_cast<i32>(filtered.size()); ++i) {
@@ -362,23 +390,10 @@ void SkinChangerPanel::DrawSkinsContent() noexcept {
     // ── Detail controls ──────────────────────────────────────────────────────
     auto& chosen = filtered_skins[selected_skin_idx_];
     SkinInfo_t skin = chosen;
-    SkinInfo_t existing{};
-    if (is_knife) {
-        i32 kp = mgr_.GetKnifePaint(ct_selected_);
-        if (kp > 0) {
-            existing.Paint = kp;
-            existing.Wear = 0.01f;
-            existing.Pattern = 0;
-            existing.StatTrak = -1;
-            existing.weaponType = weapon;
-        }
-    } else {
-        existing = mgr_.GetSkin(weapon);
-    }
-    if (existing.Paint > 0) {
-        skin.Wear = existing.Wear;
-        skin.Pattern = existing.Pattern;
-        skin.StatTrak = existing.StatTrak;
+    if (applied.Paint > 0) {
+        skin.Wear = applied.Wear;
+        skin.Pattern = applied.Pattern;
+        skin.StatTrak = applied.StatTrak;
     }
 
     ImGui::TextColored(Palette::Accent, "%s", skin.name.c_str());
