@@ -102,9 +102,13 @@ bool SkinChanger::Tick() noexcept {
         if (is_knife && knife_def > 0 && knife_def != cur_def)
             mem_.Write<u16>(item + Offsets::m_iItemDefinitionIndex, static_cast<u16>(knife_def));
 
-        // Create econ attributes (paint, pattern, wear) in the item view's attribute list
-        if (!attr_mgr_.Create(item, skin))
-            LOG_WARN("SkinChanger::Tick — attr_mgr_.Create failed for item 0x{:X} paint={}", item, skin.Paint);
+        // Create econ attributes (paint, pattern, wear) in the item view's attribute list.
+        // Only needed when the user changes a skin — fallback values written above
+        // are read by CS2's renderer every frame.
+        if (mgr_.NeedsUpdate()) {
+            if (!attr_mgr_.Create(item, skin))
+                LOG_WARN("SkinChanger::Tick — attr_mgr_.Create failed for item 0x{:X} paint={}", item, skin.Paint);
+        }
 
         // Set mesh mask on the weapon entity and its HUD view model
         {
@@ -112,12 +116,11 @@ bool SkinChanger::Tick() noexcept {
             if (n && *n) DoMeshMask(weapon, *n, skin.bUsesOldModel);
         }
 
-        // Mark as uninitialized so the game re-reads our custom data
+        // Mark as uninitialized so the game re-reads our custom data.
+        // Also clear the restore-custom-material flag so CS2 re-applies
+        // the skin material on the next frame.
         mem_.Write<bool>(item + Offsets::m_bInitialized, false);
-
-        // No remote thread call — fallback values written above are read
-    // by CS2's render pipeline every frame. m_bInitialized = false forces
-    // the game to re-read the fallback paint / wear / seed on the next draw.
+        mem_.Write<bool>(item + Offsets::m_bRestoreCustomMaterialAfterPrecache, false);
 
         applied = true;
     }
@@ -183,6 +186,7 @@ bool SkinChanger::ApplyGloves() noexcept {
     mem_.Write<u32>(glove_iv + Offsets::m_iAccountID, account_id_);
     mem_.Write<i32>(glove_iv + Offsets::m_iEntityQuality, 5);
     mem_.Write<bool>(glove_iv + Offsets::m_bInitialized, false);
+    mem_.Write<bool>(glove_iv + Offsets::m_bRestoreCustomMaterialAfterPrecache, false);
 
     // Attribute creation: use the item view address directly
     SkinInfo_t glove_skin{glove_paint, 0.01f, 0, -1, "", false, "Glove", WeaponsEnum::None};

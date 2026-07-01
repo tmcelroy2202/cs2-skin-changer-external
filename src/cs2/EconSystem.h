@@ -134,31 +134,17 @@ private:
         return true;
     }
 
-    // Walk the player's weapons to find an existing CEconItemAttribute
-    // and cache its vtable.  Called once; subsequent calls are no-ops.
+    // Walk the player's weapons via GetWeapons (which handles both
+    // C_NetworkUtlVectorBase layouts) to find an existing
+    // CEconItemAttribute and cache its vtable.
     bool ResolveVtable() noexcept {
         if (cached_vtable_) return true;
 
         auto local_player = mem_.ReadSafe<u64>(mem_.Client() + Offsets::dwLocalPlayerPawn);
         if (!local_player || !*local_player) return false;
 
-        u64 weapons_addr = *local_player + Offsets::m_pWeaponServices;
-        auto svc = mem_.ReadSafe<u64>(weapons_addr);
-        if (!svc || !*svc) return false;
-
-        auto count = mem_.ReadSafe<u32>(*svc + Offsets::m_hMyWeapons);
-        if (!count || !*count) return false;
-
-        auto list_ptr = mem_.ReadSafe<u64>(*svc + Offsets::m_hMyWeapons + sizeof(u64));
-        if (!list_ptr || !*list_ptr) return false;
-
-        for (u32 i = 0; i < *count && i < 64; ++i) {
-            auto handle = mem_.ReadSafe<u32>(*list_ptr + sizeof(u32) * i);
-            if (!handle || !*handle) continue;
-
-            u64 weapon = GetEntityByHandle(mem_, *handle);
-            if (!weapon) continue;
-
+        auto weapons = GetWeapons(mem_, *local_player);
+        for (u64 weapon : weapons) {
             u64 item_addr = mem_.Read<u64>(weapon + Offsets::m_AttributeManager + Offsets::m_Item);
             if (!item_addr || item_addr == ~0ull) continue;
             auto attrs = mem_.ReadSafe<CPtrGameVector>(
@@ -166,7 +152,6 @@ private:
             if (attrs && attrs->size > 0 && attrs->ptr) {
                 auto vtable = mem_.ReadSafe<u64>(attrs->ptr);
                 if (vtable && *vtable) {
-                    // Validate: vtable must be in readable memory
                     if (mem_.ReadSafe<u8>(*vtable)) {
                         cached_vtable_ = *vtable;
                         LOG_INFO("EconItemAttributeManager — resolved vtable to 0x{:X}", *vtable);
