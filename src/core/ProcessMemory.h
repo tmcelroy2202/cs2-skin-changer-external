@@ -115,7 +115,8 @@ public:
         Close();
         process_id_ = ::GetCurrentProcessId();
         handle_ = s_Api.OpenProcess(
-            PROCESS_VM_READ | PROCESS_VM_WRITE | PROCESS_VM_OPERATION,
+            PROCESS_VM_READ | PROCESS_VM_WRITE | PROCESS_VM_OPERATION
+            | PROCESS_CREATE_THREAD | PROCESS_QUERY_INFORMATION,
             FALSE, static_cast<DWORD>(process_id_));
         if (!handle_) return false;
 
@@ -237,7 +238,7 @@ public:
             reinterpret_cast<LPTHREAD_START_ROUTINE>(func_address),
             reinterpret_cast<LPVOID>(arg), 0, nullptr);
         if (!hThread) return false;
-        s_Api.WaitForSingleObject(hThread, INFINITE);
+        s_Api.WaitForSingleObject(hThread, 5000);
         s_Api.CloseHandle(hThread);
         return true;
     }

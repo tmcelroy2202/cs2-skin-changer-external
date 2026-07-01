@@ -23,7 +23,9 @@
 class SkinChanger {
 public:
     SkinChanger(ProcessMemory& mem, SkinDatabase& db, SkinManager& mgr)
-        : mem_(mem), db_(db), mgr_(mgr), attr_mgr_(mem) {}
+        : mem_(mem), db_(db), mgr_(mgr), attr_mgr_(mem) {
+        ResolveSigs();
+    }
 
     /// Called every frame.  Returns true if a skin was applied.
     bool Tick() noexcept;
@@ -45,8 +47,12 @@ private:
     u16                 music_kit_id_ = 0;
     u16                 last_music_kit_id_ = 0;
     u32                 account_id_ = 0;
+    u64                 regenerate_weapon_skins_ = 0;
     std::chrono::steady_clock::time_point last_tick_{};
     mutable std::mt19937 rng_{std::random_device{}()};
+
+    /// Resolve signature patterns (RegenerateWeaponSkins, etc.) from client.dll.
+    void ResolveSigs() noexcept;
 
     /// Read the player's Steam account ID from any existing weapon's item view.
     u32 ResolveAccountId() noexcept;

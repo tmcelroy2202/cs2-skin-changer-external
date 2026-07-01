@@ -10,6 +10,16 @@ static Team ReadTeam(ProcessMemory& mem, u64 local_player) {
     return static_cast<Team>(*raw);
 }
 
+void SkinChanger::ResolveSigs() noexcept {
+    if (!regenerate_weapon_skins_) {
+        regenerate_weapon_skins_ = mem_.SigScan(L"client.dll", Offsets::Sigs::RegenerateWeaponSkins);
+        if (regenerate_weapon_skins_)
+            LOG_INFO("SkinChanger — resolved RegenerateWeaponSkins at 0x{:X}", regenerate_weapon_skins_);
+        else
+            LOG_WARN("SkinChanger — failed to resolve RegenerateWeaponSkins signature");
+    }
+}
+
 bool SkinChanger::Tick() noexcept {
     auto now = std::chrono::steady_clock::now();
     if (!mgr_.NeedsUpdate() &&
@@ -33,10 +43,11 @@ bool SkinChanger::Tick() noexcept {
     Team team = ReadTeam(mem_, local_player_val);
     bool is_ct = (team == Team_CT);
 
+    // Retry account ID resolution every tick until we get one
     if (!account_id_) {
         account_id_ = ResolveAccountId();
         if (!account_id_)
-            LOG_ERROR("SkinChanger::Tick — failed to resolve account ID");
+            LOG_WARN("SkinChanger::Tick — account ID not yet resolved (no weapons found)");
     }
 
     // Music kit
@@ -75,7 +86,7 @@ bool SkinChanger::Tick() noexcept {
 
         if (!skin.Paint) continue;
 
-        // Fallback + item-view force (written every frame for reliability)
+        // Fallback values (written every frame for reliability)
         mem_.Write<u32>(weapon + Offsets::m_nFallbackPaintKit, static_cast<u32>(skin.Paint));
         mem_.Write<f32>(weapon + Offsets::m_flFallbackWear, skin.Wear);
         mem_.Write<u32>(weapon + Offsets::m_nFallbackSeed, static_cast<u32>(skin.Pattern));
@@ -85,36 +96,43 @@ bool SkinChanger::Tick() noexcept {
         }
         mem_.Write<u32>(weapon + Offsets::m_OriginalOwnerXuidLow, 0);
         mem_.Write<u32>(weapon + Offsets::m_OriginalOwnerXuidHigh, 0);
-
         // Nametag (m_szCustomNameOverride is CUtlString — needs heap alloc, skip for now)
         // TODO: implement nametag via string allocation in target process
 
+        // Set item quality to Unique (5) or Strange (10) so the game knows
+        // this is a custom-skin item, not a vanilla/base weapon.
+        mem_.Write<i32>(item + Offsets::m_iEntityQuality, (skin.StatTrak >= 0) ? 10 : 5);
+
+        // Force the item view to use our fallback values
         mem_.Write<u64>(item + Offsets::m_iItemID, 0xFFFFFFFFFFFFFFFFull);
         mem_.Write<u32>(item + Offsets::m_iItemIDHigh, 0xFFFFFFFF);
         mem_.Write<u32>(item + Offsets::m_iItemIDLow, 0xFFFFFFFF);
-        mem_.Write<u32>(item + Offsets::m_iAccountID, account_id_);
-        mem_.Write<bool>(item + Offsets::m_bRestoreCustomMaterialAfterPrecache, true);
-
+        if (account_id_)
+            mem_.Write<u32>(item + Offsets::m_iAccountID, account_id_);
         if (is_knife && knife_def > 0 && knife_def != cur_def)
             mem_.Write<u16>(item + Offsets::m_iItemDefinitionIndex, static_cast<u16>(knife_def));
 
-        // Mesh mask + attrs (randomized order)
-        auto do_mesh = [&]() {
+        // Create econ attributes (paint, pattern, wear) in the item view's attribute list
+        if (!attr_mgr_.Create(item, skin))
+            LOG_WARN("SkinChanger::Tick — attr_mgr_.Create failed for item 0x{:X} paint={}", item, skin.Paint);
+
+        // Set mesh mask on the weapon entity and its HUD view model
+        {
             auto n = mem_.ReadSafe<u64>(weapon + Offsets::m_pGameSceneNode);
             if (n && *n) DoMeshMask(weapon, *n, skin.bUsesOldModel);
-        };
-        auto do_attrs = [&]() {
-            if (!attr_mgr_.Create(item, skin))
-                LOG_WARN("SkinChanger::Tick — attr_mgr_.Create failed for item 0x{:X} paint={}", item, skin.Paint);
-        };
-
-        if (std::uniform_int_distribution<int>(0, 1)(rng_)) {
-            do_mesh();  do_attrs();
-        } else {
-            do_attrs(); do_mesh();
         }
 
-        // Force the game to re-read and apply our attributes immediately
+        // Mark as uninitialized so the game re-reads our custom data
+        mem_.Write<bool>(item + Offsets::m_bInitialized, false);
+
+        // Call RegenerateWeaponSkins via remote thread to force visual refresh
+        if (regenerate_weapon_skins_) {
+            if (!mem_.CallRemoteThread(regenerate_weapon_skins_, item))
+                LOG_WARN("SkinChanger::Tick — CallRemoteThread failed for item 0x{:X}", item);
+            // Re-mark uninitialized after RWS returns, in case it re-set the flag
+            mem_.Write<bool>(item + Offsets::m_bInitialized, false);
+        }
+
         applied = true;
     }
 
@@ -168,7 +186,8 @@ bool SkinChanger::ApplyGloves() noexcept {
     mem_.Write<u32>(glove_iv + Offsets::m_iItemIDHigh, 0xFFFFFFFF);
     mem_.Write<u32>(glove_iv + Offsets::m_iItemIDLow, 0xFFFFFFFF);
     mem_.Write<u32>(glove_iv + Offsets::m_iAccountID, account_id_);
-    mem_.Write<bool>(glove_iv + Offsets::m_bRestoreCustomMaterialAfterPrecache, true);
+    mem_.Write<i32>(glove_iv + Offsets::m_iEntityQuality, 5);
+    mem_.Write<bool>(glove_iv + Offsets::m_bInitialized, false);
 
     // Attribute creation: use the item view address directly
     SkinInfo_t glove_skin{glove_paint, 0.01f, 0, -1, "", false, "Glove", WeaponsEnum::None};
