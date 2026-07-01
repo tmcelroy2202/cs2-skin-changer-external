@@ -41,7 +41,7 @@ An external skin changer for Counter-Strike 2 using process memory access. Stand
 
 ## Screenshots
 
-![VeneeR UI — Rifles category with AK-47 Fire Serpent selected](https://raw.githubusercontent.com/mrch4n725/cs2-skin-changer-external/main/assets/veneer-ui.png)
+![VeneeR UI — Rifles category with AK-47 Fire Serpent selected]<img width="820" height="560" alt="veneer-ui" src="https://github.com/user-attachments/assets/4928d9f9-caf0-4496-92ff-486a71e72563" />
 
 *VeneeR main UI — sidebar categories, weapon list, skin cards, and wear/StatTrak controls*
 
