@@ -10,16 +10,6 @@ static Team ReadTeam(ProcessMemory& mem, u64 local_player) {
     return static_cast<Team>(*raw);
 }
 
-void SkinChanger::ResolveSigs() noexcept {
-    if (!regenerate_weapon_skins_) {
-        regenerate_weapon_skins_ = mem_.SigScan(L"client.dll", Offsets::Sigs::RegenerateWeaponSkins);
-        if (regenerate_weapon_skins_)
-            LOG_INFO("SkinChanger — resolved RegenerateWeaponSkins at 0x{:X}", regenerate_weapon_skins_);
-        else
-            LOG_WARN("SkinChanger — failed to resolve RegenerateWeaponSkins signature");
-    }
-}
-
 bool SkinChanger::Tick() noexcept {
     auto now = std::chrono::steady_clock::now();
     if (!mgr_.NeedsUpdate() &&
@@ -125,19 +115,17 @@ bool SkinChanger::Tick() noexcept {
         // Mark as uninitialized so the game re-reads our custom data
         mem_.Write<bool>(item + Offsets::m_bInitialized, false);
 
-        // Call RegenerateWeaponSkins via remote thread to force visual refresh
-        if (regenerate_weapon_skins_) {
-            if (!mem_.CallRemoteThread(regenerate_weapon_skins_, item))
-                LOG_WARN("SkinChanger::Tick — CallRemoteThread failed for item 0x{:X}", item);
-            // Re-mark uninitialized after RWS returns, in case it re-set the flag
-            mem_.Write<bool>(item + Offsets::m_bInitialized, false);
-        }
+        // No remote thread call — fallback values written above are read
+    // by CS2's render pipeline every frame. m_bInitialized = false forces
+    // the game to re-read the fallback paint / wear / seed on the next draw.
 
         applied = true;
     }
 
-    // Gloves
-    if (ApplyGloves()) applied = true;
+    // Gloves — only apply when user explicitly changes a glove setting
+    if (mgr_.NeedsUpdate()) {
+        if (ApplyGloves()) applied = true;
+    }
 
     if (applied) {
         mgr_.ClearUpdate();
@@ -151,6 +139,13 @@ bool SkinChanger::ApplyGloves() noexcept {
     auto local_player = mem_.ReadSafe<u64>(mem_.Client() + Offsets::dwLocalPlayerPawn);
     if (!local_player || !*local_player) {
         LOG_WARN("ApplyGloves — no local player");
+        return false;
+    }
+
+    // Sanity-check the m_EconGloves offset before using it
+    if (Offsets::m_EconGloves <= 0 || Offsets::m_EconGloves > 0x10000) {
+        LOG_WARN("ApplyGloves — m_EconGloves offset (0x{:X}) looks invalid (CS2 update?)",
+                 Offsets::m_EconGloves);
         return false;
     }
 

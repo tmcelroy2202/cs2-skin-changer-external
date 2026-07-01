@@ -103,6 +103,13 @@ void RunFrame(App& app) {
             if (ImGui::BeginMenu("Options")) {
                 if (ImGui::MenuItem("Toggle UI", "Insert")) { ui::ToggleVisibility(); }
                 ImGui::Separator();
+                if (ImGui::MenuItem("Update Offsets (cs2-dumper)")) {
+                    if (Offsets::UpdateFromRemote())
+                        LOG_INFO("Offsets updated successfully from cs2-dumper");
+                    else
+                        LOG_WARN("Offsets update failed — check internet or cs2-dumper availability");
+                }
+                ImGui::Separator();
                 if (ImGui::MenuItem("Exit", "Alt+F4")) { app.running = false; }
                 ImGui::EndMenu();
             }

@@ -15,17 +15,14 @@
  * On each tick:
  *   1. Read local player, inventory, and weapons.
  *   2. For each weapon, check if a skin is selected.
- *   3. Apply the skin by writing paint kit, item ID, mesh mask, and econ attrs.
+ *   3. Apply the skin by writing fallback paint kit, wear, seed, and econ attrs.
  *   4. Set m_iItemIDHigh to -1 so the game uses fallback values.
- *   5. Call RegenerateWeaponSkins on the econ item to force a visual refresh.
  * ──────────────────────────────────────────────────────────────────────────── */
 
 class SkinChanger {
 public:
     SkinChanger(ProcessMemory& mem, SkinDatabase& db, SkinManager& mgr)
-        : mem_(mem), db_(db), mgr_(mgr), attr_mgr_(mem) {
-        ResolveSigs();
-    }
+        : mem_(mem), db_(db), mgr_(mgr), attr_mgr_(mem) {}
 
     /// Called every frame.  Returns true if a skin was applied.
     bool Tick() noexcept;
@@ -47,12 +44,8 @@ private:
     u16                 music_kit_id_ = 0;
     u16                 last_music_kit_id_ = 0;
     u32                 account_id_ = 0;
-    u64                 regenerate_weapon_skins_ = 0;
     std::chrono::steady_clock::time_point last_tick_{};
     mutable std::mt19937 rng_{std::random_device{}()};
-
-    /// Resolve signature patterns (RegenerateWeaponSkins, etc.) from client.dll.
-    void ResolveSigs() noexcept;
 
     /// Read the player's Steam account ID from any existing weapon's item view.
     u32 ResolveAccountId() noexcept;
