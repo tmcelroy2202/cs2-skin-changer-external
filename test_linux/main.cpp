@@ -21,8 +21,8 @@ int main() {
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-    glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
     glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
+    // Window is VISIBLE — Xvfb acts as the display server
 
     GLFWwindow* win = glfwCreateWindow(820, 560, "VeneeR", nullptr, nullptr);
     if (!win) {
@@ -32,6 +32,8 @@ int main() {
     }
 
     glfwMakeContextCurrent(win);
+    glfwSwapInterval(1);
+
     if (gl3wInit()) {
         fprintf(stderr, "gl3wInit failed\n");
         return 1;
@@ -51,15 +53,13 @@ int main() {
     SkinChanger  changer;
     SkinChangerPanel panel(db, mgr, changer);
 
-    // Pre-select AK-47 | Fire Serpent (paint 180) for a nice default view
     mgr.SetSkin({180, 0.12f, 333, 42, "", true, "Fire Serpent", WeaponsEnum::Ak47});
     mgr.SetSkin({344, 0.18f, 777, 1337, "", true, "Dragon Lore", WeaponsEnum::Awp});
     panel.SetEquippedWeapon("AK-47 | Fire Serpent", 180);
     panel.SetOpen(true);
 
-    // Pre-select some knife and glove for display
-    mgr.SetTeamKnife(WeaponsEnum::Karambit, 420, true); // CT: Karambit Doppler Sapphire
-    mgr.SetTeamKnife(WeaponsEnum::Butterfly, 38, false); // T: Butterfly Fade
+    mgr.SetTeamKnife(WeaponsEnum::Karambit, 420, true);
+    mgr.SetTeamKnife(WeaponsEnum::Butterfly, 38, false);
 
     SkinInfo_t ct_glove{10042, 0.15f, 0, -1, "", false, "Imperial Plaid", WeaponsEnum::None};
     mgr.SetTeamGloveSkin(ct_glove, GlovesEnum::Driver, true);
@@ -68,7 +68,7 @@ int main() {
     mgr.SetTeamGloveSkin(t_glove, GlovesEnum::HandWraps, false);
 
     // ── Render loop ───────────────────────────────────────────────────────
-    for (int frame = 0; frame < 5; ++frame) {
+    for (int frame = 0; frame < 10; ++frame) {
         glfwPollEvents();
 
         ImGui_ImplOpenGL3_NewFrame();
@@ -89,15 +89,15 @@ int main() {
 
         glfwSwapBuffers(win);
 
-        // Save screenshot on last frame
-        if (frame == 4) {
+        // Save screenshot on frame 8 (before last, to avoid swap issues)
+        if (frame == 8) {
+            // Read backbuffer BEFORE next swap
             int w = 820, h = 560;
             std::vector<unsigned char> pixels(w * h * 3);
             glReadPixels(0, 0, w, h, GL_RGB, GL_UNSIGNED_BYTE, pixels.data());
             FILE* f = fopen("/tmp/veneer-screenshot.ppm", "wb");
             if (f) {
                 fprintf(f, "P6\n%d %d\n255\n", w, h);
-                // Flip vertically
                 for (int y = h - 1; y >= 0; --y)
                     fwrite(pixels.data() + y * w * 3, 1, w * 3, f);
                 fclose(f);
@@ -113,6 +113,6 @@ int main() {
     glfwDestroyWindow(win);
     glfwTerminate();
 
-    fprintf(stderr, "veneer-test: UI rendered successfully (3 frames)\n");
+    fprintf(stderr, "veneer-test: done\n");
     return 0;
 }
