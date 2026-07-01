@@ -390,7 +390,7 @@ void SkinChangerPanel::DrawSkinsContent() noexcept {
     // ── Detail controls ──────────────────────────────────────────────────────
     auto& chosen = filtered_skins[selected_skin_idx_];
     SkinInfo_t skin = chosen;
-    if (applied.Paint > 0) {
+    if (applied.Paint == chosen.Paint) {
         skin.Wear = applied.Wear;
         skin.Pattern = applied.Pattern;
         skin.StatTrak = applied.StatTrak;
@@ -400,21 +400,18 @@ void SkinChangerPanel::DrawSkinsContent() noexcept {
     ImGui::SameLine(0, 6);
     ImGui::TextColored(Palette::TextDim, "#%d", skin.Paint);
 
-    bool changed = false;
-    DrawWearControls(skin, changed);
+    DrawWearControls(skin);
 
     ImGui::Spacing();
     ImGui::SetNextItemWidth(100.0f);
     int st = (skin.StatTrak >= 0) ? skin.StatTrak : 0;
     if (ImGui::InputInt("##stattrak", &st, 1, 100)) {
         skin.StatTrak = std::clamp(st, -1, 999999);
-        changed = true;
     }
     ImGui::SameLine(0, 8);
     bool st_enabled = (skin.StatTrak >= 0);
     if (ImGui::Checkbox("StatTrak##st_en", &st_enabled)) {
         skin.StatTrak = st_enabled ? 0 : -1;
-        changed = true;
     }
 
     ImGui::Spacing();
@@ -531,11 +528,6 @@ void SkinChangerPanel::DrawSkinCard(i32 idx, const SkinInfo_t& skin, bool select
     ImGui::InvisibleButton("##card", ImVec2(card_w, total_h));
     if (ImGui::IsItemClicked()) {
         selected_skin_idx_ = idx;
-        if (is_knife)
-            mgr_.SetTeamKnife(weapon, skin.Paint, ct_selected_);
-        else
-            mgr_.SetSkin(skin);
-        SaveAndSync();
     }
     if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal))
         ImGui::SetTooltip("%s\nPaint Kit #%d", skin.name.c_str(), skin.Paint);
@@ -546,7 +538,7 @@ void SkinChangerPanel::DrawSkinCard(i32 idx, const SkinInfo_t& skin, bool select
 
 // ── Wear & pattern controls ─────────────────────────────────────────────────────
 
-void SkinChangerPanel::DrawWearControls(SkinInfo_t& skin, bool& changed) noexcept {
+void SkinChangerPanel::DrawWearControls(SkinInfo_t& skin) noexcept {
     ImDrawList* dl = ImGui::GetWindowDrawList();
     ImVec2 p = ImGui::GetCursorScreenPos();
     float w = ImGui::GetContentRegionAvail().x;
@@ -578,8 +570,7 @@ void SkinChangerPanel::DrawWearControls(SkinInfo_t& skin, bool& changed) noexcep
 
     ImGui::SetNextItemWidth(220.0f);
     ImGui::PushStyleColor(ImGuiCol_Text, WearColor(skin.Wear));
-    if (ImGui::SliderFloat("##wear", &skin.Wear, 0.0f, 1.0f, "%.4f"))
-        changed = true;
+    if (ImGui::SliderFloat("##wear", &skin.Wear, 0.0f, 1.0f, "%.4f")) {}
     ImGui::PopStyleColor();
     ImGui::SameLine(0, 8);
     ImGui::TextColored(WearColor(skin.Wear), "%s", WearLabel(skin.Wear));
@@ -589,7 +580,6 @@ void SkinChangerPanel::DrawWearControls(SkinInfo_t& skin, bool& changed) noexcep
     int pattern = skin.Pattern;
     if (ImGui::InputInt("##pattern", &pattern, 1, 100)) {
         skin.Pattern = std::clamp(pattern, 0, 9999);
-        changed = true;
     }
     ImGui::SameLine(0, 8);
     ImGui::TextColored(Palette::TextDim, "Pattern Seed");

@@ -55,7 +55,7 @@ private:
     void DrawMusicContent() noexcept;
     void DrawSkinCards(std::span<const SkinInfo_t> skins, WeaponsEnum weapon, bool is_knife) noexcept;
     void DrawSkinCard(i32 idx, const SkinInfo_t& skin, bool selected, WeaponsEnum weapon, bool is_knife) noexcept;
-    void DrawWearControls(SkinInfo_t& skin, bool& changed) noexcept;
+    void DrawWearControls(SkinInfo_t& skin) noexcept;
     void SaveAndSync() noexcept;
 
     static ImColor PreviewColor(i32 paint_id) noexcept;

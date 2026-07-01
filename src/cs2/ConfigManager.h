@@ -36,8 +36,11 @@ inline void SaveConfig(SkinManager& mgr, u16 music_kit_id) {
     for (auto& s : mgr.active_skins) {
         i32 def = static_cast<i32>(s.weaponType);
         if (def > 0 && s.Paint > 0) {
+            std::string esc_name = s.name;
+            for (size_t p = 0; (p = esc_name.find(',', p)) != std::string::npos; p += 2)
+                esc_name.replace(p, 1, "\\,");
             f << def << " = " << s.Paint << ", " << s.Wear << ", " << s.Pattern
-              << ", " << s.name << ", " << (s.bUsesOldModel ? 1 : 0)
+              << ", " << esc_name << ", " << (s.bUsesOldModel ? 1 : 0)
               << ", " << s.StatTrak << "\n";
         }
     }
@@ -150,14 +153,28 @@ inline void LoadConfig(SkinManager& mgr, u16& music_kit_id) {
                 i32 old_model = 0;
                 i32 stat_trak = -1;
 
-                // Split rest by commas
+                // Split rest by commas (respecting escaped commas)
                 std::vector<std::string> parts;
-                std::stringstream rs(rest);
-                std::string part;
-                while (std::getline(rs, part, ',')) {
-                    trim_front(part);
-                    if (!part.empty())
-                        parts.push_back(part);
+                {
+                    std::string cur;
+                    bool esc = false;
+                    for (char c : rest) {
+                        if (esc) {
+                            if (c == ',') cur += ',';
+                            else { cur += '\\'; cur += c; }
+                            esc = false;
+                        } else if (c == '\\') {
+                            esc = true;
+                        } else if (c == ',') {
+                            trim_front(cur);
+                            if (!cur.empty()) parts.push_back(cur);
+                            cur.clear();
+                        } else {
+                            cur += c;
+                        }
+                    }
+                    trim_front(cur);
+                    if (!cur.empty()) parts.push_back(cur);
                 }
 
                 if (parts.size() >= 1) name = parts[0];

@@ -71,14 +71,15 @@ public:
         attrs[1] = MakeAttribute(Attr_Pattern, static_cast<f32>(skin.Pattern), item);
         attrs[2] = MakeAttribute(Attr_Wear,    skin.Wear,                      item);
 
-        // Remove any existing attributes first
-        if (!RemoveInternal(item)) return false;
-
+        // Allocate new block FIRST so we never leave the item with no attrs
         u64 block = mem_.Allocate(0, kBlockSize);
         if (!block) {
             LOG_WARN("EconItemAttributeManager::Create — VirtualAllocEx failed");
             return false;
         }
+
+        // Now detach any existing attributes (safe even if this fails)
+        RemoveInternal(item);
 
         // Write attribute structs
         for (u32 i = 0; i < kAttrCount; ++i) {
@@ -124,13 +125,11 @@ private:
         auto attrs = mem_.ReadSafe<CPtrGameVector>(attr_addr);
         if (!attrs || !attrs->size || !attrs->ptr) return true;
 
+        // Zero out the vector so CS2 stops iterating it.
+        // We do NOT try to free the old block — it could be game-owned memory
+        // (if the game created attributes with the same count), and freeing it
+        // would crash CS2.  Accept ~96 bytes leaked per skin change instead.
         mem_.Write(attr_addr, CPtrGameVector{});
-
-        // Only free if this is OUR allocation (matches our attribute count)
-        if (attrs->size == kAttrCount) {
-            u64 block = attrs->ptr - static_cast<u64>(kAttrCount) * kAttrSize;
-            mem_.Free(block);
-        }
         return true;
     }
 
