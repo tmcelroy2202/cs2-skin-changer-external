@@ -12,6 +12,8 @@
 #include <cstdlib>
 #include <vector>
 
+#include "core/Logging.h"
+
 #ifndef NOMINMAX
 #define NOMINMAX
 #endif
@@ -411,6 +413,7 @@ inline bool ParseCs2Line(const std::string& line,
 }
 
 /// Parse a line for namespace opening: "namespace X {" → returns X, else ""
+/// cs2-dumper format has a space before '{':  "namespace C_EconEntity {"
 inline std::string_view ParseNamespaceOpen(const std::string& line) noexcept {
     constexpr const char ns_prefix[] = "namespace ";
     auto pos = line.find(ns_prefix);
@@ -420,8 +423,12 @@ inline std::string_view ParseNamespaceOpen(const std::string& line) noexcept {
     while (start < line.size() && line[start] == ' ') ++start;
     auto end = start;
     while (end < line.size() && line[end] != ' ' && line[end] != '{' && line[end] != '\r' && line[end] != '\n') ++end;
-    if (end == start || end >= line.size() || line[end] != '{') return {};
-    return std::string_view(line).substr(start, end - start);
+    if (end == start) return {};
+    auto ident_end = end;
+    // skip whitespace between identifier and '{'
+    while (end < line.size() && line[end] == ' ') ++end;
+    if (end >= line.size() || line[end] != '{') return {};
+    return std::string_view(line).substr(start, ident_end - start);
 }
 
 /// Fetch the latest offsets from cs2-dumper's GitHub output and save them
@@ -431,14 +438,21 @@ inline std::string_view ParseNamespaceOpen(const std::string& line) noexcept {
 /// m_AttributeManager (which exists in C_Chicken, C_EconEntity, C_PlantedC4)
 /// are resolved from the correct class.
 inline bool UpdateFromRemote() noexcept {
-    // Download offsets.hpp for dw* fields
+    LOG_INFO("UpdateFromRemote: downloading offsets.hpp ...");
     auto tmp_offsets = std::filesystem::temp_directory_path() / "cs2_offsets_dl.tmp";
-    if (!DownloadUrl(kCs2DumperOffsetsUrl, tmp_offsets))
+    if (!DownloadUrl(kCs2DumperOffsetsUrl, tmp_offsets)) {
+        LOG_WARN("UpdateFromRemote: failed to download offsets.hpp");
         return false;
+    }
+    LOG_INFO("UpdateFromRemote: offsets.hpp downloaded OK");
 
-    // Download client_dll.hpp for m_* schema fields
+    LOG_INFO("UpdateFromRemote: downloading client_dll.hpp ...");
     auto tmp_client = std::filesystem::temp_directory_path() / "cs2_client_dl.tmp";
-    DownloadUrl(kCs2DumperClientDllUrl, tmp_client);  // best-effort
+    if (!DownloadUrl(kCs2DumperClientDllUrl, tmp_client)) {
+        LOG_WARN("UpdateFromRemote: failed to download client_dll.hpp (best-effort, continuing)");
+    } else {
+        LOG_INFO("UpdateFromRemote: client_dll.hpp downloaded OK");
+    }
 
     // ── Class-aware parse ──────────────────────────────────────────────────
     // Track namespace stack to know which class each field belongs to.
@@ -462,17 +476,24 @@ inline bool UpdateFromRemote() noexcept {
         std::vector<int> ns_depths;
 
         while (std::getline(f, line)) {
+            // Detect namespace opening BEFORE counting braces so we only
+            // call ParseNamespaceOpen once per line (avoids double-push
+            // if a line has multiple '{' chars).
+            std::string_view pending_ns;
+            if (track_ns) {
+                pending_ns = ParseNamespaceOpen(line);
+            }
+
             // Count braces (simple: ignore braces inside strings/comments — good enough for cs2-dumper output)
+            bool ns_pushed = false;
             for (size_t i = 0; i < line.size(); ++i) {
                 char c = line[i];
                 if (c == '{') {
                     ++brace_depth;
-                    if (track_ns) {
-                        auto ns = ParseNamespaceOpen(line);
-                        if (!ns.empty()) {
-                            ns_stack.emplace_back(ns);
-                            ns_depths.push_back(brace_depth);
-                        }
+                    if (track_ns && !pending_ns.empty() && !ns_pushed) {
+                        ns_stack.emplace_back(pending_ns);
+                        ns_depths.push_back(brace_depth);
+                        ns_pushed = true;
                     }
                 } else if (c == '}') {
                     if (track_ns && !ns_stack.empty() && brace_depth == ns_depths.back()) {
@@ -497,9 +518,12 @@ inline bool UpdateFromRemote() noexcept {
 
     // offsets.hpp has no class namespaces (just dw* constants) — flat parse
     parse_file_classaware(tmp_offsets, false);
+    LOG_INFO("UpdateFromRemote: parsed {} flat offsets from offsets.hpp", parsed_flat.size());
+
     // client_dll.hpp has nested namespace classes — class-aware parse
     if (std::filesystem::exists(tmp_client))
         parse_file_classaware(tmp_client, true);
+    LOG_INFO("UpdateFromRemote: parsed {} class-aware fields from client_dll.hpp", parsed_fields.size());
 
     // Clean up temp files
     std::error_code ec;
@@ -602,11 +626,15 @@ inline bool UpdateFromRemote() noexcept {
     add("m_DirtyMeshGroupMask",     &m_DirtyMeshGroupMask);
 
     // ── Apply parsed values ────────────────────────────────────────────────
+    int applied = 0;
+    int skipped_class = 0;
+
     // First: apply flat-parsed offsets (dw* from offsets.hpp)
     for (auto& [k, v] : parsed_flat) {
         auto it = table.find(k);
         if (it != table.end() && (!it->second.required_class || it->second.required_class[0] == '\0')) {
             *it->second.ptr = v;
+            ++applied;
         }
     }
 
@@ -617,11 +645,17 @@ inline bool UpdateFromRemote() noexcept {
 
         // If this offset requires a specific class, check for match
         if (it->second.required_class && it->second.required_class[0] != '\0') {
-            if (pf.class_name != it->second.required_class) continue;
+            if (pf.class_name != it->second.required_class) {
+                ++skipped_class;
+                continue;
+            }
         }
 
         *it->second.ptr = pf.value;
+        ++applied;
     }
+
+    LOG_INFO("UpdateFromRemote: applied {} offsets, skipped {} class-mismatched", applied, skipped_class);
 
     // Persist to local file for next launch (best-effort)
     SaveToFile(DataFilePath());

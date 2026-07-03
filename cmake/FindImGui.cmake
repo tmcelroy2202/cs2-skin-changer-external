@@ -10,18 +10,24 @@ if(TARGET imgui::imgui)
     return()
 endif()
 
-set(IMGUI_SEARCH_PATHS
-    "${ImGui_ROOT}"
-    "$ENV{ImGui_ROOT}"
-    "${CMAKE_CURRENT_SOURCE_DIR}/third_party/imgui"
-    "${CMAKE_CURRENT_SOURCE_DIR}/extern/imgui"
-)
+# When cross-compiling with CMAKE_FIND_ROOT_PATH_MODE_INCLUDE=ONLY, find_path
+# only searches the sysroot.  Temporarily allow BOTH so we can find host-side
+# headers in the project tree.
+set(_saved_frp_mode ${CMAKE_FIND_ROOT_PATH_MODE_INCLUDE})
+set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE BOTH)
 
 find_path(ImGui_INCLUDE_DIR
     NAMES imgui.h
-    PATHS ${IMGUI_SEARCH_PATHS}
+    PATHS
+        "${ImGui_ROOT}"
+        "$ENV{ImGui_ROOT}"
+        "${CMAKE_CURRENT_SOURCE_DIR}/third_party/imgui"
+        "${CMAKE_CURRENT_SOURCE_DIR}/extern/imgui"
     PATH_SUFFIXES imgui
+    NO_DEFAULT_PATH
 )
+
+set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ${_saved_frp_mode})
 
 if(NOT ImGui_INCLUDE_DIR)
     message(FATAL_ERROR

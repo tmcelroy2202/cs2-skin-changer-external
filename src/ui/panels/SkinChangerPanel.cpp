@@ -258,7 +258,7 @@ void SkinChangerPanel::DrawHeader() noexcept {
     ImGui::SetCursorScreenPos(ImVec2(p.x + 12, p.y + 7));
     ImGui::TextColored(Palette::Accent, "VeneeR");
     ImGui::SameLine(0, 4);
-    ImGui::TextColored(Palette::TextDim, "v1.7.1");
+    ImGui::TextColored(Palette::TextDim, "v1.7.2");
 
     if (!equipped_weapon_.empty()) {
         ImGui::SameLine(0, 18);
