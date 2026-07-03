@@ -78,9 +78,6 @@ public:
             return false;
         }
 
-        // Now detach any existing attributes (safe even if this fails)
-        RemoveInternal(item);
-
         // Write attribute structs
         for (u32 i = 0; i < kAttrCount; ++i) {
             if (!mem_.Write(block + i * kAttrSize, attrs[i])) {
@@ -100,11 +97,22 @@ public:
             }
         }
 
+        // NOW detach the old attributes — the new block is fully written.
+        // Doing this here (after all writes succeed) ensures the item is
+        // never left with a zeroed attribute vector on failure.
+        RemoveInternal(item);
+
         // Set the game's attribute vector: ptr → pointer array inside our block
         CPtrGameVector vec;
         vec.size = kAttrCount;
         vec.ptr  = block + kPtrArrayOffset;
         mem_.Write(item + Offsets::m_AttributeList + Offsets::m_Attributes, vec);
+
+        // Track this block so RemoveInternal can free it next time.
+        // Store both the base (for MEM_RELEASE) and the interior ptr value
+        // (to match against the game's attrs->ptr on the next call).
+        known_block_base_ = block;
+        known_block_ptr_  = block + kPtrArrayOffset;
         return true;
     }
 
@@ -115,6 +123,11 @@ public:
 private:
     ProcessMemory& mem_;
     u64 cached_vtable_ = 0;
+    // Tracks the most recently allocated block so RemoveInternal can free it.
+    // We need BOTH the base address (for VirtualFreeEx MEM_RELEASE) and the
+    // interior ptr value (to match against the game's attrs->ptr field).
+    u64 known_block_base_{};
+    u64 known_block_ptr_{};
     static constexpr u32 kAttrCount = 3;
     static constexpr u32 kAttrSize  = sizeof(CEconItemAttribute);
 
@@ -125,10 +138,15 @@ private:
         auto attrs = mem_.ReadSafe<CPtrGameVector>(attr_addr);
         if (!attrs || !attrs->size || !attrs->ptr) return true;
 
+        // If the current block was previously allocated by us, free it.
+        // MEM_RELEASE requires the BASE address, not the interior ptr.
+        if (known_block_base_ && attrs->ptr == known_block_ptr_) {
+            mem_.Free(known_block_base_);
+        }
+        known_block_base_ = 0;
+        known_block_ptr_ = 0;
+
         // Zero out the vector so CS2 stops iterating it.
-        // We do NOT try to free the old block — it could be game-owned memory
-        // (if the game created attributes with the same count), and freeing it
-        // would crash CS2.  Accept ~96 bytes leaked per skin change instead.
         mem_.Write(attr_addr, CPtrGameVector{});
         return true;
     }
@@ -145,10 +163,13 @@ private:
             auto attrs = mem_.ReadSafe<CPtrGameVector>(
                 hint_item + Offsets::m_AttributeList + Offsets::m_Attributes);
             if (attrs && attrs->size > 0 && attrs->ptr) {
-                auto vtable = mem_.ReadSafe<u64>(attrs->ptr);
-                if (vtable && *vtable && mem_.ReadSafe<u8>(*vtable)) {
-                    cached_vtable_ = *vtable;
-                    return true;
+                auto first_attr = mem_.ReadSafe<u64>(attrs->ptr);
+                if (first_attr && *first_attr) {
+                    auto vtable = mem_.ReadSafe<u64>(*first_attr);
+                    if (vtable && *vtable && mem_.ReadSafe<u8>(*vtable)) {
+                        cached_vtable_ = *vtable;
+                        return true;
+                    }
                 }
             }
         }
@@ -166,14 +187,17 @@ private:
             auto attrs = mem_.ReadSafe<CPtrGameVector>(
                 item_addr + Offsets::m_AttributeList + Offsets::m_Attributes);
             if (attrs && attrs->size > 0 && attrs->ptr) {
-                auto vtable = mem_.ReadSafe<u64>(attrs->ptr);
-                if (vtable && *vtable) {
-                    if (mem_.ReadSafe<u8>(*vtable)) {
-                        cached_vtable_ = *vtable;
-                        LOG_INFO("EconItemAttributeManager — resolved vtable to 0x{:X}", *vtable);
-                        return true;
+                auto first_attr = mem_.ReadSafe<u64>(attrs->ptr);
+                if (first_attr && *first_attr) {
+                    auto vtable = mem_.ReadSafe<u64>(*first_attr);
+                    if (vtable && *vtable) {
+                        if (mem_.ReadSafe<u8>(*vtable)) {
+                            cached_vtable_ = *vtable;
+                            LOG_INFO("EconItemAttributeManager — resolved vtable to 0x{:X}", *vtable);
+                            return true;
+                        }
+                        LOG_WARN("EconItemAttributeManager — vtable 0x{:X} not readable", *vtable);
                     }
-                    LOG_WARN("EconItemAttributeManager — vtable 0x{:X} not readable", *vtable);
                 }
             }
         }

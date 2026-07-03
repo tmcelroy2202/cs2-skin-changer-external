@@ -156,7 +156,7 @@ static bool InitD3D11(HWND hwnd) noexcept {
     sd.SampleDesc.Quality                 = 0;
     sd.Windowed                           = TRUE;
     sd.SwapEffect                         = DXGI_SWAP_EFFECT_DISCARD;
-    sd.Flags                              = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
+    sd.Flags                              = 0;
 
     D3D_FEATURE_LEVEL feature_level;
     const D3D_FEATURE_LEVEL levels[] = {
@@ -203,7 +203,7 @@ static bool InitD3D11(HWND hwnd) noexcept {
 
 // ── Create: make our own overlay window ──────────────────────────────────────
 
-static std::wstring RandomString(int len) noexcept {
+static std::wstring RandomString(int len) {
     static const wchar_t chars[] = L"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
     std::wstring out(len, L'\0');
     std::mt19937 rng{std::random_device{}()};
@@ -212,7 +212,7 @@ static std::wstring RandomString(int len) noexcept {
     return out;
 }
 
-static bool CreateOverlayWindow() noexcept {
+static bool CreateOverlayWindow() {
     auto& s = State();
 
     std::wstring class_name = RandomString(16);
@@ -250,6 +250,9 @@ static bool CreateOverlayWindow() noexcept {
 
     if (!hwnd) {
         LOG_ERROR("CreateWindowExW failed");
+        UnregisterClassW(class_name.c_str(), wcex.hInstance);
+        s.class_name.clear();
+        s.hinstance = nullptr;
         return false;
     }
 
@@ -257,6 +260,8 @@ static bool CreateOverlayWindow() noexcept {
 
     SetWindowLongPtrW(hwnd, GWL_EXSTYLE,
         WS_EX_TRANSPARENT | WS_EX_TOOLWINDOW | WS_EX_LAYERED);
+    SetWindowPos(hwnd, nullptr, 0, 0, 0, 0,
+                 SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED);
 
     MARGINS margin{-1};
     DwmExtendFrameIntoClientArea(hwnd, &margin);
@@ -284,11 +289,13 @@ void SetClickthrough(bool enabled) noexcept {
         ex &= ~WS_EX_TRANSPARENT;
     }
     SetWindowLongPtrW(hwnd, GWL_EXSTYLE, ex);
+    SetWindowPos(hwnd, nullptr, 0, 0, 0, 0,
+                 SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED);
 }
 
 // ── Init / Shutdown ──────────────────────────────────────────────────────────
 
-bool Init() noexcept {
+bool Init() {
     auto& s = State();
     if (s.initialised) return true;
 
@@ -305,6 +312,7 @@ bool Init() noexcept {
 
     s.running     = true;
     s.initialised = true;
+    s.last_frame  = std::chrono::high_resolution_clock::now();
     LOG_INFO("Overlay initialised ({}x{}, {} FPS cap)",
              s.width, s.height, s.desired_fps);
     return true;
@@ -347,24 +355,23 @@ void NewFrame() noexcept {
     if (!s.running) return;
 
     // FPS limiter — cap at desired_fps
-    static auto last_frame = std::chrono::high_resolution_clock::now();
     auto interval = std::chrono::duration_cast<
         std::chrono::high_resolution_clock::duration>(
             std::chrono::duration<double>(1.0 / s.desired_fps));
 
     // Sleep to maintain target framerate (relative to last frame start)
-    auto elapsed = std::chrono::high_resolution_clock::now() - last_frame;
+    auto elapsed = std::chrono::high_resolution_clock::now() - s.last_frame;
     if (elapsed < interval) {
         std::this_thread::sleep_for(interval - elapsed);
     }
 
     // Compute real delta time for smooth animation
     auto now = std::chrono::high_resolution_clock::now();
-    f32 dt = std::chrono::duration<f32>(now - last_frame).count();
-    last_frame = now;
+    f32 dt = std::chrono::duration<f32>(now - s.last_frame).count();
+    s.last_frame = now;
 
     ImGuiIO& io = ImGui::GetIO();
-    io.DeltaTime = std::max(dt, 1.0f / 120.0f);
+    io.DeltaTime = std::clamp(dt, 1.0f / 120.0f, 1.0f / 10.0f);
 
     // Pump messages
     MSG msg{};
@@ -377,13 +384,20 @@ void NewFrame() noexcept {
         }
     }
 
-    // Handle Insert key for visibility toggle (edge-triggered)
+    // Handle Insert key for visibility toggle (edge-triggered).
+    // Deferred outside the message loop to avoid reentrant SetWindowLongPtrW.
     static bool insert_was_down = false;
+    static bool toggle_pending = false;
     bool insert_down = (GetAsyncKeyState(VK_INSERT) & 0x8000) != 0;
-    if (insert_down && !insert_was_down) {
-        ToggleOverlayVisibility();
-    }
+    if (insert_down && !insert_was_down)
+        toggle_pending = true;
     insert_was_down = insert_down;
+
+    // Deferred visibility toggle (avoids reentrancy in the message loop above)
+    if (toggle_pending) {
+        ToggleOverlayVisibility();
+        toggle_pending = false;
+    }
 
     // Manual mouse input (no WndProc needed for click-through)
     POINT pt;
@@ -423,6 +437,10 @@ namespace {
 LRESULT CALLBACK OverlayWndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     if (ImGui_ImplWin32_WndProcHandler(hWnd, msg, wParam, lParam))
         return true;
+    if (msg == WM_DESTROY) {
+        overlay::State().running = false;
+        return 0;
+    }
     return DefWindowProcW(hWnd, msg, wParam, lParam);
 }
 

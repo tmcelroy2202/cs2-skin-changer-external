@@ -5,18 +5,22 @@
 #include <cctype>
 
 void ConsolePanel::AddMessage(std::string_view text, LogLevel level) noexcept {
-    messages_.push_back(LogMessage{
-        .text = std::string(text),
-        .level = level,
-        .timestamp = static_cast<f32>(ImGui::GetTime())
-    });
-    if (messages_.size() > max_messages_) {
-        messages_.pop_front();
+    {
+        std::lock_guard lock(messages_mutex_);
+        messages_.push_back(LogMessage{
+            .text = std::string(text),
+            .level = level,
+            .timestamp = static_cast<f32>(ImGui::GetTime())
+        });
+        if (messages_.size() > max_messages_) {
+            messages_.pop_front();
+        }
+        scroll_to_bottom_ = auto_scroll_;
     }
-    scroll_to_bottom_ = auto_scroll_;
 }
 
 void ConsolePanel::Clear() noexcept {
+    std::lock_guard lock(messages_mutex_);
     messages_.clear();
 }
 
@@ -45,21 +49,24 @@ void ConsolePanel::Draw() noexcept {
     ImGui::BeginChild("##console_output", ImVec2(0, 0), true,
                       ImGuiWindowFlags_HorizontalScrollbar);
 
-    for (auto& msg : messages_) {
-        if (!filter_.empty()) {
-            auto text_lower = msg.text;
-            std::ranges::transform(text_lower, text_lower.begin(),
-                                   [](char c) { return char(std::tolower(static_cast<unsigned char>(c))); });
-            auto filter_lower = filter_;
-            std::ranges::transform(filter_lower, filter_lower.begin(),
-                                   [](char c) { return char(std::tolower(static_cast<unsigned char>(c))); });
-            if (text_lower.find(filter_lower) == std::string::npos)
-                continue;
-        }
+    {
+        std::lock_guard lock(messages_mutex_);
+        for (auto& msg : messages_) {
+            if (!filter_.empty()) {
+                auto text_lower = msg.text;
+                std::ranges::transform(text_lower, text_lower.begin(),
+                                       [](char c) { return char(std::tolower(static_cast<unsigned char>(c))); });
+                auto filter_lower = filter_;
+                std::ranges::transform(filter_lower, filter_lower.begin(),
+                                       [](char c) { return char(std::tolower(static_cast<unsigned char>(c))); });
+                if (text_lower.find(filter_lower) == std::string::npos)
+                    continue;
+            }
 
-        ImGui::PushStyleColor(ImGuiCol_Text, ColorForLevel(msg.level));
-        ImGui::Text("[%.1f] %s", msg.timestamp, msg.text.c_str());
-        ImGui::PopStyleColor();
+            ImGui::PushStyleColor(ImGuiCol_Text, ColorForLevel(msg.level));
+            ImGui::Text("[%.1f] %s", msg.timestamp, msg.text.c_str());
+            ImGui::PopStyleColor();
+        }
     }
 
     if (scroll_to_bottom_) {

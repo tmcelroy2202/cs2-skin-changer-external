@@ -97,11 +97,22 @@ bool SkinChanger::Tick() noexcept {
         i32  knife_def  = static_cast<i32>(mgr_.GetKnifeDef(is_ct));
         i32  knife_pnt  = mgr_.GetKnifePaint(is_ct);
 
+        // Apply knife model change BEFORE the paint check — model and paint are
+        // independent.  The item-definition-index write works even when no paint
+        // is configured (so the model swap still takes effect).
+        if (is_knife && knife_def > 0 && knife_def != cur_def)
+            mem_.Write<u16>(item + Offsets::m_iItemDefinitionIndex, static_cast<u16>(knife_def));
+
         SkinInfo_t skin = is_knife && knife_pnt
             ? SkinInfo_t{knife_pnt, 0.01f, 0, -1, "", false, "Knife", WeaponsEnum::None}
             : mgr_.GetSkin(def);
 
         if (!skin.Paint) continue;
+
+        // Mark as uninitialized FIRST so the game ignores this item view while
+        // we write the new values below (prevents partial-update flicker).
+        mem_.Write<bool>(item + Offsets::m_bInitialized, false);
+        mem_.Write<bool>(item + Offsets::m_bRestoreCustomMaterialAfterPrecache, false);
 
         // Fallback values (written every frame for reliability)
         mem_.Write<u32>(weapon + Offsets::m_nFallbackPaintKit, static_cast<u32>(skin.Paint));
@@ -126,8 +137,6 @@ bool SkinChanger::Tick() noexcept {
         mem_.Write<u32>(item + Offsets::m_iItemIDLow, 0xFFFFFFFF);
         if (account_id_)
             mem_.Write<u32>(item + Offsets::m_iAccountID, account_id_);
-        if (is_knife && knife_def > 0 && knife_def != cur_def)
-            mem_.Write<u16>(item + Offsets::m_iItemDefinitionIndex, static_cast<u16>(knife_def));
 
         // Create econ attributes (paint, pattern, wear) in the item view's attribute list.
         // Only needed when the user changes a skin — fallback values written above
@@ -143,16 +152,39 @@ bool SkinChanger::Tick() noexcept {
             if (n && *n) DoMeshMask(weapon, *n, skin.bUsesOldModel);
         }
 
-        // Mark as uninitialized so the game re-reads our custom data.
-        // Also clear the restore-custom-material flag so CS2 re-applies
-        // the skin material on the next frame.
-        mem_.Write<bool>(item + Offsets::m_bInitialized, false);
-        mem_.Write<bool>(item + Offsets::m_bRestoreCustomMaterialAfterPrecache, false);
-
         applied = true;
     }
 
-    // Gloves — only apply when user explicitly changes a glove setting
+    // Gloves — per-tick fallback writes (same as weapons) so gloves survive
+    // round restarts without requiring the user to re-apply.
+    {
+        i32 glove_paint = mgr_.GetGlovePaint(is_ct);
+        if (glove_paint) {
+            u64 glove_iv = local_player_val + Offsets::m_EconGloves;
+
+            // Write item view fields (every tick, matching weapon behaviour)
+            mem_.Write<u64>(glove_iv + Offsets::m_iItemID, 0xFFFFFFFFFFFFFFFFull);
+            mem_.Write<u32>(glove_iv + Offsets::m_iItemIDHigh, 0xFFFFFFFF);
+            mem_.Write<u32>(glove_iv + Offsets::m_iItemIDLow, 0xFFFFFFFF);
+            mem_.Write<u32>(glove_iv + Offsets::m_iAccountID, account_id_);
+            mem_.Write<i32>(glove_iv + Offsets::m_iEntityQuality, 5);
+            mem_.Write<bool>(glove_iv + Offsets::m_bInitialized, false);
+            mem_.Write<bool>(glove_iv + Offsets::m_bRestoreCustomMaterialAfterPrecache, false);
+
+            // Write fallback to glove entity (if cached)
+            if (cached_glove_entity_) {
+                mem_.Write<u32>(cached_glove_entity_ + Offsets::m_nFallbackPaintKit, static_cast<u32>(glove_paint));
+                mem_.Write<f32>(cached_glove_entity_ + Offsets::m_flFallbackWear, 0.01f);
+                mem_.Write<u32>(cached_glove_entity_ + Offsets::m_nFallbackStatTrak, 0xFFFFFFFF);
+                mem_.Write<u32>(cached_glove_entity_ + Offsets::m_OriginalOwnerXuidLow, 0);
+                mem_.Write<u32>(cached_glove_entity_ + Offsets::m_OriginalOwnerXuidHigh, 0);
+            }
+
+            applied = true;
+        }
+    }
+
+    // Attribute creation + mesh mask — only when user explicitly changes a setting
     if (mgr_.NeedsUpdate()) {
         if (ApplyGloves()) applied = true;
     }
@@ -188,32 +220,19 @@ bool SkinChanger::ApplyGloves() noexcept {
     }
 
     // m_EconGloves is C_EconItemView embedded-by-value in the player pawn.
-    // Direct field access on the embedded item view:
     u64 glove_iv = *local_player + Offsets::m_EconGloves;
 
-    // Find the glove entity (C_EconGloves) via entity list scan.
-    // Its m_Item pointer should match the embedded item view address.
-    u64 glove_entity = FindGloveEntity(mem_, *local_player);
-
-    if (glove_entity) {
-        // Write fallback values to the glove entity
-        mem_.Write<u32>(glove_entity + Offsets::m_nFallbackPaintKit, static_cast<u32>(glove_paint));
-        mem_.Write<f32>(glove_entity + Offsets::m_flFallbackWear, 0.01f);
-        mem_.Write<u32>(glove_entity + Offsets::m_nFallbackStatTrak, 0xFFFFFFFF);
-        mem_.Write<u32>(glove_entity + Offsets::m_OriginalOwnerXuidLow, 0);
-        mem_.Write<u32>(glove_entity + Offsets::m_OriginalOwnerXuidHigh, 0);
+    // Find and cache the glove entity (C_EconGloves) for per-tick fallback writes
+    cached_glove_entity_ = FindGloveEntity(mem_, *local_player);
+    if (cached_glove_entity_) {
+        LOG_INFO("ApplyGloves — cached glove entity 0x{:X}", cached_glove_entity_);
     } else {
-        LOG_WARN("ApplyGloves — glove entity not found; writing fallback to item view only");
+        LOG_WARN("ApplyGloves — glove entity not found; item-view writes only");
     }
 
-    // Write item view fields directly to the embedded C_EconItemView
-    mem_.Write<u64>(glove_iv + Offsets::m_iItemID, 0xFFFFFFFFFFFFFFFFull);
-    mem_.Write<u32>(glove_iv + Offsets::m_iItemIDHigh, 0xFFFFFFFF);
-    mem_.Write<u32>(glove_iv + Offsets::m_iItemIDLow, 0xFFFFFFFF);
-    mem_.Write<u32>(glove_iv + Offsets::m_iAccountID, account_id_);
-    mem_.Write<i32>(glove_iv + Offsets::m_iEntityQuality, 5);
-    mem_.Write<bool>(glove_iv + Offsets::m_bInitialized, false);
-    mem_.Write<bool>(glove_iv + Offsets::m_bRestoreCustomMaterialAfterPrecache, false);
+    // The per-tick fallback writes (paint/wear/iItemID/m_bInitialized etc.)
+    // are now handled inside Tick() unconditionally.  Here we only do the
+    // one-shot operations: attribute creation + mesh mask + reapply flag.
 
     // Attribute creation: use the item view address directly
     SkinInfo_t glove_skin{glove_paint, 0.01f, 0, -1, "", false, "Glove", WeaponsEnum::None};

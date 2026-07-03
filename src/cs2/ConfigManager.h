@@ -37,6 +37,8 @@ inline void SaveConfig(SkinManager& mgr, u16 music_kit_id) {
         i32 def = static_cast<i32>(s.weaponType);
         if (def > 0 && s.Paint > 0) {
             std::string esc_name = s.name;
+            for (size_t p = 0; (p = esc_name.find('\\', p)) != std::string::npos; p += 2)
+                esc_name.replace(p, 1, "\\\\");
             for (size_t p = 0; (p = esc_name.find(',', p)) != std::string::npos; p += 2)
                 esc_name.replace(p, 1, "\\,");
             f << def << " = " << s.Paint << ", " << s.Wear << ", " << s.Pattern
@@ -161,6 +163,7 @@ inline void LoadConfig(SkinManager& mgr, u16& music_kit_id) {
                     for (char c : rest) {
                         if (esc) {
                             if (c == ',') cur += ',';
+                            else if (c == '\\') cur += '\\';
                             else { cur += '\\'; cur += c; }
                             esc = false;
                         } else if (c == '\\') {

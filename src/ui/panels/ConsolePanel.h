@@ -4,6 +4,7 @@
 #include "core/Logging.h"
 #include "imgui.h"
 #include <deque>
+#include <mutex>
 
 /* ── ConsolePanel ──────────────────────────────────────────────────────────
  *
@@ -53,6 +54,7 @@ public:
 
 private:
     std::deque<LogMessage> messages_;
+    mutable std::mutex     messages_mutex_;
     std::string            filter_;
     bool                   auto_scroll_{true};
     bool                   scroll_to_bottom_{};

@@ -54,6 +54,10 @@ private:
     std::unordered_set<u64> logged_weapon_warns_{};
     mutable std::mt19937 rng_{std::random_device{}()};
 
+    // Cached glove entity address — refreshed on NeedsUpdate, used for per-tick
+    // fallback writes.
+    u64 cached_glove_entity_ = 0;
+
     /// Read the player's Steam account ID from any existing weapon's item view.
     u32 ResolveAccountId() noexcept;
 

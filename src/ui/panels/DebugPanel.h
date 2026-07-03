@@ -299,7 +299,9 @@ inline void DebugPanel::DrawEntityListScan() noexcept {
             u64 ent = *entity;
             // Try to read some identifying info
             auto mgr = mem_.ReadSafe<u64>(ent + Offsets::m_AttributeManager);
-            auto item = mgr ? mem_.Read<u64>(*mgr + Offsets::m_Item) : 0ull;
+            u64 item = 0;
+            if (mgr && *mgr && *mgr != ~0ull)
+                item = mem_.Read<u64>(*mgr + Offsets::m_Item);
 
             if (item && item != ~0ull) {
                 auto def = mem_.ReadSafe<u16>(item + Offsets::m_iItemDefinitionIndex);
@@ -327,7 +329,6 @@ inline void DebugPanel::DrawWriteVerification() noexcept {
         ImGui::Text("0x%llX %s: expected=0x%llX actual=0x%llX %s",
                     c.addr, c.field.c_str(), c.expected, c.actual,
                     ok ? "✓" : "✗ MISMATCH");
-        if (!ok) ImGui::SameLine();
     }
     ImGui::EndChild();
 

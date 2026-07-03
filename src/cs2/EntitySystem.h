@@ -32,6 +32,7 @@ inline u64 GetEntityByHandle(ProcessMemory& mem, u32 handle) {
 
     u32 entry_idx = handle & (kChunkSize - 1);   // 0x1FF (9 bits)
     u32 chunk_idx = (handle >> 9) & 0x3F;          // 0x3F (6 bits, 0-63)
+    if (chunk_idx >= kChunkArraySize) return 0;    // only 3 chunks exist
 
     auto entity_list = mem.ReadSafe<u64>(mem.Client() + Offsets::dwEntityList);
     if (!entity_list || !*entity_list) return 0;
@@ -123,11 +124,10 @@ inline u64 GetHudWeapon(ProcessMemory& mem, u64 weapon) {
     auto arms_node = mem.ReadSafe<u64>(arms_base + Offsets::m_pGameSceneNode);
     if (!arms_node || !*arms_node) return 0;
 
+    u32 iter = 0;
     for (u64 view_model = mem.Read<u64>(*arms_node + Offsets::m_pChild);
-         view_model;
-         view_model = mem.Read<u64>(view_model + Offsets::m_pNextSibling)) {
-
-        if (!view_model) continue;
+         view_model && iter < 256;
+         view_model = mem.Read<u64>(view_model + Offsets::m_pNextSibling), ++iter) {
         // m_pOwner in CGameSceneNode is a CEntityHandle (u32), not a pointer
         auto owner_handle = mem.ReadSafe<u32>(view_model + Offsets::m_pOwner);
         if (!owner_handle || !*owner_handle) continue;

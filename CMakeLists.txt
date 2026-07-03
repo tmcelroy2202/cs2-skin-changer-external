@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(CS2SkinChanger VERSION 1.5.9 LANGUAGES C CXX)
+project(CS2SkinChanger VERSION 1.7.0 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -65,7 +65,7 @@ else()
     # MinGW — library names are lowercase (case-sensitive filesystem).
     target_link_libraries(CS2SkinChanger PRIVATE
         imgui::imgui
-        d3d11 dxgi dwmapi imm32 ole32 windowscodecs d3dcompiler
+        d3d11 dxgi dwmapi imm32 ole32 windowscodecs d3dcompiler gdi32
     )
 endif()
 

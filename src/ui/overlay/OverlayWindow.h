@@ -1,6 +1,8 @@
 #pragma once
 
 #include "core/Core.h"
+#include <string>
+#include <chrono>
 
 /* ── OverlayWindow ──────────────────────────────────────────────────────────
  *
@@ -38,10 +40,13 @@ struct OverlayState {
     bool            initialised         = false;
 
     void (*toggle_callback)() = nullptr;
+
+    // Frame timing — stored in state instead of a function-static for thread safety
+    std::chrono::high_resolution_clock::time_point last_frame{};
 };
 
 /// Initialise the overlay window (hijack or create).
-bool Init() noexcept;
+bool Init();
 
 /// Shutdown and release all overlay resources.
 void Shutdown() noexcept;

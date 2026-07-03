@@ -290,7 +290,7 @@ private:
         case WeaponsEnum::G3Sg1:         return "weapon_g3sg1";
         case WeaponsEnum::Galil:         return "weapon_galilar";
         case WeaponsEnum::M249:          return "weapon_m249";
-        case WeaponsEnum::M4A4:          return "weapon_m4a1";
+        case WeaponsEnum::M4A4:          return "weapon_m4a4";
         case WeaponsEnum::M4A1Silencer:  return "weapon_m4a1_silencer";
         case WeaponsEnum::Mac10:         return "weapon_mac10";
         case WeaponsEnum::P90:           return "weapon_p90";
