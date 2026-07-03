@@ -58,7 +58,7 @@ public:
     bool Create(u64 item, const SkinInfo_t& skin) noexcept {
         if (!skin.Paint) return false;
 
-        if (!ResolveVtable()) {
+        if (!ResolveVtable(item)) {
             LOG_WARN("EconItemAttributeManager::Create — failed to resolve vtable");
             return false;
         }
@@ -136,16 +136,33 @@ private:
     // Walk the player's weapons via GetWeapons (which handles both
     // C_NetworkUtlVectorBase layouts) to find an existing
     // CEconItemAttribute and cache its vtable.
-    bool ResolveVtable() noexcept {
+    // `hint_item` is an optional pre-verified item address from the caller.
+    bool ResolveVtable(u64 hint_item = 0) noexcept {
         if (cached_vtable_) return true;
+
+        // Try the caller's hint first — fastest path
+        if (hint_item) {
+            auto attrs = mem_.ReadSafe<CPtrGameVector>(
+                hint_item + Offsets::m_AttributeList + Offsets::m_Attributes);
+            if (attrs && attrs->size > 0 && attrs->ptr) {
+                auto vtable = mem_.ReadSafe<u64>(attrs->ptr);
+                if (vtable && *vtable && mem_.ReadSafe<u8>(*vtable)) {
+                    cached_vtable_ = *vtable;
+                    return true;
+                }
+            }
+        }
 
         auto local_player = mem_.ReadSafe<u64>(mem_.Client() + Offsets::dwLocalPlayerPawn);
         if (!local_player || !*local_player) return false;
 
         auto weapons = GetWeapons(mem_, *local_player);
         for (u64 weapon : weapons) {
-            u64 item_addr = mem_.Read<u64>(weapon + Offsets::m_AttributeManager + Offsets::m_Item);
+            u64 attr_mgr = mem_.Read<u64>(weapon + Offsets::m_AttributeManager);
+            if (!attr_mgr || attr_mgr == ~0ull) continue;
+            u64 item_addr = mem_.Read<u64>(attr_mgr + Offsets::m_Item);
             if (!item_addr || item_addr == ~0ull) continue;
+            if (hint_item && item_addr == hint_item) continue;  // already tried above
             auto attrs = mem_.ReadSafe<CPtrGameVector>(
                 item_addr + Offsets::m_AttributeList + Offsets::m_Attributes);
             if (attrs && attrs->size > 0 && attrs->ptr) {

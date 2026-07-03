@@ -336,7 +336,12 @@ void SkinChangerPanel::DrawSkinsContent() noexcept {
     } else {
         applied = mgr_.GetSkin(weapon);
     }
-    if (applied.Paint > 0) {
+    // Only sync selection to applied skin when the current index is out of bounds
+    // (e.g. the filter removed the currently-selected row).  Don't force-reset the
+    // user's manual card click — that was overriding it every frame.
+    if (applied.Paint > 0 &&
+        (selected_skin_idx_ < 0 ||
+         selected_skin_idx_ >= static_cast<i32>(filtered_skins.size()))) {
         for (i32 i = 0; i < static_cast<i32>(filtered_skins.size()); ++i) {
             if (filtered_skins[i].Paint == applied.Paint) {
                 selected_skin_idx_ = i;

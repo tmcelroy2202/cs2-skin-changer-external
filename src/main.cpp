@@ -188,10 +188,11 @@ int main() {
             LOG_INFO("Default offsets written to {}", off_path.string().c_str());
         }
 
-        app.skin_changer = new SkinChanger(app.cs2, app.skin_db, app.skin_mgr);
+        app.debug_panel  = new DebugPanel(app.cs2);
+        app.skin_changer = new SkinChanger(app.cs2, app.skin_db, app.skin_mgr,
+                                           app.debug_panel);
         app.skin_panel   = new SkinChangerPanel(app.skin_db, app.skin_mgr,
                                                  *app.skin_changer);
-        app.debug_panel  = new DebugPanel(app.cs2);
         app.panels.Register(app.debug_panel);
 
         app.console_panel = new ConsolePanel();
@@ -462,10 +463,11 @@ DWORD WINAPI InitThread(LPVOID) noexcept {
             LOG_INFO("Default offsets written to {}", off_path.string().c_str());
         }
 
-        app.skin_changer = new SkinChanger(app.cs2, app.skin_db, app.skin_mgr);
+        app.debug_panel  = new DebugPanel(app.cs2);
+        app.skin_changer = new SkinChanger(app.cs2, app.skin_db, app.skin_mgr,
+                                           app.debug_panel);
         app.skin_panel   = new SkinChangerPanel(app.skin_db, app.skin_mgr,
                                                   *app.skin_changer);
-        app.debug_panel  = new DebugPanel(app.cs2);
         app.panels.Register(app.debug_panel);
 
         u16 saved_music = app.skin_changer->GetMusicKit();

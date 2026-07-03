@@ -1,4 +1,5 @@
 #include "SkinChanger.h"
+#include "ui/panels/DebugPanel.h"
 #include "core/Logging.h"
 
 // ── Team helpers ────────────────────────────────────────────────────────────────
@@ -19,11 +20,13 @@ bool SkinChanger::Tick() noexcept {
     auto local_player = mem_.ReadSafe<u64>(mem_.Client() + Offsets::dwLocalPlayerPawn);
     if (!local_player || !*local_player) {
         LOG_WARN("SkinChanger::Tick — no local player pawn");
+        if (debug_) debug_->ReportError("No local player pawn (dwLocalPlayerPawn offset wrong?)");
         return false;
     }
     auto local_ctrl = mem_.ReadSafe<u64>(mem_.Client() + Offsets::dwLocalPlayerController);
     if (!local_ctrl || !*local_ctrl) {
         LOG_WARN("SkinChanger::Tick — no local player controller");
+        if (debug_) debug_->ReportError("No local player controller (dwLocalPlayerController offset wrong?)");
         return false;
     }
 
@@ -32,12 +35,18 @@ bool SkinChanger::Tick() noexcept {
 
     Team team = ReadTeam(mem_, local_player_val);
     bool is_ct = (team == Team_CT);
+    if (team == Team_None && !logged_team_warn_) {
+        LOG_WARN("SkinChanger::Tick — m_iTeamNum (off 0x{:X}) returned 0 — team detection broken",
+                 Offsets::m_iTeamNum);
+        if (debug_) debug_->ReportError("m_iTeamNum=0 — team offset wrong?");
+        logged_team_warn_ = true;
+    }
 
     // Retry account ID resolution every tick until we get one
     if (!account_id_) {
         account_id_ = ResolveAccountId();
-        if (!account_id_)
-            LOG_WARN("SkinChanger::Tick — account ID not yet resolved (no weapons found)");
+        if (!account_id_ && mgr_.NeedsUpdate())
+            LOG_WARN("SkinChanger::Tick — account ID not yet resolved (no valid weapon items)");
     }
 
     // Music kit
@@ -58,8 +67,26 @@ bool SkinChanger::Tick() noexcept {
     bool applied = false;
 
     for (u64 weapon : weapons) {
-        u64 item = mem_.Read<u64>(weapon + Offsets::m_AttributeManager + Offsets::m_Item);
-        if (!item || item == ~0ull) continue;
+        u64 attr_mgr = mem_.Read<u64>(weapon + Offsets::m_AttributeManager);
+        if (!attr_mgr || attr_mgr == ~0ull) {
+            if (!logged_weapon_warns_.count(weapon)) {
+                LOG_WARN("SkinChanger::Tick — weapon 0x{:X}: m_AttributeManager (off 0x{:X}) = 0",
+                         weapon, Offsets::m_AttributeManager);
+                if (debug_) debug_->ReportError("m_AttributeManager=0 for weapon — offset wrong?");
+            }
+            logged_weapon_warns_.insert(weapon);
+            continue;
+        }
+        u64 item = mem_.Read<u64>(attr_mgr + Offsets::m_Item);
+        if (!item || item == ~0ull) {
+            if (!logged_weapon_warns_.count(weapon)) {
+                LOG_WARN("SkinChanger::Tick — weapon 0x{:X}: m_Item (off 0x{:X} in C_AttributeContainer) = 0",
+                         weapon, Offsets::m_Item);
+                if (debug_) debug_->ReportError("m_Item=0 for weapon — m_Item offset wrong?");
+            }
+            logged_weapon_warns_.insert(weapon);
+            continue;
+        }
 
         auto cur_def_raw = mem_.ReadSafe<u16>(item + Offsets::m_iItemDefinitionIndex);
         if (!cur_def_raw) continue;
@@ -216,7 +243,9 @@ u32 SkinChanger::ResolveAccountId() noexcept {
     if (!local_player || !*local_player) return 0;
     auto weapons = GetWeapons(mem_, *local_player);
     for (u64 weapon : weapons) {
-        u64 item = mem_.Read<u64>(weapon + Offsets::m_AttributeManager + Offsets::m_Item);
+        u64 attr_mgr = mem_.Read<u64>(weapon + Offsets::m_AttributeManager);
+        if (!attr_mgr || attr_mgr == ~0ull) continue;
+        u64 item = mem_.Read<u64>(attr_mgr + Offsets::m_Item);
         if (!item || item == ~0ull) continue;
         auto aid = mem_.ReadSafe<u32>(item + Offsets::m_iAccountID);
         if (aid && *aid) return *aid;

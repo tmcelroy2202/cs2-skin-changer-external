@@ -161,7 +161,9 @@ inline u64 FindGloveEntity(ProcessMemory& mem, u64 local_player) {
             if (ent == local_player) continue;
 
             // Check if this entity's m_Item points to our embedded item view
-            u64 item_addr = mem.Read<u64>(ent + Offsets::m_AttributeManager + Offsets::m_Item);
+            u64 attr_mgr = mem.Read<u64>(ent + Offsets::m_AttributeManager);
+            if (!attr_mgr || attr_mgr == ~0ull) continue;
+            u64 item_addr = mem.Read<u64>(attr_mgr + Offsets::m_Item);
             if (item_addr && item_addr != ~0ull && item_addr == target_iv) {
                 LOG_INFO("FindGloveEntity — found at 0x{:X}", ent);
                 return ent;
@@ -182,7 +184,9 @@ inline WeaponsEnum GetActiveWeaponDef(ProcessMemory& mem, u64 local_player) {
     u64 weapon = GetEntityByHandle(mem, *handle);
     if (!weapon) return WeaponsEnum::None;
 
-    u64 item = mem.Read<u64>(weapon + Offsets::m_AttributeManager + Offsets::m_Item);
+    u64 attr_mgr = mem.Read<u64>(weapon + Offsets::m_AttributeManager);
+    if (!attr_mgr || attr_mgr == ~0ull) return WeaponsEnum::None;
+    u64 item = mem.Read<u64>(attr_mgr + Offsets::m_Item);
     if (!item || item == ~0ull) return WeaponsEnum::None;
     auto def = mem.ReadSafe<u16>(item + Offsets::m_iItemDefinitionIndex);
     return static_cast<WeaponsEnum>(def.value_or(0));

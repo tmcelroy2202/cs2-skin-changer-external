@@ -148,11 +148,15 @@ inline void DebugPanel::DrawGeneralDiagnostics() noexcept {
         u64 active = GetActiveWeapon(mem_, *local_pawn);
         ImGui::Text("GetActiveWeapon → 0x%llX", active);
         if (active) {
-            auto item = mem_.Read<u64>(active + Offsets::m_AttributeManager + Offsets::m_Item);
-            ImGui::Text("  m_Item → 0x%llX", item);
-            if (item && item != ~0ull) {
-                auto def = mem_.ReadSafe<u16>(item + Offsets::m_iItemDefinitionIndex);
-                ImGui::Text("  m_iItemDefinitionIndex: %d", def.value_or(0));
+            u64 attr_mgr = mem_.Read<u64>(active + Offsets::m_AttributeManager);
+            ImGui::Text("  m_AttributeManager → 0x%llX", attr_mgr);
+            if (attr_mgr && attr_mgr != ~0ull) {
+                u64 item = mem_.Read<u64>(attr_mgr + Offsets::m_Item);
+                ImGui::Text("  m_Item → 0x%llX", item);
+                if (item && item != ~0ull) {
+                    auto def = mem_.ReadSafe<u16>(item + Offsets::m_iItemDefinitionIndex);
+                    ImGui::Text("  m_iItemDefinitionIndex: %d", def.value_or(0));
+                }
             }
         }
     }
@@ -189,7 +193,10 @@ inline void DebugPanel::DrawWeaponDiagnostics() noexcept {
         u64 w = weapons[i];
         ImGui::Text("[%zu] Weapon: 0x%llX", i, w);
 
-        u64 item = mem_.Read<u64>(w + Offsets::m_AttributeManager + Offsets::m_Item);
+        u64 attr_mgr = mem_.Read<u64>(w + Offsets::m_AttributeManager);
+        ImGui::Text("     m_AttributeManager: 0x%llX", attr_mgr);
+        u64 item = (attr_mgr && attr_mgr != ~0ull)
+            ? mem_.Read<u64>(attr_mgr + Offsets::m_Item) : 0;
         ImGui::Text("     m_Item: 0x%llX", item);
 
         if (item && item != ~0ull) {

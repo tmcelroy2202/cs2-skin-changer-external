@@ -7,6 +7,9 @@
 #include "SkinDatabase.h"
 #include <random>
 #include <chrono>
+#include <unordered_set>
+
+class DebugPanel;
 
 /* ── VeneeR Skin Changer ────────────────────────────────────────────────────
  *
@@ -21,8 +24,9 @@
 
 class SkinChanger {
 public:
-    SkinChanger(ProcessMemory& mem, SkinDatabase& db, SkinManager& mgr)
-        : mem_(mem), db_(db), mgr_(mgr), attr_mgr_(mem) {}
+    SkinChanger(ProcessMemory& mem, SkinDatabase& db, SkinManager& mgr,
+                DebugPanel* debug = nullptr)
+        : mem_(mem), db_(db), mgr_(mgr), attr_mgr_(mem), debug_(debug) {}
 
     /// Called every frame.  Returns true if a skin was applied.
     bool Tick() noexcept;
@@ -41,10 +45,13 @@ private:
     SkinDatabase&       db_;
     SkinManager&        mgr_;
     EconItemAttributeManager attr_mgr_;
+    DebugPanel*             debug_      = nullptr;
     u16                 music_kit_id_ = 0;
     u16                 last_music_kit_id_ = 0;
     u32                 account_id_ = 0;
     std::chrono::steady_clock::time_point last_tick_{};
+    bool                    logged_team_warn_   = false;
+    std::unordered_set<u64> logged_weapon_warns_{};
     mutable std::mt19937 rng_{std::random_device{}()};
 
     /// Read the player's Steam account ID from any existing weapon's item view.
