@@ -29,3 +29,29 @@ one. Skips the hint in the fallback loop to avoid re-reading.
 
 **Deferred:** None.
 
+### Cycle 2 — Fix IsKnifeDef magic range, add SetSkin guard, remove dead GetSkinIndex
+
+**Area scanned:** `SkinDatabase.h`, `WeaponTypes.h`
+
+**Bug 1 — Magic knife range:** `IsKnifeDef(i32 def)` checked `def >= 500 && def <= 530` instead of iterating
+the authoritative `kAllKnifeDefs` array. If CS2 adds a knife with def > 530 in a future update, the
+check silently returns false — knives would fail to load skins and fall back to their vanilla appearance.
+
+Fix: replace the magic range with a loop over `kAllKnifeDefs`. No perf concern (18 entries, called per-weapon
+per frame in Tick and per card-select in the UI).
+
+**Bug 2 — Missing guard in SetSkin:** `SetSkin` didn't guard against `weaponType == WeaponsEnum::None`.
+If a caller accidentally passed a skin with None weaponType, it would match the first entry in
+`active_skins` or push a bogus entry. Added early-return guard.
+
+**Dead code removal:** `GetSkinIndex()` was defined but never called anywhere in the codebase.
+Removed it (60 lines).
+
+**Downstream effect check:**
+- `IsKnifeDef` callers (SkinChanger.cpp:96, SkinChangerPanel.cpp:314) use the result as a boolean.
+  No type/semantic change.
+- `SetSkin` callers (SkinChangerPanel.cpp:430) always passes non-None weaponTypes. Safe.
+- `GetSkinIndex` had zero call sites. Safe removal.
+
+**Deferred:** None.
+

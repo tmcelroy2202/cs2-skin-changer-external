@@ -582,6 +582,7 @@ public:
     SkinInfo_t               default_skin;
 
     void SetSkin(const SkinInfo_t& skin) noexcept {
+        if (skin.weaponType == WeaponsEnum::None) return;
         for (auto& s : active_skins) {
             if (s.weaponType == skin.weaponType) {
                 s = skin;
@@ -640,22 +641,13 @@ public:
     }
 
     bool IsKnifeDef(i32 def) const noexcept {
-        return def == static_cast<i32>(WeaponsEnum::CtKnife) ||
-               def == static_cast<i32>(WeaponsEnum::Tknife) ||
-               (def >= 500 && def <= 530);
-    }
-
-    i32 GetSkinIndex(
-        const std::vector<SkinInfo_t>& available,
-        const SkinInfo_t& selected) const noexcept
-    {
-        for (i32 i = 0; i < static_cast<i32>(available.size()); ++i) {
-            if (available[i].Paint == selected.Paint &&
-                available[i].weaponType == selected.weaponType) {
-                return i;
-            }
+        if (def == static_cast<i32>(WeaponsEnum::CtKnife) ||
+            def == static_cast<i32>(WeaponsEnum::Tknife))
+            return true;
+        for (auto k : kAllKnifeDefs) {
+            if (static_cast<i32>(k) == def) return true;
         }
-        return 0;
+        return false;
     }
 
     bool NeedsUpdate() const noexcept { return force_update_; }
