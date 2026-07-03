@@ -125,7 +125,7 @@ void RunFrame(App& app) {
                          ImGuiWindowFlags_NoSavedSettings |
                          ImGuiWindowFlags_NoFocusOnAppearing |
                          ImGuiWindowFlags_NoNav)) {
-            ImGui::Text("VeneeR  v1.7.0");
+            ImGui::Text("VeneeR  v1.7.1");
             if (app.cs2) {
                 ImGui::TextColored(ImVec4(0,1,0,1), "Connected");
             } else {
@@ -187,6 +187,7 @@ int main() {
             Offsets::SaveToFile(off_path);
             LOG_INFO("Default offsets written to {}", off_path.string().c_str());
         }
+        Offsets::ValidateLoadedOffsets();
 
         app.debug_panel  = new DebugPanel(app.cs2);
         app.skin_changer = new SkinChanger(app.cs2, app.skin_db, app.skin_mgr,
@@ -462,6 +463,7 @@ DWORD WINAPI InitThread(LPVOID) noexcept {
             Offsets::SaveToFile(off_path);
             LOG_INFO("Default offsets written to {}", off_path.string().c_str());
         }
+        Offsets::ValidateLoadedOffsets();
 
         app.debug_panel  = new DebugPanel(app.cs2);
         app.skin_changer = new SkinChanger(app.cs2, app.skin_db, app.skin_mgr,

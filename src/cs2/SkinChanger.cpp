@@ -57,6 +57,10 @@ bool SkinChanger::Tick() noexcept {
         last_music_kit_id_ = music_kit_id_;
     }
 
+    // Invalidate cached glove entity every tick — it may become stale
+    // after round restarts or team switches.
+    cached_glove_entity_ = 0;
+
     // Weapons
     auto weapons = GetWeapons(mem_, local_player_val);
     // Fallback: if the weapon vector is empty, try the active weapon directly
@@ -109,11 +113,6 @@ bool SkinChanger::Tick() noexcept {
 
         if (!skin.Paint) continue;
 
-        // Mark as uninitialized FIRST so the game ignores this item view while
-        // we write the new values below (prevents partial-update flicker).
-        mem_.Write<bool>(item + Offsets::m_bInitialized, false);
-        mem_.Write<bool>(item + Offsets::m_bRestoreCustomMaterialAfterPrecache, false);
-
         // Fallback values (written every frame for reliability)
         mem_.Write<u32>(weapon + Offsets::m_nFallbackPaintKit, static_cast<u32>(skin.Paint));
         mem_.Write<f32>(weapon + Offsets::m_flFallbackWear, skin.Wear);
@@ -137,6 +136,15 @@ bool SkinChanger::Tick() noexcept {
         mem_.Write<u32>(item + Offsets::m_iItemIDLow, 0xFFFFFFFF);
         if (account_id_)
             mem_.Write<u32>(item + Offsets::m_iAccountID, account_id_);
+
+        // Mark as uninitialized so the game re-reads our fallback values.
+        // Only write when first applying a skin (NeedsUpdate) to avoid
+        // repeatedly toggling entity state during normal gameplay — this
+        // was causing crashes on round load.
+        if (mgr_.NeedsUpdate()) {
+            mem_.Write<bool>(item + Offsets::m_bInitialized, false);
+            mem_.Write<bool>(item + Offsets::m_bRestoreCustomMaterialAfterPrecache, false);
+        }
 
         // Create econ attributes (paint, pattern, wear) in the item view's attribute list.
         // Only needed when the user changes a skin — fallback values written above
@@ -168,10 +176,10 @@ bool SkinChanger::Tick() noexcept {
             mem_.Write<u32>(glove_iv + Offsets::m_iItemIDLow, 0xFFFFFFFF);
             mem_.Write<u32>(glove_iv + Offsets::m_iAccountID, account_id_);
             mem_.Write<i32>(glove_iv + Offsets::m_iEntityQuality, 5);
-            mem_.Write<bool>(glove_iv + Offsets::m_bInitialized, false);
-            mem_.Write<bool>(glove_iv + Offsets::m_bRestoreCustomMaterialAfterPrecache, false);
 
-            // Write fallback to glove entity (if cached)
+            // Write fallback to glove entity (find fresh each time if not cached)
+            if (mgr_.NeedsUpdate())
+                cached_glove_entity_ = FindGloveEntity(mem_, local_player_val);
             if (cached_glove_entity_) {
                 mem_.Write<u32>(cached_glove_entity_ + Offsets::m_nFallbackPaintKit, static_cast<u32>(glove_paint));
                 mem_.Write<f32>(cached_glove_entity_ + Offsets::m_flFallbackWear, 0.01f);
@@ -224,11 +232,6 @@ bool SkinChanger::ApplyGloves() noexcept {
 
     // Find and cache the glove entity (C_EconGloves) for per-tick fallback writes
     cached_glove_entity_ = FindGloveEntity(mem_, *local_player);
-    if (cached_glove_entity_) {
-        LOG_INFO("ApplyGloves — cached glove entity 0x{:X}", cached_glove_entity_);
-    } else {
-        LOG_WARN("ApplyGloves — glove entity not found; item-view writes only");
-    }
 
     // The per-tick fallback writes (paint/wear/iItemID/m_bInitialized etc.)
     // are now handled inside Tick() unconditionally.  Here we only do the

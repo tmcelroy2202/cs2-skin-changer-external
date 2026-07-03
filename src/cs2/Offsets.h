@@ -32,12 +32,12 @@
 namespace Offsets {
 
 // ── External addresses (client.dll) ──────────────────────────────────────────
-inline std::ptrdiff_t dwEntityList             = 0x24E76A0;
-inline std::ptrdiff_t dwLocalPlayerController  = 0x2320720;
-inline std::ptrdiff_t dwLocalPlayerPawn        = 0x2341698;
+inline std::ptrdiff_t dwEntityList             = 0x24E7680;
+inline std::ptrdiff_t dwLocalPlayerController  = 0x2320570;
+inline std::ptrdiff_t dwLocalPlayerPawn        = 0x2341528;
 inline std::ptrdiff_t dwGlobalVars             = 0x20616D0;
-inline std::ptrdiff_t dwViewMatrix             = 0x2346B30;
-inline std::ptrdiff_t dwGameRules              = 0x2341158;
+inline std::ptrdiff_t dwViewMatrix             = 0x23469C0;
+inline std::ptrdiff_t dwGameRules              = 0x2340FE8;
 
 // ── External addresses (engine2.dll) ─────────────────────────────────────────
 inline std::ptrdiff_t dwNetworkGameClient      = 0x90A1A0;
@@ -304,6 +304,18 @@ inline bool SaveToFile(const std::filesystem::path& path) {
     return true;
 }
 
+/// Validate loaded offsets against known-bad values.
+/// After auto-update or LoadFromFile, some offsets may have been set to the
+/// wrong class's value (e.g. m_AttributeManager from C_PlantedC4 instead of
+/// C_EconEntity).  Call this after loading to fix any such stale values.
+inline void ValidateLoadedOffsets() noexcept {
+    // m_AttributeManager must be from C_EconEntity (0x1180).
+    // Known wrong values: C_Chicken (0x13B8), C_PlantedC4 (0x11C0).
+    if (m_AttributeManager == 0x13B8 || m_AttributeManager == 0x11C0) {
+        m_AttributeManager = 0x1180;
+    }
+}
+
 /// Reset all offsets to cs2-dumper embedded defaults (already set at init).
 inline void ResetToDefaults() {
     // The inline variable initialisers are already the defaults.
@@ -398,8 +410,26 @@ inline bool ParseCs2Line(const std::string& line,
     return true;
 }
 
+/// Parse a line for namespace opening: "namespace X {" → returns X, else ""
+inline std::string_view ParseNamespaceOpen(const std::string& line) noexcept {
+    constexpr const char ns_prefix[] = "namespace ";
+    auto pos = line.find(ns_prefix);
+    if (pos == std::string::npos) return {};
+    auto start = pos + sizeof(ns_prefix) - 1;
+    // skip spaces
+    while (start < line.size() && line[start] == ' ') ++start;
+    auto end = start;
+    while (end < line.size() && line[end] != ' ' && line[end] != '{' && line[end] != '\r' && line[end] != '\n') ++end;
+    if (end == start || end >= line.size() || line[end] != '{') return {};
+    return std::string_view(line).substr(start, end - start);
+}
+
 /// Fetch the latest offsets from cs2-dumper's GitHub output and save them
 /// to the local offsets file.  Best-effort: silently returns false on failure.
+///
+/// Class-aware: tracks namespace context so that ambiguous offsets like
+/// m_AttributeManager (which exists in C_Chicken, C_EconEntity, C_PlantedC4)
+/// are resolved from the correct class.
 inline bool UpdateFromRemote() noexcept {
     // Download offsets.hpp for dw* fields
     auto tmp_offsets = std::filesystem::temp_directory_path() / "cs2_offsets_dl.tmp";
@@ -410,94 +440,187 @@ inline bool UpdateFromRemote() noexcept {
     auto tmp_client = std::filesystem::temp_directory_path() / "cs2_client_dl.tmp";
     DownloadUrl(kCs2DumperClientDllUrl, tmp_client);  // best-effort
 
-    // Parse both files into a unified map
-    std::unordered_map<std::string, std::ptrdiff_t> parsed;
+    // ── Class-aware parse ──────────────────────────────────────────────────
+    // Track namespace stack to know which class each field belongs to.
+    // Store results as (class_name, field_name) → value.
+    struct ParsedField {
+        std::string class_name;
+        std::string field_name;
+        std::ptrdiff_t value;
+    };
+    std::vector<ParsedField> parsed_fields;
+    // Also keep a flat map for dw* offsets (no class context needed)
+    std::unordered_map<std::string, std::ptrdiff_t> parsed_flat;
 
-    auto parse_file = [&](const std::filesystem::path& p) {
+    auto parse_file_classaware = [&](const std::filesystem::path& p, bool track_ns) {
         std::ifstream f(p);
         if (!f) return;
         std::string line;
+        std::vector<std::string> ns_stack;
+        int brace_depth = 0;
+        // Track brace depth per namespace entry so we pop correctly
+        std::vector<int> ns_depths;
+
         while (std::getline(f, line)) {
+            // Count braces (simple: ignore braces inside strings/comments — good enough for cs2-dumper output)
+            for (size_t i = 0; i < line.size(); ++i) {
+                char c = line[i];
+                if (c == '{') {
+                    ++brace_depth;
+                    if (track_ns) {
+                        auto ns = ParseNamespaceOpen(line);
+                        if (!ns.empty()) {
+                            ns_stack.emplace_back(ns);
+                            ns_depths.push_back(brace_depth);
+                        }
+                    }
+                } else if (c == '}') {
+                    if (track_ns && !ns_stack.empty() && brace_depth == ns_depths.back()) {
+                        ns_stack.pop_back();
+                        ns_depths.pop_back();
+                    }
+                    --brace_depth;
+                }
+            }
+
             std::string key;
             std::ptrdiff_t val;
-            if (ParseCs2Line(line, key, val))
-                parsed[key] = val;
+            if (ParseCs2Line(line, key, val)) {
+                if (track_ns && !ns_stack.empty()) {
+                    parsed_fields.push_back({ns_stack.back(), key, val});
+                } else {
+                    parsed_flat[key] = val;
+                }
+            }
         }
     };
 
-    parse_file(tmp_offsets);
+    // offsets.hpp has no class namespaces (just dw* constants) — flat parse
+    parse_file_classaware(tmp_offsets, false);
+    // client_dll.hpp has nested namespace classes — class-aware parse
     if (std::filesystem::exists(tmp_client))
-        parse_file(tmp_client);
+        parse_file_classaware(tmp_client, true);
 
     // Clean up temp files
     std::error_code ec;
     std::filesystem::remove(tmp_offsets, ec);
     std::filesystem::remove(tmp_client, ec);
 
-    if (parsed.empty()) return false;
+    if (parsed_fields.empty() && parsed_flat.empty()) return false;
 
-    // Build the name→pointer table (same as LoadFromFile)
-    std::unordered_map<std::string_view, std::ptrdiff_t*> table = {
-        {"dwEntityList",             &dwEntityList},
-        {"dwLocalPlayerController",  &dwLocalPlayerController},
-        {"dwLocalPlayerPawn",        &dwLocalPlayerPawn},
-        {"dwGlobalVars",             &dwGlobalVars},
-        {"dwViewMatrix",             &dwViewMatrix},
-        {"dwGameRules",              &dwGameRules},
-        {"dwNetworkGameClient",      &dwNetworkGameClient},
-        {"m_pGameSceneNode",         &m_pGameSceneNode},
-        {"m_nSubclassID",            &m_nSubclassID},
-        {"m_hOwnerEntity",           &m_hOwnerEntity},
-        {"m_pEntity",                &m_pEntity},
-        {"m_flags",                  &m_flags},
-        {"m_iTeamNum",               &m_iTeamNum},
-        {"m_pClippingWeapon",        &m_pClippingWeapon},
-        {"m_hHudModelArms",          &m_hHudModelArms},
-        {"m_bNeedToReApplyGloves",   &m_bNeedToReApplyGloves},
-        {"m_EconGloves",             &m_EconGloves},
-        {"m_pWeaponServices",        &m_pWeaponServices},
-        {"m_pInventoryServices",     &m_pInventoryServices},
-        {"m_unMusicID",              &m_unMusicID},
-        {"m_hMyWeapons",             &m_hMyWeapons},
-        {"m_hActiveWeapon",          &m_hActiveWeapon},
-        {"m_AttributeManager",       &m_AttributeManager},
-        {"m_nFallbackPaintKit",      &m_nFallbackPaintKit},
-        {"m_nFallbackStatTrak",      &m_nFallbackStatTrak},
-        {"m_flFallbackWear",         &m_flFallbackWear},
-        {"m_nFallbackSeed",          &m_nFallbackSeed},
-        {"m_OriginalOwnerXuidLow",   &m_OriginalOwnerXuidLow},
-        {"m_Item",                   &m_Item},
-        {"m_AttributeList",          &m_AttributeList},
-        {"m_NetworkedDynamicAttributes", &m_NetworkedDynamicAttributes},
-        {"m_iItemDefinitionIndex",   &m_iItemDefinitionIndex},
-        {"m_iAccountID",             &m_iAccountID},
-        {"m_iItemID",                &m_iItemID},
-        {"m_iItemIDHigh",            &m_iItemIDHigh},
-        {"m_szCustomNameOverride",   &m_szCustomNameOverride},
-        {"m_bInitialized",           &m_bInitialized},
-        {"m_bRestoreCustomMaterialAfterPrecache", &m_bRestoreCustomMaterialAfterPrecache},
-        {"m_iEntityQuality",         &m_iEntityQuality},
-        {"m_Attributes",             &m_Attributes},
-        {"m_modelState",             &m_modelState},
-        {"m_MeshGroupMask",          &m_MeshGroupMask},
-        {"m_pChild",                 &m_pChild},
-        {"m_pNextSibling",           &m_pNextSibling},
-        {"m_pOwner",                 &m_pOwner},
-        {"m_bMeleeWeapon",           &m_bMeleeWeapon},
-        {"m_WeaponType",             &m_WeaponType},
-        {"m_pDirtyModelData",        &m_pDirtyModelData},
-        {"m_DirtyMeshGroupMask",     &m_DirtyMeshGroupMask},
-        {"m_iItemIDLow",             &m_iItemIDLow},
-        {"m_OriginalOwnerXuidHigh",  &m_OriginalOwnerXuidHigh},
-        {"m_pParent",                &m_pParent},
+    // ── Offset table with class hints ──────────────────────────────────────
+    // For ambiguous offsets (multiple classes define the same field name),
+    // we specify which class to accept.  Empty string = accept any class.
+    struct OffsetEntry {
+        std::ptrdiff_t* ptr;
+        const char* required_class;  // nullptr or "" = accept any
     };
 
-    // Apply parsed values
-    for (auto& [k, v] : parsed) {
+    std::unordered_map<std::string, OffsetEntry> table;
+
+    auto add = [&](const char* name, std::ptrdiff_t* ptr, const char* required_class = nullptr) {
+        table[name] = {ptr, required_class};
+    };
+
+    // dw* offsets (no class context, come from flat parse)
+    add("dwEntityList",             &dwEntityList);
+    add("dwLocalPlayerController",  &dwLocalPlayerController);
+    add("dwLocalPlayerPawn",        &dwLocalPlayerPawn);
+    add("dwGlobalVars",             &dwGlobalVars);
+    add("dwViewMatrix",             &dwViewMatrix);
+    add("dwGameRules",              &dwGameRules);
+    add("dwNetworkGameClient",      &dwNetworkGameClient);
+
+    // C_BaseEntity
+    add("m_pGameSceneNode",         &m_pGameSceneNode);
+    add("m_nSubclassID",            &m_nSubclassID);
+    add("m_hOwnerEntity",           &m_hOwnerEntity);
+    add("m_pEntity",                &m_pEntity);
+    add("m_flags",                  &m_flags);
+    add("m_iTeamNum",               &m_iTeamNum);
+
+    // C_CSPlayerPawn / C_BasePlayerPawn
+    add("m_pClippingWeapon",        &m_pClippingWeapon);
+    add("m_hHudModelArms",          &m_hHudModelArms);
+    add("m_bNeedToReApplyGloves",   &m_bNeedToReApplyGloves);
+    add("m_EconGloves",             &m_EconGloves);
+    add("m_pWeaponServices",        &m_pWeaponServices);
+    add("m_pInventoryServices",     &m_pInventoryServices);
+
+    // CPlayer_WeaponServices
+    add("m_hMyWeapons",             &m_hMyWeapons);
+    add("m_hActiveWeapon",          &m_hActiveWeapon);
+
+    // CCSPlayerController_InventoryServices
+    add("m_unMusicID",              &m_unMusicID);
+
+    // CRITICAL: m_AttributeManager exists in C_Chicken (0x13B8), C_EconEntity (0x1180),
+    // and C_PlantedC4 (0x11C0).  We MUST match C_EconEntity for weapon skins.
+    add("m_AttributeManager",       &m_AttributeManager, "C_EconEntity");
+
+    // C_EconEntity / C_EconItemView fallback offsets
+    add("m_nFallbackPaintKit",      &m_nFallbackPaintKit);
+    add("m_nFallbackStatTrak",      &m_nFallbackStatTrak);
+    add("m_flFallbackWear",         &m_flFallbackWear);
+    add("m_nFallbackSeed",          &m_nFallbackSeed);
+    add("m_OriginalOwnerXuidLow",   &m_OriginalOwnerXuidLow);
+    add("m_OriginalOwnerXuidHigh",  &m_OriginalOwnerXuidHigh);
+
+    // C_AttributeContainer
+    add("m_Item",                   &m_Item);
+
+    // C_EconItemView
+    add("m_AttributeList",          &m_AttributeList);
+    add("m_NetworkedDynamicAttributes", &m_NetworkedDynamicAttributes);
+    add("m_iItemDefinitionIndex",   &m_iItemDefinitionIndex);
+    add("m_iAccountID",             &m_iAccountID);
+    add("m_iItemID",                &m_iItemID);
+    add("m_iItemIDHigh",            &m_iItemIDHigh);
+    add("m_iItemIDLow",             &m_iItemIDLow);
+    add("m_szCustomNameOverride",   &m_szCustomNameOverride);
+    add("m_bInitialized",           &m_bInitialized);
+    add("m_bRestoreCustomMaterialAfterPrecache", &m_bRestoreCustomMaterialAfterPrecache);
+    add("m_iEntityQuality",         &m_iEntityQuality);
+
+    // CAttributeList
+    add("m_Attributes",             &m_Attributes);
+
+    // CSkeletonInstance / CModelState / CGameSceneNode
+    add("m_modelState",             &m_modelState);
+    add("m_MeshGroupMask",          &m_MeshGroupMask);
+    add("m_pParent",                &m_pParent);
+    add("m_pChild",                 &m_pChild);
+    add("m_pNextSibling",           &m_pNextSibling);
+    add("m_pOwner",                 &m_pOwner);
+
+    // CCSWeaponBaseVData
+    add("m_bMeleeWeapon",           &m_bMeleeWeapon);
+    add("m_WeaponType",             &m_WeaponType);
+
+    // Extra
+    add("m_pDirtyModelData",        &m_pDirtyModelData);
+    add("m_DirtyMeshGroupMask",     &m_DirtyMeshGroupMask);
+
+    // ── Apply parsed values ────────────────────────────────────────────────
+    // First: apply flat-parsed offsets (dw* from offsets.hpp)
+    for (auto& [k, v] : parsed_flat) {
         auto it = table.find(k);
-        if (it != table.end()) {
-            *it->second = v;
+        if (it != table.end() && (!it->second.required_class || it->second.required_class[0] == '\0')) {
+            *it->second.ptr = v;
         }
+    }
+
+    // Second: apply class-aware parsed offsets (m_* from client_dll.hpp)
+    for (auto& pf : parsed_fields) {
+        auto it = table.find(pf.field_name);
+        if (it == table.end()) continue;
+
+        // If this offset requires a specific class, check for match
+        if (it->second.required_class && it->second.required_class[0] != '\0') {
+            if (pf.class_name != it->second.required_class) continue;
+        }
+
+        *it->second.ptr = pf.value;
     }
 
     // Persist to local file for next launch (best-effort)
