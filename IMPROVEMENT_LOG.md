@@ -29,7 +29,28 @@ one. Skips the hint in the fallback loop to avoid re-reading.
 
 **Deferred:** None.
 
-### Cycle 2 — Fix IsKnifeDef magic range, add SetSkin guard, remove dead GetSkinIndex
+### Cycle 3 — Scan UI panels for UX issues
+
+**Area scanned:** `SkinChangerPanel.cpp`, `SkinChangerPanel.h`
+
+**Findings:**
+- **Hardcoded version string:** `v1.5.7` at line 261 didn't match the v1.6.0 release. Updated to `v1.6.0`.
+- Weapon filter and skin filter indices are correctly clamped to filtered-list bounds (no OOB).
+- `selected_music_idx_` is re-synced every frame from `changer_.GetMusicKit()` — correct.
+- Card click no longer auto-applies (already fixed in v1.6.0).
+- No other UX bugs found.
+
+### Cycle 4 — Scan ConfigManager for data-loss bugs
+
+**Area scanned:** `ConfigManager.h`
+
+**Findings:**
+- Save format correctly escapes commas in skin names as `\,`.
+- Load parser correctly handles escaped commas, variable part count, and comments.
+- Knife/glove/music_kit save checks `> 0` correctly (default/unset has paint 0).
+- No data-loss bugs found.
+
+
 
 **Area scanned:** `SkinDatabase.h`, `WeaponTypes.h`
 
