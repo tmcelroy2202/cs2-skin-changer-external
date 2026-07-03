@@ -29,50 +29,93 @@ one. Skips the hint in the fallback loop to avoid re-reading.
 
 **Deferred:** None.
 
+### Cycle 2 — Fix IsKnifeDef magic range, add SetSkin guard, remove dead GetSkinIndex
+
+**Area scanned:** `SkinDatabase.h`, `WeaponTypes.h`
+
+**Bug 1 — Magic knife range:** `IsKnifeDef(i32 def)` checked `def >= 500 && def <= 530` instead of
+iterating the authoritative `kAllKnifeDefs` array. If CS2 adds a knife with def > 530 in a future
+update, the check silently returns false — knives would fail to load skins.
+
+Fix: replace the magic range with a loop over `kAllKnifeDefs`.
+
+**Bug 2 — Missing guard in SetSkin:** `SetSkin` didn't guard against `weaponType == WeaponsEnum::None`.
+If a caller accidentally passed a skin with None weaponType, it would overwrite the first entry or
+push a bogus entry. Added early-return guard.
+
+**Dead code removal:** `GetSkinIndex()` was defined but never called anywhere in the codebase.
+Removed it.
+
+**Downstream effect check:**
+- `IsKnifeDef` callers (SkinChanger.cpp:96, SkinChangerPanel.cpp:314) use result as boolean — safe.
+- `SetSkin` callers (SkinChangerPanel.cpp:430) always pass non-None weaponTypes — safe.
+- `GetSkinIndex` had zero call sites — safe removal.
+
+**Deferred:** None.
+
 ### Cycle 3 — Scan UI panels for UX issues
 
 **Area scanned:** `SkinChangerPanel.cpp`, `SkinChangerPanel.h`
 
 **Findings:**
-- **Hardcoded version string:** `v1.5.7` at line 261 didn't match the v1.6.0 release. Updated to `v1.6.0`.
-- Weapon filter and skin filter indices are correctly clamped to filtered-list bounds (no OOB).
-- `selected_music_idx_` is re-synced every frame from `changer_.GetMusicKit()` — correct.
-- Card click no longer auto-applies (already fixed in v1.6.0).
-- No other UX bugs found.
+- **Hardcoded version string:** `v1.5.7` at line 261 didn't match the v1.6.0 release. Updated.
+- Weapon/skin filter indices correctly clamped; no OOB access.
+- `selected_music_idx_` re-synced from `changer_.GetMusicKit()` each frame — correct.
+- No other UX bugs.
 
 ### Cycle 4 — Scan ConfigManager for data-loss bugs
 
 **Area scanned:** `ConfigManager.h`
 
 **Findings:**
-- Save format correctly escapes commas in skin names as `\,`.
-- Load parser correctly handles escaped commas, variable part count, and comments.
-- Knife/glove/music_kit save checks `> 0` correctly (default/unset has paint 0).
-- No data-loss bugs found.
+- Comma escaping in skin names (`\,`) works correctly in save and load.
+- Variable part count parsing (name, old_model, stat_trak) correct.
+- Knife/glove/music_kit save checks `> 0` correctly.
+- No data-loss bugs.
 
+### Cycle 5 — Scan Offsets.h download/parse for failure modes
 
+**Area scanned:** `Offsets.h` (load, save, parse, download, auto-update)
 
-**Area scanned:** `SkinDatabase.h`, `WeaponTypes.h`
+**Findings:**
+- `ParseCs2Line` handles both namespaced and flat identifier formats.
+- `LoadFromFile` safely loads into inline variables; `string_view` keys are ephemeral.
+- `UpdateFromRemote` handles download failures gracefully.
+- `DownloadUrl` uses correct XOR-obfuscated anti-detection pattern.
+- Noted DRY violation: offset→name tables duplicated in 3 places.
 
-**Bug 1 — Magic knife range:** `IsKnifeDef(i32 def)` checked `def >= 500 && def <= 530` instead of iterating
-the authoritative `kAllKnifeDefs` array. If CS2 adds a knife with def > 530 in a future update, the
-check silently returns false — knives would fail to load skins and fall back to their vanilla appearance.
+### Cycle 6 — Remove CallRemoteThread dead code
 
-Fix: replace the magic range with a loop over `kAllKnifeDefs`. No perf concern (18 entries, called per-weapon
-per frame in Tick and per card-select in the UI).
+**Area scanned:** `ProcessMemory.h`
 
-**Bug 2 — Missing guard in SetSkin:** `SetSkin` didn't guard against `weaponType == WeaponsEnum::None`.
-If a caller accidentally passed a skin with None weaponType, it would match the first entry in
-`active_skins` or push a bogus entry. Added early-return guard.
+**Bug:** `CallRemoteThread()` (using CreateRemoteThread) was dead code after the v1.6.0 freeze fix
+removed it from Tick(), but the method + supporting API resolution remained — a safety risk.
 
-**Dead code removal:** `GetSkinIndex()` was defined but never called anywhere in the codebase.
-Removed it (60 lines).
+**Changes applied:**
+- Removed `CallRemoteThread` method entirely
+- Removed `CreateRemoteThread` and `WaitForSingleObject` from Win32Api struct (typedefs, members,
+  XOR-obfuscated arrays, resolution calls)
+- Removed `PROCESS_CREATE_THREAD` flag from both `OpenProcess` calls
 
-**Downstream effect check:**
-- `IsKnifeDef` callers (SkinChanger.cpp:96, SkinChangerPanel.cpp:314) use the result as a boolean.
-  No type/semantic change.
-- `SetSkin` callers (SkinChangerPanel.cpp:430) always passes non-None weaponTypes. Safe.
-- `GetSkinIndex` had zero call sites. Safe removal.
+**Downstream effect check:** grep confirmed zero callers for removed symbols. Flag removal
+doesn't affect memory operations. No functional impact.
 
-**Deferred:** None.
+---
 
+## Summary
+
+| Category | Count |
+|----------|-------|
+| Correctness bugs fixed | 6 (combined reads ×4, magic range, SetSkin guard) |
+| Dead code removed | 2 (GetSkinIndex, CallRemoteThread + CreateRemoteThread/WaitForSingleObject) |
+| UX issues fixed | 1 (version string) |
+| Files modified | 8 |
+| Deferred items | 0 |
+
+**Deferred/flagged for human review:** None.
+
+**Recurring patterns:**
+- The `ent/weapon + m_AttributeManager + m_Item` combined-read bug appeared in 4 separate
+  files — indicates a copy-paste pattern that was spread without review.
+- Dead code (`GetSkinIndex`, `CallRemoteThread`, `LastOpOk`) accumulates when features are
+  changed/removed without cleaning up.
