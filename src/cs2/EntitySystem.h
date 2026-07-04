@@ -140,11 +140,9 @@ inline u64 GetHudWeapon(ProcessMemory& mem, u64 weapon) {
 }
 
 /// Find the C_EconGloves entity by scanning the entity list.
-/// The glove entity's m_Item pointer points to the embedded C_EconItemView
-/// at local_player + m_EconGloves.
+/// Identifies glove entities by their item definition index (5027-5036).
 inline u64 FindGloveEntity(ProcessMemory& mem, u64 local_player) {
     if (!local_player) return 0;
-    u64 target_iv = local_player + Offsets::m_EconGloves;
 
     auto entity_list_base = mem.ReadSafe<u64>(mem.Client() + Offsets::dwEntityList);
     if (!entity_list_base || !*entity_list_base) return 0;
@@ -160,12 +158,12 @@ inline u64 FindGloveEntity(ProcessMemory& mem, u64 local_player) {
             u64 ent = *entity;
             if (ent == local_player) continue;
 
-            // Check if this entity's m_Item points to our embedded item view
-            u64 attr_mgr = mem.Read<u64>(ent + Offsets::m_AttributeManager);
-            if (!attr_mgr || attr_mgr == ~0ull) continue;
-            u64 item_addr = mem.Read<u64>(attr_mgr + Offsets::m_Item);
-            if (item_addr && item_addr != ~0ull && item_addr == target_iv) {
-                LOG_INFO("FindGloveEntity — found at 0x{:X}", ent);
+            // m_AttributeManager and m_Item are EMBEDDED structs (not pointers).
+            u64 item = ent + Offsets::m_AttributeManager + Offsets::m_Item;
+            auto def = mem.ReadSafe<u16>(item + Offsets::m_iItemDefinitionIndex);
+            // Match glove defs (5027-5036) but exclude default CT/T gloves (5028/5029)
+            if (def && *def >= 5027 && *def <= 5036 && *def != 5028 && *def != 5029) {
+                LOG_INFO("FindGloveEntity — found at 0x{:X} def={}", ent, *def);
                 return ent;
             }
         }
@@ -184,10 +182,8 @@ inline WeaponsEnum GetActiveWeaponDef(ProcessMemory& mem, u64 local_player) {
     u64 weapon = GetEntityByHandle(mem, *handle);
     if (!weapon) return WeaponsEnum::None;
 
-    u64 attr_mgr = mem.Read<u64>(weapon + Offsets::m_AttributeManager);
-    if (!attr_mgr || attr_mgr == ~0ull) return WeaponsEnum::None;
-    u64 item = mem.Read<u64>(attr_mgr + Offsets::m_Item);
-    if (!item || item == ~0ull) return WeaponsEnum::None;
+    // m_AttributeManager and m_Item are EMBEDDED structs (not pointers).
+    u64 item = weapon + Offsets::m_AttributeManager + Offsets::m_Item;
     auto def = mem.ReadSafe<u16>(item + Offsets::m_iItemDefinitionIndex);
     return static_cast<WeaponsEnum>(def.value_or(0));
 }

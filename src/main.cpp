@@ -125,7 +125,7 @@ void RunFrame(App& app) {
                          ImGuiWindowFlags_NoSavedSettings |
                          ImGuiWindowFlags_NoFocusOnAppearing |
                          ImGuiWindowFlags_NoNav)) {
-            ImGui::Text("VeneeR  v1.7.2");
+            ImGui::Text("VeneeR  v1.7.3");
             if (app.cs2) {
                 ImGui::TextColored(ImVec4(0,1,0,1), "Connected");
             } else {
