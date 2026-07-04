@@ -333,7 +333,9 @@ inline constexpr const char* kCs2DumperClientDllUrl =
     "https://raw.githubusercontent.com/a2x/cs2-dumper/main/output/client_dll.hpp";
 
 /// Download a URL to a local file using URLDownloadToFileA (resolved dynamically).
-inline bool DownloadUrl(const char* url, const std::filesystem::path& out) noexcept {
+/// Includes retry logic for reliability.
+inline bool DownloadUrl(const char* url, const std::filesystem::path& out,
+                        int maxRetries = 3) noexcept {
     HMODULE urlmon = ::LoadLibraryW(L"urlmon.dll");
     if (!urlmon) return false;
 
@@ -351,9 +353,23 @@ inline bool DownloadUrl(const char* url, const std::filesystem::path& out) noexc
     if (!fn) { ::FreeLibrary(urlmon); return false; }
 
     std::string out_str = out.string();
-    HRESULT hr = fn(nullptr, url, out_str.c_str(), 0, nullptr);
+
+    // Retry logic with exponential backoff
+    for (int attempt = 0; attempt < maxRetries; ++attempt) {
+        HRESULT hr = fn(nullptr, url, out_str.c_str(), 0, nullptr);
+        if (SUCCEEDED(hr)) {
+            ::FreeLibrary(urlmon);
+            return true;
+        }
+        LOG_WARN("DownloadUrl: attempt {}/{} failed for {}", attempt + 1, maxRetries, url);
+        if (attempt < maxRetries - 1) {
+            // Exponential backoff: 1s, 2s, 4s...
+            Sleep(1000 * (1 << attempt));
+        }
+    }
+
     ::FreeLibrary(urlmon);
-    return SUCCEEDED(hr);
+    return false;
 }
 
 /// Parse one cs2-dumper C++ header line.
@@ -441,7 +457,13 @@ inline bool UpdateFromRemote() noexcept {
     LOG_INFO("UpdateFromRemote: downloading offsets.hpp ...");
     auto tmp_offsets = std::filesystem::temp_directory_path() / "cs2_offsets_dl.tmp";
     if (!DownloadUrl(kCs2DumperOffsetsUrl, tmp_offsets)) {
-        LOG_WARN("UpdateFromRemote: failed to download offsets.hpp");
+        LOG_WARN("UpdateFromRemote: failed to download offsets.hpp after retries");
+        // Fallback: try to use cached offsets from previous download
+        auto cached_offsets = DataFilePath();
+        if (std::filesystem::exists(cached_offsets)) {
+            LOG_INFO("UpdateFromRemote: falling back to cached offsets from {}", cached_offsets.string().c_str());
+            return LoadFromFile(cached_offsets);
+        }
         return false;
     }
     LOG_INFO("UpdateFromRemote: offsets.hpp downloaded OK");

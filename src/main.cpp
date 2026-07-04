@@ -255,6 +255,7 @@ int main() {
 #include "MinHook.h"
 
 #include "core/ProcessMemory.h"
+#include "core/DllAntiDetect.h"
 #include "cs2/SkinDatabase.h"
 #include "cs2/SkinChanger.h"
 #include "cs2/SkinTextureCache.h"
@@ -316,7 +317,7 @@ void RenderUI(App& app) {
                      ImGuiWindowFlags_NoSavedSettings |
                      ImGuiWindowFlags_NoFocusOnAppearing |
                      ImGuiWindowFlags_NoNav)) {
-        ImGui::Text("VeneeR  v1.5.9");
+        ImGui::Text("VeneeR  v1.7.3");
         ImGui::Text("Active");
     }
     ImGui::End();
@@ -447,6 +448,12 @@ DWORD WINAPI InitThread(LPVOID) noexcept {
     auto& app = State();
 
     LOG_INFO("VeneeR — DLL injection mode");
+
+    // Anti-debugging check
+    if (antidebug::DetectDebugger()) {
+        LOG_WARN("Debugger detected — VeneeR disabled for safety");
+        return 0;
+    }
 
     // ── VeneeR ────────────────────────────────────────────────────────────
     if (app.cs2.OpenCurrentProcess()) {

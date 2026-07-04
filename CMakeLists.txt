@@ -78,3 +78,23 @@ else()
     target_link_options(CS2SkinChanger PRIVATE
         -static-libgcc -static-libstdc++ -static -lpthread)
 endif()
+
+# ── Loader (DLL Injector) ──────────────────────────────────────────────────
+add_executable(VeneeRLoader WIN32
+    src/loader/main.cpp
+)
+
+target_include_directories(VeneeRLoader PRIVATE
+    "${CMAKE_CURRENT_SOURCE_DIR}/src"
+)
+
+if(MSVC)
+    target_compile_options(VeneeRLoader PRIVATE /W4 /utf-8)
+    target_link_options(VeneeRLoader PRIVATE /ENTRY:mainCRTStartup)
+    target_link_libraries(VeneeRLoader PRIVATE User32.lib Kernel32.lib)
+else()
+    target_compile_options(VeneeRLoader PRIVATE -Wall -Wextra)
+    target_link_options(VeneeRLoader PRIVATE
+        -static-libgcc -static-libstdc++ -static -lpthread -mconsole)
+    target_link_libraries(VeneeRLoader PRIVATE user32 kernel32)
+endif()
