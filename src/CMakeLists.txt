@@ -21,16 +21,11 @@ target_include_directories(csc_ui PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
 target_link_libraries(csc_ui PUBLIC imgui::imgui)
 
 # ── Main target linkage ───────────────────────────────────────────────────────
-target_sources(libCS2SkinChanger PRIVATE
-    main.cpp
+target_sources(CS2SkinChanger PRIVATE
     cs2/SkinChanger.cpp
 )
 
-if(MSVC)
-    target_sources(libCS2SkinChanger PRIVATE resources/version.rc)
-endif()
-
-target_link_libraries(libCS2SkinChanger PRIVATE
+target_link_libraries(CS2SkinChanger PRIVATE
     csc_core
     csc_ui
 )

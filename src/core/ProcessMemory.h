@@ -135,6 +135,24 @@ public:
         return client_ != 0;
     }
 
+    bool Open(DWORD pid) noexcept {
+        Close();
+
+        process_id_ = pid;
+        handle_ = s_Api.OpenProcess(
+            PROCESS_VM_READ | PROCESS_VM_WRITE | PROCESS_VM_OPERATION | PROCESS_QUERY_INFORMATION,
+            FALSE, pid);
+        return handle_ != nullptr;
+    }
+
+    bool IsAlive() const noexcept {
+        if (!handle_) return false;
+        DWORD code = 0;
+        return ::GetExitCodeProcess(handle_, &code) && code == STILL_ACTIVE;
+    }
+
+    HANDLE NativeHandle() const noexcept { return handle_; }
+
     void Close() noexcept {
         if (handle_) { s_Api.CloseHandle(handle_); handle_ = nullptr; }
         in_process_ = false;

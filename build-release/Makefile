@@ -130,19 +130,6 @@ imgui_core/fast:
 .PHONY : imgui_core/fast
 
 #=============================================================================
-# Target rules for targets named libCS2SkinChanger
-
-# Build rule for target.
-libCS2SkinChanger: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 libCS2SkinChanger
-.PHONY : libCS2SkinChanger
-
-# fast build rule for target.
-libCS2SkinChanger/fast:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/libCS2SkinChanger.dir/build.make CMakeFiles/libCS2SkinChanger.dir/build
-.PHONY : libCS2SkinChanger/fast
-
-#=============================================================================
 # Target rules for targets named CS2SkinChanger
 
 # Build rule for target.
@@ -186,7 +173,7 @@ src/cs2/SkinChanger.obj: src/cs2/SkinChanger.cpp.obj
 
 # target to build an object file
 src/cs2/SkinChanger.cpp.obj:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/libCS2SkinChanger.dir/build.make CMakeFiles/libCS2SkinChanger.dir/src/cs2/SkinChanger.cpp.obj
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/CS2SkinChanger.dir/build.make CMakeFiles/CS2SkinChanger.dir/src/cs2/SkinChanger.cpp.obj
 .PHONY : src/cs2/SkinChanger.cpp.obj
 
 src/cs2/SkinChanger.i: src/cs2/SkinChanger.cpp.i
@@ -194,7 +181,7 @@ src/cs2/SkinChanger.i: src/cs2/SkinChanger.cpp.i
 
 # target to preprocess a source file
 src/cs2/SkinChanger.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/libCS2SkinChanger.dir/build.make CMakeFiles/libCS2SkinChanger.dir/src/cs2/SkinChanger.cpp.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/CS2SkinChanger.dir/build.make CMakeFiles/CS2SkinChanger.dir/src/cs2/SkinChanger.cpp.i
 .PHONY : src/cs2/SkinChanger.cpp.i
 
 src/cs2/SkinChanger.s: src/cs2/SkinChanger.cpp.s
@@ -202,7 +189,7 @@ src/cs2/SkinChanger.s: src/cs2/SkinChanger.cpp.s
 
 # target to generate assembly for a file
 src/cs2/SkinChanger.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/libCS2SkinChanger.dir/build.make CMakeFiles/libCS2SkinChanger.dir/src/cs2/SkinChanger.cpp.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/CS2SkinChanger.dir/build.make CMakeFiles/CS2SkinChanger.dir/src/cs2/SkinChanger.cpp.s
 .PHONY : src/cs2/SkinChanger.cpp.s
 
 src/loader/main.obj: src/loader/main.cpp.obj
@@ -228,126 +215,6 @@ src/loader/main.s: src/loader/main.cpp.s
 src/loader/main.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/CS2SkinChanger.dir/build.make CMakeFiles/CS2SkinChanger.dir/src/loader/main.cpp.s
 .PHONY : src/loader/main.cpp.s
-
-src/main.obj: src/main.cpp.obj
-.PHONY : src/main.obj
-
-# target to build an object file
-src/main.cpp.obj:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/libCS2SkinChanger.dir/build.make CMakeFiles/libCS2SkinChanger.dir/src/main.cpp.obj
-.PHONY : src/main.cpp.obj
-
-src/main.i: src/main.cpp.i
-.PHONY : src/main.i
-
-# target to preprocess a source file
-src/main.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/libCS2SkinChanger.dir/build.make CMakeFiles/libCS2SkinChanger.dir/src/main.cpp.i
-.PHONY : src/main.cpp.i
-
-src/main.s: src/main.cpp.s
-.PHONY : src/main.s
-
-# target to generate assembly for a file
-src/main.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/libCS2SkinChanger.dir/build.make CMakeFiles/libCS2SkinChanger.dir/src/main.cpp.s
-.PHONY : src/main.cpp.s
-
-third_party/MinHook/src/buffer.obj: third_party/MinHook/src/buffer.c.obj
-.PHONY : third_party/MinHook/src/buffer.obj
-
-# target to build an object file
-third_party/MinHook/src/buffer.c.obj:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/libCS2SkinChanger.dir/build.make CMakeFiles/libCS2SkinChanger.dir/third_party/MinHook/src/buffer.c.obj
-.PHONY : third_party/MinHook/src/buffer.c.obj
-
-third_party/MinHook/src/buffer.i: third_party/MinHook/src/buffer.c.i
-.PHONY : third_party/MinHook/src/buffer.i
-
-# target to preprocess a source file
-third_party/MinHook/src/buffer.c.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/libCS2SkinChanger.dir/build.make CMakeFiles/libCS2SkinChanger.dir/third_party/MinHook/src/buffer.c.i
-.PHONY : third_party/MinHook/src/buffer.c.i
-
-third_party/MinHook/src/buffer.s: third_party/MinHook/src/buffer.c.s
-.PHONY : third_party/MinHook/src/buffer.s
-
-# target to generate assembly for a file
-third_party/MinHook/src/buffer.c.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/libCS2SkinChanger.dir/build.make CMakeFiles/libCS2SkinChanger.dir/third_party/MinHook/src/buffer.c.s
-.PHONY : third_party/MinHook/src/buffer.c.s
-
-third_party/MinHook/src/hde/hde64.obj: third_party/MinHook/src/hde/hde64.c.obj
-.PHONY : third_party/MinHook/src/hde/hde64.obj
-
-# target to build an object file
-third_party/MinHook/src/hde/hde64.c.obj:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/libCS2SkinChanger.dir/build.make CMakeFiles/libCS2SkinChanger.dir/third_party/MinHook/src/hde/hde64.c.obj
-.PHONY : third_party/MinHook/src/hde/hde64.c.obj
-
-third_party/MinHook/src/hde/hde64.i: third_party/MinHook/src/hde/hde64.c.i
-.PHONY : third_party/MinHook/src/hde/hde64.i
-
-# target to preprocess a source file
-third_party/MinHook/src/hde/hde64.c.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/libCS2SkinChanger.dir/build.make CMakeFiles/libCS2SkinChanger.dir/third_party/MinHook/src/hde/hde64.c.i
-.PHONY : third_party/MinHook/src/hde/hde64.c.i
-
-third_party/MinHook/src/hde/hde64.s: third_party/MinHook/src/hde/hde64.c.s
-.PHONY : third_party/MinHook/src/hde/hde64.s
-
-# target to generate assembly for a file
-third_party/MinHook/src/hde/hde64.c.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/libCS2SkinChanger.dir/build.make CMakeFiles/libCS2SkinChanger.dir/third_party/MinHook/src/hde/hde64.c.s
-.PHONY : third_party/MinHook/src/hde/hde64.c.s
-
-third_party/MinHook/src/hook.obj: third_party/MinHook/src/hook.c.obj
-.PHONY : third_party/MinHook/src/hook.obj
-
-# target to build an object file
-third_party/MinHook/src/hook.c.obj:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/libCS2SkinChanger.dir/build.make CMakeFiles/libCS2SkinChanger.dir/third_party/MinHook/src/hook.c.obj
-.PHONY : third_party/MinHook/src/hook.c.obj
-
-third_party/MinHook/src/hook.i: third_party/MinHook/src/hook.c.i
-.PHONY : third_party/MinHook/src/hook.i
-
-# target to preprocess a source file
-third_party/MinHook/src/hook.c.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/libCS2SkinChanger.dir/build.make CMakeFiles/libCS2SkinChanger.dir/third_party/MinHook/src/hook.c.i
-.PHONY : third_party/MinHook/src/hook.c.i
-
-third_party/MinHook/src/hook.s: third_party/MinHook/src/hook.c.s
-.PHONY : third_party/MinHook/src/hook.s
-
-# target to generate assembly for a file
-third_party/MinHook/src/hook.c.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/libCS2SkinChanger.dir/build.make CMakeFiles/libCS2SkinChanger.dir/third_party/MinHook/src/hook.c.s
-.PHONY : third_party/MinHook/src/hook.c.s
-
-third_party/MinHook/src/trampoline.obj: third_party/MinHook/src/trampoline.c.obj
-.PHONY : third_party/MinHook/src/trampoline.obj
-
-# target to build an object file
-third_party/MinHook/src/trampoline.c.obj:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/libCS2SkinChanger.dir/build.make CMakeFiles/libCS2SkinChanger.dir/third_party/MinHook/src/trampoline.c.obj
-.PHONY : third_party/MinHook/src/trampoline.c.obj
-
-third_party/MinHook/src/trampoline.i: third_party/MinHook/src/trampoline.c.i
-.PHONY : third_party/MinHook/src/trampoline.i
-
-# target to preprocess a source file
-third_party/MinHook/src/trampoline.c.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/libCS2SkinChanger.dir/build.make CMakeFiles/libCS2SkinChanger.dir/third_party/MinHook/src/trampoline.c.i
-.PHONY : third_party/MinHook/src/trampoline.c.i
-
-third_party/MinHook/src/trampoline.s: third_party/MinHook/src/trampoline.c.s
-.PHONY : third_party/MinHook/src/trampoline.s
-
-# target to generate assembly for a file
-third_party/MinHook/src/trampoline.c.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/libCS2SkinChanger.dir/build.make CMakeFiles/libCS2SkinChanger.dir/third_party/MinHook/src/trampoline.c.s
-.PHONY : third_party/MinHook/src/trampoline.c.s
 
 third_party/imgui/backends/imgui_impl_dx11.obj: third_party/imgui/backends/imgui_impl_dx11.cpp.obj
 .PHONY : third_party/imgui/backends/imgui_impl_dx11.obj
@@ -553,28 +420,12 @@ help:
 	@echo "... csc_core"
 	@echo "... csc_ui"
 	@echo "... imgui_core"
-	@echo "... libCS2SkinChanger"
 	@echo "... src/cs2/SkinChanger.obj"
 	@echo "... src/cs2/SkinChanger.i"
 	@echo "... src/cs2/SkinChanger.s"
 	@echo "... src/loader/main.obj"
 	@echo "... src/loader/main.i"
 	@echo "... src/loader/main.s"
-	@echo "... src/main.obj"
-	@echo "... src/main.i"
-	@echo "... src/main.s"
-	@echo "... third_party/MinHook/src/buffer.obj"
-	@echo "... third_party/MinHook/src/buffer.i"
-	@echo "... third_party/MinHook/src/buffer.s"
-	@echo "... third_party/MinHook/src/hde/hde64.obj"
-	@echo "... third_party/MinHook/src/hde/hde64.i"
-	@echo "... third_party/MinHook/src/hde/hde64.s"
-	@echo "... third_party/MinHook/src/hook.obj"
-	@echo "... third_party/MinHook/src/hook.i"
-	@echo "... third_party/MinHook/src/hook.s"
-	@echo "... third_party/MinHook/src/trampoline.obj"
-	@echo "... third_party/MinHook/src/trampoline.i"
-	@echo "... third_party/MinHook/src/trampoline.s"
 	@echo "... third_party/imgui/backends/imgui_impl_dx11.obj"
 	@echo "... third_party/imgui/backends/imgui_impl_dx11.i"
 	@echo "... third_party/imgui/backends/imgui_impl_dx11.s"
