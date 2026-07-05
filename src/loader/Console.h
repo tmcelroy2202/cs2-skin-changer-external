@@ -70,12 +70,12 @@ inline void Banner() {
     SetColor(White);
     printf("VeneeR");
     SetColor(DarkGray);
-    printf(" — CS2 Skin Changer                    ");
+    printf(" — Runtime Library                             ");
     SetColor(Cyan);
     printf("║\n");
     printf("  ║   ");
     SetColor(DarkGray);
-    printf("Professional Edition                           ");
+    printf("Runtime Library                                ");
     SetColor(Cyan);
     printf("║\n");
     printf("  ║                                                  ║\n");

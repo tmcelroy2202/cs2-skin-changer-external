@@ -29,10 +29,35 @@ public:
     void InitMapping() {
         auto path = ItemsGamePath();
         if (!std::filesystem::exists(path)) {
-            Offsets::DownloadUrl(
-                "https://raw.githubusercontent.com/SteamDatabase/"
-                "GameTracking-CS2/master/game/csgo/pak01_dir/scripts/items/items_game.txt",
-                path);
+            // Try local CS2 installation first (much faster, always available)
+            char cs2_path[MAX_PATH]{};
+            HMODULE cs2 = GetModuleHandleA("client.dll");
+            if (cs2) {
+                GetModuleFileNameA(cs2, cs2_path, MAX_PATH);
+                auto p = std::filesystem::path(cs2_path).parent_path();
+                // Navigate up to CS2 root: game/bin/win64 -> game/csgo
+                auto items_game = p.parent_path().parent_path().parent_path()
+                                / "csgo" / "scripts" / "items" / "items_game.txt";
+                if (std::filesystem::exists(items_game)) {
+                    std::filesystem::copy_file(items_game, path,
+                        std::filesystem::copy_options::overwrite_existing);
+                }
+            }
+            // Fallback: download from GitHub with retry
+            if (!std::filesystem::exists(path)) {
+                for (int attempt = 0; attempt < 3; ++attempt) {
+                    Offsets::DownloadUrl(
+                        "https://raw.githubusercontent.com/SteamDatabase/"
+                        "GameTracking-CS2/master/game/csgo/pak01_dir/scripts/items/items_game.txt",
+                        path);
+                    if (std::filesystem::exists(path) &&
+                        std::filesystem::file_size(path) > 1000)
+                        break;
+                    if (std::filesystem::exists(path))
+                        std::filesystem::remove(path);
+                    Sleep(2000 * (1 << attempt));
+                }
+            }
         }
         if (std::filesystem::exists(path))
             ParseItemsGame(path);
@@ -98,16 +123,21 @@ public:
             }
         }
 
-        // Process one pending item per frame (non-blocking)
-        if (pending_.empty()) return;
-        i32 pid = pending_.back();
-        pending_.pop_back();
+        // Process up to 4 pending items per frame to load textures faster
+        int processed = 0;
+        while (!pending_.empty() && processed < 4) {
+            i32 pid = pending_.back();
+            pending_.pop_back();
 
-        auto& e = map_[pid];
-        e.pending = false;
+            auto it = map_.find(pid);
+            if (it == map_.end()) continue;
+            auto& e = it->second;
+            e.pending = false;
 
-        if (std::filesystem::exists(ImagePath(pid))) {
-            e.srv = LoadTexture(pid, e.weapon);
+            if (std::filesystem::exists(ImagePath(pid))) {
+                e.srv = LoadTexture(pid, e.weapon);
+            }
+            ++processed;
         }
     }
 
@@ -149,17 +179,13 @@ private:
     std::shared_ptr<DownloadState> download_state_ = std::make_shared<DownloadState>();
 
     static std::filesystem::path CacheDir() {
-        const char* appdata = getenv("APPDATA");
-        if (!appdata) appdata = getenv("HOME");
-        if (!appdata) appdata = ".";
-        return std::filesystem::path(appdata) / "veneer" / "cache";
+        auto path = BasePath() / "cache";
+        std::filesystem::create_directories(path);
+        return path;
     }
 
     static std::filesystem::path ItemsGamePath() {
-        const char* appdata = getenv("APPDATA");
-        if (!appdata) appdata = getenv("HOME");
-        if (!appdata) appdata = ".";
-        return std::filesystem::path(appdata) / "veneer" / "items_game.txt";
+        return BasePath() / "items_game.txt";
     }
 
     static std::filesystem::path ImagePath(i32 paint_id) {
@@ -325,10 +351,30 @@ private:
         if (name_it == names_.end()) return {};
 
         auto wname = WeaponToInternal(weapon);
-        if (wname.empty()) return {};
+        if (wname.empty()) {
+            // For gloves/knives with no weapon mapping, try CS2 economy image API
+            // using just the paint internal name (Steam market search)
+            return {};
+        }
 
+        // Primary: CS:GO CDN format (still works for most CS2 skins)
         return "https://steamcdn-a.akamaihd.net/apps/730/icons/econ/default_generated/"
              + std::string(wname) + "_" + name_it->second + "_light_large.256x256.png";
+    }
+
+    // Build a Steam market search URL as fallback (doesn't need weapon type)
+    std::string MakeSearchURL(i32 paint_id) {
+        auto name_it = names_.find(paint_id);
+        if (name_it == names_.end()) return {};
+
+        std::string display = PaintInternalToDisplay(name_it->second);
+        std::string encoded;
+        for (char c : display) {
+            if (c == ' ') encoded += '+';
+            else encoded += c;
+        }
+        return "https://steamcommunity.com/market/search/render/?query=+"
+               + encoded + "+&appid=730&start=0&count=1&norender=1";
     }
 
     // ── Async download ─────────────────────────────────────────────────────
@@ -348,7 +394,7 @@ private:
         }
 
         std::thread t([paint_id, path, state, wname_str, paint_internal]() {
-            // 1) Try old CS:GO CDN URL first
+            // 1) Try CS:GO CDN URL first (works for most CS2 skins too)
             if (!wname_str.empty() && !paint_internal.empty()) {
                 std::string url = "https://steamcdn-a.akamaihd.net/apps/730/icons/econ/default_generated/"
                                 + wname_str + "_" + paint_internal + "_light_large.256x256.png";
@@ -363,7 +409,23 @@ private:
                 std::filesystem::remove(path);
             }
 
-            // 2) Try economy image API — fetch hash per-item from Steam market
+            // 2) Try CS2 economy image — direct paint_id URL
+            if (!paint_internal.empty()) {
+                // Try the CS2-format economy image URL
+                std::string cs2_url = "https://community.cloudflare.steamstatic.com/economy/image/"
+                                    + paint_internal + "/256x196.jpg";
+                Offsets::DownloadUrl(cs2_url.c_str(), path);
+                if (std::filesystem::exists(path) && std::filesystem::file_size(path) > 1000) {
+                    if (!state->stopped) {
+                        std::lock_guard lock(state->mutex);
+                        state->completed.push_back(paint_id);
+                    }
+                    return;
+                }
+                std::filesystem::remove(path);
+            }
+
+            // 3) Try economy image API — fetch hash per-item from Steam market
             if (!paint_internal.empty()) {
                 std::string display = PaintInternalToDisplay(paint_internal);
                 std::string encoded;

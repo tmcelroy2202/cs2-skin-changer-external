@@ -62,9 +62,9 @@ if(MSVC)
     target_compile_options(libCS2SkinChanger PRIVATE /W4 /utf-8)
     target_link_options(libCS2SkinChanger PRIVATE /GUARD:CF)
 else()
-    target_compile_options(libCS2SkinChanger PRIVATE -Wall -Wextra)
+    target_compile_options(libCS2SkinChanger PRIVATE -Wall -Wextra -DNDEBUG)
     target_link_options(libCS2SkinChanger PRIVATE
-        -static-libgcc -static-libstdc++ -static -lpthread)
+        -static-libgcc -static-libstdc++ -static -lpthread -s)
 endif()
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -83,8 +83,8 @@ if(MSVC)
     target_link_options(CS2SkinChanger PRIVATE /ENTRY:mainCRTStartup)
     target_link_libraries(CS2SkinChanger PRIVATE User32.lib Kernel32.lib)
 else()
-    target_compile_options(CS2SkinChanger PRIVATE -Wall -Wextra)
+    target_compile_options(CS2SkinChanger PRIVATE -Wall -Wextra -DNDEBUG)
     target_link_options(CS2SkinChanger PRIVATE
-        -static-libgcc -static-libstdc++ -static -lpthread -mconsole)
+        -static-libgcc -static-libstdc++ -static -lpthread -mconsole -s)
     target_link_libraries(CS2SkinChanger PRIVATE user32 kernel32)
 endif()

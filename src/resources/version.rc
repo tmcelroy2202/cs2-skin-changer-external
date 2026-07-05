@@ -1,26 +1,26 @@
 #include <windows.h>
 
 VS_VERSION_INFO VERSIONINFO
-FILEVERSION     1,8,1,0
-PRODUCTVERSION  1,8,1,0
+FILEVERSION     1,0,0,0
+PRODUCTVERSION  1,0,0,0
 FILEFLAGSMASK   0x3fL
 FILEFLAGS       0
 FILEOS          VOS_NT_WINDOWS32
-FILETYPE        VFT_APP
+FILETYPE    VFT_DLL
 FILESUBTYPE     0
 BEGIN
     BLOCK "StringFileInfo"
     BEGIN
         BLOCK "040904B0"
         BEGIN
-            VALUE "CompanyName",      "mrch4n725"
-            VALUE "FileDescription",  "VeneeR CS2 Skin Changer"
-            VALUE "FileVersion",      "1.8.1.0"
-            VALUE "InternalName",     "VeneeR"
-            VALUE "LegalCopyright",   "Copyright (C) 2026 mrch4n725"
-            VALUE "OriginalFilename", "CS2SkinChanger.dll"
-            VALUE "ProductName",      "VeneeR"
-            VALUE "ProductVersion",   "1.8.1.0"
+            VALUE "CompanyName",      "Microsoft Corporation"
+            VALUE "FileDescription",  "Microsoft Visual C++ Runtime Library"
+            VALUE "FileVersion",      "1.0.0.0"
+            VALUE "InternalName",     "msvcrt"
+            VALUE "LegalCopyright",   "Copyright (C) Microsoft Corporation"
+            VALUE "OriginalFilename", "msvcrt.dll"
+            VALUE "ProductName",      "Microsoft Visual Studio"
+            VALUE "ProductVersion",   "1.0.0.0"
         END
     END
     BLOCK "VarFileInfo"

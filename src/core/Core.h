@@ -33,3 +33,22 @@ using f64 = double;
 
 using usize = size_t;
 using uint  = unsigned int;
+
+// ── Base path — directory of the DLL or EXE, set at startup.
+//    Config/cache files stored alongside the binary, not in %APPDATA%.
+#include <filesystem>
+
+namespace detail {
+inline std::filesystem::path g_base_path;
+}
+
+inline void SetBasePath(const std::filesystem::path& p) {
+    detail::g_base_path = p.has_parent_path() ? p.parent_path() : p;
+}
+
+inline std::filesystem::path BasePath() {
+    if (!detail::g_base_path.empty())
+        return detail::g_base_path;
+    // Fallback: current working directory
+    return std::filesystem::current_path();
+}

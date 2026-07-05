@@ -11,15 +11,11 @@
 
 /* ── ConfigManager ──────────────────────────────────────────────────────────
  *
- * Saves/loads the skin-changer loadout to a text file in %APPDATA%.
- * File is cloud-sync ready (Dropbox, OneDrive, etc).
+ * Saves/loads the skin-changer loadout to a text file alongside the DLL.
  * ──────────────────────────────────────────────────────────────────────────── */
 
 inline std::filesystem::path ConfigPath() {
-    const char* appdata = getenv("APPDATA");
-    if (!appdata) appdata = getenv("HOME");
-    if (!appdata) return "loadout.txt";
-    auto path = std::filesystem::path(appdata) / "veneer";
+    auto path = BasePath();
     std::filesystem::create_directories(path);
     return path / "loadout.txt";
 }
@@ -29,7 +25,7 @@ inline void SaveConfig(SkinManager& mgr, u16 music_kit_id) {
     std::ofstream f(path);
     if (!f) return;
 
-    f << "# VeneeR loadout\n";
+    f << "# loadout\n";
     f << "# Format: weapon_def_id = paint_id, wear, pattern, name, old_model(0/1)\n\n";
 
     // Per-weapon skins (format: def = paint, wear, pattern, name, old_model[, statTrak])

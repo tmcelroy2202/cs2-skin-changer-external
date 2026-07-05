@@ -5,78 +5,15 @@
 
 /* ── DLL Anti-Detection ─────────────────────────────────────────────────────
  *
- * Anti-debugging and anti-analysis measures for the DLL.
- * These run before the skin changer initializes.
- *
- * Measures:
- * - Debugger detection (IsDebuggerPresent, CheckRemoteDebuggerPresent)
- * - Hardware breakpoint detection
- * - Timing checks (RDTSC)
- * - Module validation
+ * Compile-time string encryption to prevent plaintext strings appearing
+ * in the binary. Anti-debug measures removed — they create more
+ * signatures than they prevent.
  * ──────────────────────────────────────────────────────────────────────────── */
 
 namespace antidebug {
 
-// Check if a debugger is present
-inline bool IsDebuggerAttached() {
-    // Check 1: IsDebuggerPresent
-    if (::IsDebuggerPresent())
-        return true;
-
-    // Check 2: CheckRemoteDebuggerPresent
-    BOOL debuggerPresent = FALSE;
-    CheckRemoteDebuggerPresent(GetCurrentProcess(), &debuggerPresent);
-    if (debuggerPresent)
-        return true;
-
-    // Check 3: NtGlobalFlag (debugger sets specific flags)
-    #ifdef _WIN64
-    constexpr DWORD NT_GLOBAL_FLAG_DEBUGGED = 0x70;
-    #else
-    constexpr DWORD NT_GLOBAL_FLAG_DEBUGGED = 0x70;
-    #endif
-    DWORD* pNtGlobalFlag = (DWORD*)((PBYTE)__readgsqword(0x60) + 0xBC); // PEB->NtGlobalFlag
-    if (*pNtGlobalFlag & NT_GLOBAL_FLAG_DEBUGGED)
-        return true;
-
-    return false;
-}
-
-// Check for hardware breakpoints via exception handler
-inline bool HasHardwareBreakpoints() {
-    CONTEXT ctx{};
-    ctx.ContextFlags = CONTEXT_DEBUG_REGISTERS;
-    if (GetThreadContext(GetCurrentThread(), &ctx)) {
-        if (ctx.Dr0 || ctx.Dr1 || ctx.Dr2 || ctx.Dr3)
-            return true;
-    }
-    return false;
-}
-
-// Timing-based detection (high precision)
-inline bool CheckTiming() {
-    LARGE_INTEGER start, end, freq;
-    QueryPerformanceFrequency(&freq);
-    QueryPerformanceCounter(&start);
-
-    // Do some work
-    volatile int x = 0;
-    for (int i = 0; i < 1000; ++i) x += i;
-
-    QueryPerformanceCounter(&end);
-
-    // If a debugger is attached, the timing will be significantly off
-    double elapsed = (double)(end.QuadPart - start.QuadPart) / freq.QuadPart;
-    return elapsed > 0.1; // Should be microseconds, not milliseconds
-}
-
-// Run all anti-debug checks
-inline bool DetectDebugger() {
-    if (IsDebuggerAttached()) return true;
-    if (HasHardwareBreakpoints()) return true;
-    if (CheckTiming()) return true;
-    return false;
-}
+// Stub — always returns false. Keeps call sites compiling.
+inline bool DetectDebugger() { return false; }
 
 } // namespace antidebug
 
@@ -84,32 +21,39 @@ inline bool DetectDebugger() {
 
 namespace enc {
 
-inline constexpr unsigned char DLL_XOR_KEY = []() constexpr -> unsigned char {
-    constexpr char time[] = __TIME__;
-    unsigned char key = 0;
-    for (int i = 0; i < 8; ++i)
-        key = static_cast<unsigned char>((key + time[i]) % 255 + 1);
-    return key;
-}();
+// Multi-byte key derived from __TIME__ — different per build,
+// prevents static pattern matching of the XOR loop.
+inline constexpr unsigned char DLL_XOR_KEY[] = {
+    static_cast<unsigned char>((__TIME__[0] * 7 + __TIME__[3] * 13) & 0xFF),
+    static_cast<unsigned char>((__TIME__[1] * 11 + __TIME__[4] * 17) & 0xFF),
+    static_cast<unsigned char>((__TIME__[2] * 3 + __TIME__[5] * 23) & 0xFF),
+    static_cast<unsigned char>((__TIME__[0] + __TIME__[2] + __TIME__[5]) & 0xFF),
+    static_cast<unsigned char>((__TIME__[1] * 5 + __TIME__[4] * 9) & 0xFF),
+    static_cast<unsigned char>((__TIME__[3] * 7 + __TIME__[5] * 11) & 0xFF),
+    static_cast<unsigned char>((__TIME__[0] ^ __TIME__[3] ^ 0xA5) & 0xFF),
+    static_cast<unsigned char>((__TIME__[2] ^ __TIME__[5] ^ 0x5A) & 0xFF),
+};
+
+inline constexpr std::size_t XOR_KEY_LEN = sizeof(DLL_XOR_KEY);
 
 template <std::size_t N>
 class EncryptedString {
 public:
     constexpr EncryptedString(const char (&str)[N]) : data_{} {
         for (std::size_t i = 0; i < N; ++i)
-            data_[i] = static_cast<unsigned char>(str[i]) ^ DLL_XOR_KEY;
+            data_[i] = static_cast<unsigned char>(str[i]) ^ DLL_XOR_KEY[i % XOR_KEY_LEN];
     }
 
     std::string decrypt() const {
         std::string result(N - 1, '\0');
         for (std::size_t i = 0; i < N - 1; ++i)
-            result[i] = static_cast<char>(data_[i] ^ DLL_XOR_KEY);
+            result[i] = static_cast<char>(data_[i] ^ DLL_XOR_KEY[i % XOR_KEY_LEN]);
         return result;
     }
 
     const char* c_str() {
         for (std::size_t i = 0; i < N - 1; ++i)
-            buf_[i] = static_cast<char>(data_[i] ^ DLL_XOR_KEY);
+            buf_[i] = static_cast<char>(data_[i] ^ DLL_XOR_KEY[i % XOR_KEY_LEN]);
         buf_[N - 1] = '\0';
         return buf_;
     }

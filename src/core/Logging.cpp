@@ -1,3 +1,5 @@
+#ifndef NDEBUG
+
 #include "Logging.h"
 
 #include <cstdio>
@@ -28,7 +30,6 @@ void Logger::Dispatch(LogLevel lv, std::string_view msg,
     static std::mutex mtx;
     std::lock_guard lock(mtx);
 
-    // Minimal timestamp
     std::time_t t = std::time(nullptr);
     char ts[32]{};
     std::strftime(ts, sizeof ts, "%H:%M:%S", std::localtime(&t));
@@ -50,3 +51,5 @@ void Logger::Info (std::string_view msg, std::source_location loc) { Dispatch(Lo
 void Logger::Warn (std::string_view msg, std::source_location loc) { Dispatch(LogLevel::Warn,  msg, loc); }
 void Logger::Error(std::string_view msg, std::source_location loc) { Dispatch(LogLevel::Error, msg, loc); }
 void Logger::Fatal(std::string_view msg, std::source_location loc) { Dispatch(LogLevel::Fatal, msg, loc); }
+
+#endif // NDEBUG

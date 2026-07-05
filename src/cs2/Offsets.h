@@ -131,10 +131,7 @@ namespace Sigs {
 
 /// Path to the offset data file (stored alongside the skin config).
 inline std::filesystem::path DataFilePath() {
-    const char* appdata = getenv("APPDATA");
-    if (!appdata) appdata = getenv("HOME");
-    if (!appdata) return "cs2_offsets.txt";
-    return std::filesystem::path(appdata) / "veneer" / "offsets.txt";
+    return BasePath() / "offsets.dat";
 }
 
 /// Load all offsets from a data file.  Keys not present keep embedded defaults.

@@ -337,6 +337,10 @@ void ShutdownDLL() noexcept {
 BOOL APIENTRY DllMain(HMODULE module, DWORD reason, LPVOID reserved) {
     if (reason == DLL_PROCESS_ATTACH) {
         DisableThreadLibraryCalls(module);
+        // Store DLL directory for config/cache paths
+        char dll_path[MAX_PATH]{};
+        GetModuleFileNameA(module, dll_path, MAX_PATH);
+        SetBasePath(dll_path);
         HANDLE thread = CreateThread(nullptr, 0, InitThread, nullptr, 0, nullptr);
         if (thread) CloseHandle(thread);
     } else if (reason == DLL_PROCESS_DETACH) {
