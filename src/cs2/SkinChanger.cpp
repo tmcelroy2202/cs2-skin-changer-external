@@ -11,10 +11,27 @@ static Team ReadTeam(ProcessMemory& mem, u64 local_player) {
     return static_cast<Team>(*raw);
 }
 
+// ── Write helper with verification ──────────────────────────────────────────
+template <typename T>
+static bool WriteVerify(ProcessMemory& mem, u64 addr, const T& val,
+                        const char* name, u64 weapon_addr) {
+    if (!mem.Write<T>(addr, val)) {
+        LOG_ERROR("WriteVerify FAILED: {} at 0x{:X} (weapon=0x{:X})", name, addr, weapon_addr);
+        return false;
+    }
+    auto readback = mem.ReadSafe<T>(addr);
+    if (!readback || *readback != val) {
+        // Use static_cast to int for hex format — handles u8/u16/u32/u64/f32 safely
+        LOG_WARN("WriteVerify MISMATCH: {} at 0x{:X}", name, addr);
+        return false;
+    }
+    return true;
+}
+
 bool SkinChanger::Tick() noexcept {
     auto now = std::chrono::steady_clock::now();
     if (!mgr_.NeedsUpdate() &&
-        now - last_tick_ < std::chrono::milliseconds(50))
+        now - last_tick_ < std::chrono::milliseconds(1))
         return false;
 
     auto local_player = mem_.ReadSafe<u64>(mem_.Client() + Offsets::dwLocalPlayerPawn);
@@ -49,12 +66,11 @@ bool SkinChanger::Tick() noexcept {
             LOG_WARN("SkinChanger::Tick — account ID not yet resolved (no valid weapon items)");
     }
 
-    // Music kit
+    // Music kit — write every tick to survive round restarts
     auto inv = mem_.ReadSafe<u64>(local_ctrl_val + Offsets::m_pInventoryServices);
-    if (inv && *inv && music_kit_id_ != last_music_kit_id_) {
-        mem_.Write<u16>(*inv + Offsets::m_unMusicID,
-                        static_cast<u16>(music_kit_id_));
-        last_music_kit_id_ = music_kit_id_;
+    if (inv && *inv && music_kit_id_ != 0) {
+        WriteVerify(mem_, *inv + Offsets::m_unMusicID,
+                    static_cast<u16>(music_kit_id_), "m_unMusicID", *inv);
     }
 
     // Don't reset cached_glove_entity_ every tick — re-finding is expensive.
@@ -86,55 +102,76 @@ bool SkinChanger::Tick() noexcept {
         // Apply knife model change BEFORE the paint check — model and paint are
         // independent.  The item-definition-index write works even when no paint
         // is configured (so the model swap still takes effect).
-        if (is_knife && knife_def > 0 && knife_def != cur_def)
-            mem_.Write<u16>(item + Offsets::m_iItemDefinitionIndex, static_cast<u16>(knife_def));
+        if (is_knife && knife_def > 0 && knife_def != cur_def) {
+            if (!WriteVerify(mem_, item + Offsets::m_iItemDefinitionIndex,
+                             static_cast<u16>(knife_def), "m_iItemDefinitionIndex (knife)", weapon))
+                LOG_WARN("Tick: knife model write FAILED for weapon=0x{:X}", weapon);
+        }
 
         SkinInfo_t skin = is_knife && knife_pnt
-            ? SkinInfo_t{knife_pnt, 0.01f, 0, -1, "", false, "Knife", WeaponsEnum::None}
+            ? SkinInfo_t{knife_pnt, mgr_.GetKnifeWear(is_ct), mgr_.GetKnifePattern(is_ct),
+                         -1, "", false, "Knife", WeaponsEnum::None}
             : mgr_.GetSkin(def);
 
         if (!skin.Paint) continue;
 
-        // Fallback values (written every frame for reliability)
-        mem_.Write<u32>(weapon + Offsets::m_nFallbackPaintKit, static_cast<u32>(skin.Paint));
-        mem_.Write<f32>(weapon + Offsets::m_flFallbackWear, skin.Wear);
-        mem_.Write<u32>(weapon + Offsets::m_nFallbackSeed, static_cast<u32>(skin.Pattern));
+        // Log once per weapon on first write to diagnose offset issues
+        if (!logged_write_fail_) {
+            LOG_INFO("Tick: weapon=0x{:X} item=0x{:X} paint={} def={}",
+                     weapon, item, skin.Paint, cur_def);
+            logged_write_fail_ = true;
+        }
+
+        // ── CRITICAL: Write m_bInitialized = false FIRST ──────────────────
+        // CS2 checks this flag BEFORE reading fallback values. If it's true,
+        // CS2 skips all fallback fields and uses real inventory data instead.
+        // Must be written BEFORE fallback values so CS2 sees it in the same pass.
+        WriteVerify(mem_, item + Offsets::m_bInitialized,
+                    false, "m_bInitialized", weapon);
+        WriteVerify(mem_, item + Offsets::m_bRestoreCustomMaterialAfterPrecache,
+                    false, "m_bRestoreCustomMaterialAfterPrecache", weapon);
+
+        // ── Fallback values ───────────────────────────────────────────────
+        WriteVerify(mem_, weapon + Offsets::m_nFallbackPaintKit,
+                    static_cast<u32>(skin.Paint), "m_nFallbackPaintKit", weapon);
+        WriteVerify(mem_, weapon + Offsets::m_flFallbackWear,
+                    skin.Wear, "m_flFallbackWear", weapon);
+        WriteVerify(mem_, weapon + Offsets::m_nFallbackSeed,
+                    static_cast<u32>(skin.Pattern), "m_nFallbackSeed", weapon);
         {
             u32 st = (skin.StatTrak >= 0) ? static_cast<u32>(skin.StatTrak) : 0xFFFFFFFFu;
-            mem_.Write<u32>(weapon + Offsets::m_nFallbackStatTrak, st);
+            WriteVerify(mem_, weapon + Offsets::m_nFallbackStatTrak,
+                        st, "m_nFallbackStatTrak", weapon);
         }
-        mem_.Write<u32>(weapon + Offsets::m_OriginalOwnerXuidLow, 0);
-        mem_.Write<u32>(weapon + Offsets::m_OriginalOwnerXuidHigh, 0);
-        // Nametag (m_szCustomNameOverride is CUtlString — needs heap alloc, skip for now)
-        // TODO: implement nametag via string allocation in target process
+        WriteVerify(mem_, weapon + Offsets::m_OriginalOwnerXuidLow,
+                    static_cast<u32>(0), "m_OriginalOwnerXuidLow", weapon);
+        WriteVerify(mem_, weapon + Offsets::m_OriginalOwnerXuidHigh,
+                    static_cast<u32>(0), "m_OriginalOwnerXuidHigh", weapon);
 
         // Set item quality to Unique (5) or Strange (10) so the game knows
         // this is a custom-skin item, not a vanilla/base weapon.
-        mem_.Write<i32>(item + Offsets::m_iEntityQuality, (skin.StatTrak >= 0) ? 10 : 5);
+        WriteVerify(mem_, item + Offsets::m_iEntityQuality,
+                    (skin.StatTrak >= 0) ? 10 : 5, "m_iEntityQuality", weapon);
 
         // Force the item view to use our fallback values
-        mem_.Write<u64>(item + Offsets::m_iItemID, 0xFFFFFFFFFFFFFFFFull);
-        mem_.Write<u32>(item + Offsets::m_iItemIDHigh, 0xFFFFFFFF);
-        mem_.Write<u32>(item + Offsets::m_iItemIDLow, 0xFFFFFFFF);
+        // m_iItemIDHigh = -1 signals "use fallback values" to CS2
+        // m_iItemIDLow = 0 (neutral — not -1, which some code paths treat as invalid)
+        WriteVerify(mem_, item + Offsets::m_iItemID,
+                    0xFFFFFFFFFFFFFFFFull, "m_iItemID", weapon);
+        WriteVerify(mem_, item + Offsets::m_iItemIDHigh,
+                    0xFFFFFFFFu, "m_iItemIDHigh", weapon);
+        WriteVerify(mem_, item + Offsets::m_iItemIDLow,
+                    0u, "m_iItemIDLow", weapon);
         if (account_id_)
-            mem_.Write<u32>(item + Offsets::m_iAccountID, account_id_);
+            WriteVerify(mem_, item + Offsets::m_iAccountID,
+                        account_id_, "m_iAccountID", weapon);
 
-        // Mark as uninitialized so the game re-reads our fallback values.
-        // Only write when first applying a skin (NeedsUpdate) to avoid
-        // repeatedly toggling entity state during normal gameplay — this
-        // was causing crashes on round load.
-        if (mgr_.NeedsUpdate()) {
-            mem_.Write<bool>(item + Offsets::m_bInitialized, false);
-            mem_.Write<bool>(item + Offsets::m_bRestoreCustomMaterialAfterPrecache, false);
-        }
-
-        // Create econ attributes (paint, pattern, wear) in the item view's attribute list.
-        // Only needed when the user changes a skin — fallback values written above
-        // are read by CS2's renderer every frame.
-        if (mgr_.NeedsUpdate()) {
-            if (!attr_mgr_.Create(item, skin))
-                LOG_WARN("SkinChanger::Tick — attr_mgr_.Create failed for item 0x{:X} paint={}", item, skin.Paint);
-        }
+        // Create econ attributes (paint, pattern, wear) EVERY TICK.
+        // CS2 clears the attribute list on round restarts, model precache,
+        // and inventory updates. Without attributes, some rendering paths
+        // fall back to real inventory data instead of our fallback values.
+        if (!attr_mgr_.Create(item, skin))
+            LOG_WARN("SkinChanger::Tick — attr_mgr_.Create failed for item 0x{:X} paint={}", item, skin.Paint);
 
         // Set mesh mask on the weapon entity and its HUD view model
         {
@@ -150,24 +187,54 @@ bool SkinChanger::Tick() noexcept {
     {
         i32 glove_paint = mgr_.GetGlovePaint(is_ct);
         if (glove_paint) {
-            u64 glove_iv = local_player_val + Offsets::m_EconGloves;
-
-            // Write item view fields (every tick, matching weapon behaviour)
-            mem_.Write<u64>(glove_iv + Offsets::m_iItemID, 0xFFFFFFFFFFFFFFFFull);
-            mem_.Write<u32>(glove_iv + Offsets::m_iItemIDHigh, 0xFFFFFFFF);
-            mem_.Write<u32>(glove_iv + Offsets::m_iItemIDLow, 0xFFFFFFFF);
-            mem_.Write<u32>(glove_iv + Offsets::m_iAccountID, account_id_);
-            mem_.Write<i32>(glove_iv + Offsets::m_iEntityQuality, 5);
-
-            // Write fallback to glove entity (find if not cached or on update)
-            if (mgr_.NeedsUpdate() || !cached_glove_entity_)
-                cached_glove_entity_ = FindGloveEntity(mem_, local_player_val);
+            // Validate cached glove entity every tick (entity may be stale after round restart)
             if (cached_glove_entity_) {
-                mem_.Write<u32>(cached_glove_entity_ + Offsets::m_nFallbackPaintKit, static_cast<u32>(glove_paint));
-                mem_.Write<f32>(cached_glove_entity_ + Offsets::m_flFallbackWear, 0.01f);
-                mem_.Write<u32>(cached_glove_entity_ + Offsets::m_nFallbackStatTrak, 0xFFFFFFFF);
-                mem_.Write<u32>(cached_glove_entity_ + Offsets::m_OriginalOwnerXuidLow, 0);
-                mem_.Write<u32>(cached_glove_entity_ + Offsets::m_OriginalOwnerXuidHigh, 0);
+                auto verify_def = mem_.ReadSafe<u16>(cached_glove_entity_ + Offsets::m_AttributeManager + Offsets::m_Item + Offsets::m_iItemDefinitionIndex);
+                if (!verify_def || *verify_def < 5027 || *verify_def > 5036)
+                    cached_glove_entity_ = 0;
+            }
+            if (!cached_glove_entity_ || mgr_.NeedsUpdate())
+                cached_glove_entity_ = FindGloveEntity(mem_, local_player_val);
+
+            if (cached_glove_entity_) {
+                // CRITICAL: Write ALL glove fields to the GLOVE ENTITY's item view,
+                // not the player pawn's embedded m_EconGloves. CS2 reads glove data
+                // from the entity's item view for rendering.
+                u64 glove_item = cached_glove_entity_ + Offsets::m_AttributeManager + Offsets::m_Item;
+
+                // Write m_bInitialized = false FIRST (same order as weapons)
+                WriteVerify(mem_, glove_item + Offsets::m_bInitialized,
+                            false, "glove m_bInitialized", cached_glove_entity_);
+
+                // Fallback values on the glove entity
+                WriteVerify(mem_, cached_glove_entity_ + Offsets::m_nFallbackPaintKit,
+                            static_cast<u32>(glove_paint), "glove m_nFallbackPaintKit", cached_glove_entity_);
+                WriteVerify(mem_, cached_glove_entity_ + Offsets::m_flFallbackWear,
+                            0.01f, "glove m_flFallbackWear", cached_glove_entity_);
+                WriteVerify(mem_, cached_glove_entity_ + Offsets::m_nFallbackStatTrak,
+                            0xFFFFFFFFu, "glove m_nFallbackStatTrak", cached_glove_entity_);
+                WriteVerify(mem_, cached_glove_entity_ + Offsets::m_OriginalOwnerXuidLow,
+                            0u, "glove m_OriginalOwnerXuidLow", cached_glove_entity_);
+                WriteVerify(mem_, cached_glove_entity_ + Offsets::m_OriginalOwnerXuidHigh,
+                            0u, "glove m_OriginalOwnerXuidHigh", cached_glove_entity_);
+
+                // Item view fields on the glove entity
+                WriteVerify(mem_, glove_item + Offsets::m_iItemID,
+                            0xFFFFFFFFFFFFFFFFull, "glove entity m_iItemID", cached_glove_entity_);
+                WriteVerify(mem_, glove_item + Offsets::m_iItemIDHigh,
+                            0xFFFFFFFFu, "glove entity m_iItemIDHigh", cached_glove_entity_);
+                WriteVerify(mem_, glove_item + Offsets::m_iItemIDLow,
+                            0u, "glove entity m_iItemIDLow", cached_glove_entity_);
+                if (account_id_) {
+                    WriteVerify(mem_, glove_item + Offsets::m_iAccountID,
+                                account_id_, "glove entity m_iAccountID", cached_glove_entity_);
+                    WriteVerify(mem_, glove_item + Offsets::m_iEntityQuality,
+                                static_cast<i32>(5), "glove entity m_iEntityQuality", cached_glove_entity_);
+                }
+
+                // Create attribute list on the GLOVE ENTITY (not player pawn)
+                SkinInfo_t glove_skin{glove_paint, 0.01f, 0, -1, "", false, "Glove", WeaponsEnum::None};
+                attr_mgr_.Create(glove_item, glove_skin);
             }
 
             applied = true;
@@ -182,6 +249,10 @@ bool SkinChanger::Tick() noexcept {
     if (applied) {
         mgr_.ClearUpdate();
         last_tick_ = now;
+    } else if (mgr_.NeedsUpdate()) {
+        // No weapons matched but user changed a setting — clear the flag
+        // to prevent running at full speed every tick forever.
+        mgr_.ClearUpdate();
     }
 
     return applied;
@@ -209,20 +280,11 @@ bool SkinChanger::ApplyGloves() noexcept {
         return false;
     }
 
-    // m_EconGloves is C_EconItemView embedded-by-value in the player pawn.
-    u64 glove_iv = *local_player + Offsets::m_EconGloves;
-
     // Find and cache the glove entity (C_EconGloves) for per-tick fallback writes
     cached_glove_entity_ = FindGloveEntity(mem_, *local_player);
 
-    // The per-tick fallback writes (paint/wear/iItemID/m_bInitialized etc.)
-    // are now handled inside Tick() unconditionally.  Here we only do the
-    // one-shot operations: attribute creation + mesh mask + reapply flag.
-
-    // Attribute creation: use the item view address directly
-    SkinInfo_t glove_skin{glove_paint, 0.01f, 0, -1, "", false, "Glove", WeaponsEnum::None};
-    if (!attr_mgr_.Create(glove_iv, glove_skin))
-        LOG_WARN("ApplyGloves — attr_mgr_.Create failed for glove_iv 0x{:X} paint={}", glove_iv, glove_paint);
+    // Per-tick fallback writes + attribute creation are now handled in Tick().
+    // Here we only do one-shot operations: mesh mask + reapply flag.
 
     // Hide hud arms model mask
     u64 hud_arms = GetHudArms(mem_);
@@ -230,13 +292,13 @@ bool SkinChanger::ApplyGloves() noexcept {
         auto node = mem_.ReadSafe<u64>(hud_arms + Offsets::m_pGameSceneNode);
         if (node && *node) {
             u64 model = *node + Offsets::m_modelState;
-            mem_.Write<u64>(model + Offsets::m_MeshGroupMask, 1);
+            WriteVerify(mem_, model + Offsets::m_MeshGroupMask,
+                        static_cast<u64>(1), "arms m_MeshGroupMask", hud_arms);
         }
-    } else {
-        LOG_WARN("ApplyGloves — GetHudArms returned 0");
     }
 
-    mem_.Write<bool>(*local_player + Offsets::m_bNeedToReApplyGloves, true);
+    WriteVerify(mem_, *local_player + Offsets::m_bNeedToReApplyGloves,
+                true, "m_bNeedToReApplyGloves", *local_player);
 
     return true;
 }
@@ -260,19 +322,16 @@ void SkinChanger::DoMeshMask(u64 weapon, u64 node, bool old_model) noexcept {
     u64 mask = old_model ? 2 : 1;
     auto dirty = mem_.ReadSafe<u64>(model + Offsets::m_pDirtyModelData);
     if (dirty && *dirty)
-        mem_.Write<u64>(*dirty + Offsets::m_DirtyMeshGroupMask, mask);
-    mem_.Write<u64>(model + Offsets::m_MeshGroupMask, mask);
+        WriteVerify(mem_, *dirty + Offsets::m_DirtyMeshGroupMask,
+                    mask, "m_DirtyMeshGroupMask", weapon);
+    WriteVerify(mem_, model + Offsets::m_MeshGroupMask,
+                mask, "weapon m_MeshGroupMask", weapon);
     u64 hud = GetHudWeapon(mem_, weapon);
-    if (!hud) {
-        LOG_WARN("DoMeshMask — GetHudWeapon returned 0 for weapon 0x{:X}", weapon);
-        return;
-    }
+    if (!hud) return;
     auto hud_node = mem_.ReadSafe<u64>(hud + Offsets::m_pGameSceneNode);
-    if (!hud_node || !*hud_node) {
-        LOG_WARN("DoMeshMask — no scene node on hud weapon 0x{:X}", hud);
-        return;
-    }
-    mem_.Write<u64>(*hud_node + Offsets::m_modelState + Offsets::m_MeshGroupMask, mask);
+    if (!hud_node || !*hud_node) return;
+    WriteVerify(mem_, *hud_node + Offsets::m_modelState + Offsets::m_MeshGroupMask,
+                mask, "hud m_MeshGroupMask", hud);
 }
 
 

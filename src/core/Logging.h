@@ -3,6 +3,7 @@
 #include "Core.h"
 #include <source_location>
 #include <string_view>
+#include <atomic>
 
 /* ── Logging ────────────────────────────────────────────────────────────────
  *
@@ -36,13 +37,13 @@ public:
     void SetMinLevel(LogLevel lv) noexcept { min_level_ = lv; }
 
     /// Register a callback to receive all future log messages.
-    void SetCallback(LogCallback cb) noexcept { callback_ = cb; }
+    void SetCallback(LogCallback cb) noexcept { callback_.store(cb, std::memory_order_release); }
 
 private:
     void Dispatch(LogLevel lv, std::string_view msg, std::source_location const& loc);
 
     LogLevel min_level_{LogLevel::Info};
-    LogCallback callback_{nullptr};
+    std::atomic<LogCallback> callback_{nullptr};
 };
 
 // ── Convenience macros ───────────────────────────────────────────────────────

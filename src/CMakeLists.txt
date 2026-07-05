@@ -21,21 +21,16 @@ target_include_directories(csc_ui PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
 target_link_libraries(csc_ui PUBLIC imgui::imgui)
 
 # ── Main target linkage ───────────────────────────────────────────────────────
-target_sources(CS2SkinChanger PRIVATE
+target_sources(libCS2SkinChanger PRIVATE
     main.cpp
     cs2/SkinChanger.cpp
 )
 
 if(MSVC)
-    target_sources(CS2SkinChanger PRIVATE resources/version.rc)
-    if(CSC_BUILD_STANDALONE)
-        target_link_options(CS2SkinChanger PRIVATE
-            "/MANIFESTINPUT:${CMAKE_CURRENT_SOURCE_DIR}/resources/app.manifest"
-            "/MANIFESTUAC:\"level='requireAdministrator' uiAccess='false'\"")
-    endif()
+    target_sources(libCS2SkinChanger PRIVATE resources/version.rc)
 endif()
 
-target_link_libraries(CS2SkinChanger PRIVATE
+target_link_libraries(libCS2SkinChanger PRIVATE
     csc_core
     csc_ui
 )

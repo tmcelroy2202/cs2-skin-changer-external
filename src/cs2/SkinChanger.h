@@ -40,6 +40,9 @@ public:
     /// Get current music kit ID.
     u16 GetMusicKit() const noexcept { return music_kit_id_; }
 
+    /// RNG for UI randomization features.
+    std::mt19937& Rng() noexcept { return rng_; }
+
 private:
     ProcessMemory&      mem_;
     SkinDatabase&       db_;
@@ -51,6 +54,7 @@ private:
     u32                 account_id_ = 0;
     std::chrono::steady_clock::time_point last_tick_{};
     bool                    logged_team_warn_   = false;
+    bool                    logged_write_fail_  = false;
     std::unordered_set<u64> logged_weapon_warns_{};
     mutable std::mt19937 rng_{std::random_device{}()};
 

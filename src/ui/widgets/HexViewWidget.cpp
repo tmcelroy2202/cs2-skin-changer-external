@@ -1,10 +1,19 @@
 #include "HexViewWidget.h"
 #include "imgui.h"
 #include <cctype>
+#include <Windows.h>
 
 void ui::DrawHexView(const HexViewWidgetConfig& cfg) noexcept {
     if (!cfg.base_address) {
         ImGui::Text("(null address)");
+        return;
+    }
+
+    // Validate memory range is readable before dereferencing
+    MEMORY_BASIC_INFORMATION mbi{};
+    if (!VirtualQuery(reinterpret_cast<LPCVOID>(cfg.base_address), &mbi, sizeof(mbi)) ||
+        mbi.State != MEM_COMMIT || (mbi.Protect & (PAGE_GUARD | PAGE_NOACCESS))) {
+        ImGui::Text("(unreadable address 0x%llX)", cfg.base_address);
         return;
     }
 

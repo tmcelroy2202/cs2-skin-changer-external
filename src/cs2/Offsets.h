@@ -219,11 +219,16 @@ inline bool LoadFromFile(const std::filesystem::path& path) {
         if (val_str.empty()) continue;
 
         std::ptrdiff_t val = 0;
+        std::errc ec{};
         if (val_str.starts_with("0x") || val_str.starts_with("0X"))
-            std::from_chars(val_str.data() + 2, val_str.data() + val_str.size(), val, 16);
+            ec = std::from_chars(val_str.data() + 2, val_str.data() + val_str.size(), val, 16).ec;
         else
-            std::from_chars(val_str.data(), val_str.data() + val_str.size(), val);
+            ec = std::from_chars(val_str.data(), val_str.data() + val_str.size(), val).ec;
 
+        if (ec != std::errc{}) {
+            LOG_WARN("LoadFromFile: failed to parse '{}' for offset '{}'", val_str, key);
+            continue;
+        }
         if (val != 0 || val_str == "0") {
             *it->second = val;
             any = true;
@@ -312,9 +317,78 @@ inline bool SaveToFile(const std::filesystem::path& path) {
 /// C_EconEntity).  Call this after loading to fix any such stale values.
 inline void ValidateLoadedOffsets() noexcept {
     // m_AttributeManager must be from C_EconEntity (0x1180).
-    // Known wrong values: C_Chicken (0x13B8), C_PlantedC4 (0x11C0).
     if (m_AttributeManager == 0x13B8 || m_AttributeManager == 0x11C0) {
         m_AttributeManager = 0x1180;
+    }
+
+    // m_nFallbackPaintKit must be from C_EconEntity (0x1658).
+    if (m_nFallbackPaintKit < 0x1000 || m_nFallbackPaintKit > 0x2000) {
+        m_nFallbackPaintKit = 0x1658;
+    }
+
+    // m_flFallbackWear must be from C_EconEntity (0x1660).
+    if (m_flFallbackWear < 0x1000 || m_flFallbackWear > 0x2000) {
+        m_flFallbackWear = 0x1660;
+    }
+
+    // m_nFallbackSeed must be from C_EconEntity (0x165C).
+    if (m_nFallbackSeed < 0x1000 || m_nFallbackSeed > 0x2000) {
+        m_nFallbackSeed = 0x165C;
+    }
+
+    // m_nFallbackStatTrak must be from C_EconEntity (0x1664).
+    if (m_nFallbackStatTrak < 0x1000 || m_nFallbackStatTrak > 0x2000) {
+        m_nFallbackStatTrak = 0x1664;
+    }
+
+    // m_Item — C_AttributeContainer::m_Item (0x50)
+    if (m_Item < 0x10 || m_Item > 0x200) {
+        m_Item = 0x50;
+    }
+
+    // m_iItemDefinitionIndex — C_EconItemView (0x1BA)
+    if (m_iItemDefinitionIndex < 0x180 || m_iItemDefinitionIndex > 0x200) {
+        m_iItemDefinitionIndex = 0x1BA;
+    }
+
+    // m_iEntityQuality — C_EconItemView (0x1BC)
+    if (m_iEntityQuality < 0x180 || m_iEntityQuality > 0x200) {
+        m_iEntityQuality = 0x1BC;
+    }
+
+    // m_bInitialized — C_EconItemView (0x1E8)
+    if (m_bInitialized < 0x1C0 || m_bInitialized > 0x220) {
+        m_bInitialized = 0x1E8;
+    }
+
+    // m_iAccountID — C_EconItemView (0x1D8)
+    if (m_iAccountID < 0x1C0 || m_iAccountID > 0x220) {
+        m_iAccountID = 0x1D8;
+    }
+
+    // m_iItemID — C_EconItemView (0x1C8)
+    if (m_iItemID < 0x1B0 || m_iItemID > 0x220) {
+        m_iItemID = 0x1C8;
+    }
+
+    // m_iItemIDHigh — C_EconItemView (0x1D0)
+    if (m_iItemIDHigh < 0x1B0 || m_iItemIDHigh > 0x220) {
+        m_iItemIDHigh = 0x1D0;
+    }
+
+    // m_iItemIDLow — C_EconItemView (0x1D4)
+    if (m_iItemIDLow < 0x1B0 || m_iItemIDLow > 0x220) {
+        m_iItemIDLow = 0x1D4;
+    }
+
+    // m_nFallbackPaintKit must be from C_EconEntity (0x1658).
+    if (m_nFallbackPaintKit < 0x1000 || m_nFallbackPaintKit > 0x2000) {
+        m_nFallbackPaintKit = 0x1658;
+    }
+
+    // m_nFallbackSeed must be from C_EconEntity (0x165C).
+    if (m_nFallbackSeed < 0x1000 || m_nFallbackSeed > 0x2000) {
+        m_nFallbackSeed = 0x165C;
     }
 }
 

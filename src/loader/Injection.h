@@ -146,7 +146,7 @@ inline bool Inject(DWORD pid, const std::string& dllPath) {
     con::Progress("Injecting DLL", 90);
 
     // Wait for injection to complete
-    WaitForSingleObject(thread, 5000);
+    DWORD wait_result = WaitForSingleObject(thread, 5000);
 
     // Check if thread completed
     DWORD exitCode = 0;
@@ -156,6 +156,13 @@ inline bool Inject(DWORD pid, const std::string& dllPath) {
     CloseHandle(thread);
     VirtualFreeEx(process, remoteMem, 0, MEM_RELEASE);
     CloseHandle(process);
+
+    if (wait_result == WAIT_TIMEOUT) {
+        con::Warning("Injection thread timed out — DLL may still be loading");
+        // Don't report failure — LoadLibrary may still be executing
+        con::Progress("Injection complete (async)", 100);
+        return true;
+    }
 
     if (exitCode == 0) {
         con::Error("Injection failed — LoadLibraryA returned NULL");
@@ -184,20 +191,21 @@ inline bool Run() {
         con::Success(("CS2 found (PID: " + std::to_string(pid) + ")").c_str());
     }
 
-    // Get DLL path
+    // Get DLL path — try multiple names
     std::string exeDir = GetExeDir();
-    std::string dllPath = exeDir + "\\CS2SkinChanger.dll";
-    std::string dllPathAlt = exeDir + "\\libCS2SkinChanger.dll";
-
-    // Try both names (MSVC vs MinGW naming)
-    if (!std::filesystem::exists(dllPath)) {
-        if (std::filesystem::exists(dllPathAlt)) {
-            dllPath = dllPathAlt;
-        } else {
-            con::Error(("DLL not found: " + dllPath).c_str());
-            con::Info("Make sure CS2SkinChanger.dll is in the same folder as this loader.");
-            return false;
+    std::string dllPath;
+    for (const auto& name : {"libCS2SkinChanger.dll", "CS2SkinChanger.dll"}) {
+        std::string candidate = exeDir + "\\" + name;
+        if (std::filesystem::exists(candidate)) {
+            dllPath = candidate;
+            break;
         }
+    }
+
+    if (dllPath.empty()) {
+        con::Error("DLL not found in the same folder as this exe.");
+        con::Info("Make sure libCS2SkinChanger.dll is in the same folder.");
+        return false;
     }
 
     // Inject

@@ -5,6 +5,7 @@
 #include "Offsets.h"
 #include "WeaponTypes.h"
 #include "EntitySystem.h"
+#include <unordered_set>
 
 /* ── CS2 Econ System ────────────────────────────────────────────────────────
  *
@@ -99,12 +100,13 @@ public:
         vec.ptr  = block;
         if (!mem_.Write(item + Offsets::m_AttributeList + Offsets::m_Attributes, vec)) {
             LOG_WARN("EconItemAttributeManager::Create — Write vector failed");
+            mem_.Write(item + Offsets::m_AttributeList + Offsets::m_Attributes, CPtrGameVector{});
             mem_.Free(block);
             return false;
         }
 
         // Track this block so RemoveInternal can free it next time.
-        known_block_ = block;
+        known_blocks_.insert(block);
         return true;
     }
 
@@ -115,8 +117,8 @@ public:
 private:
     ProcessMemory& mem_;
     u64 cached_vtable_ = 0;
-    // Tracks the most recently allocated block so RemoveInternal can free it.
-    u64 known_block_{};
+    // Tracks all allocated blocks so RemoveInternal can free them.
+    std::unordered_set<u64> known_blocks_;
     static constexpr u32 kAttrCount = 3;
     static constexpr u32 kAttrSize  = sizeof(CEconItemAttribute);
 
@@ -131,10 +133,11 @@ private:
         mem_.Write(attr_addr, CPtrGameVector{});
 
         // Now safe to free — CS2 no longer holds a reference.
-        if (known_block_ && attrs->ptr == known_block_) {
-            mem_.Free(known_block_);
+        auto it = known_blocks_.find(attrs->ptr);
+        if (it != known_blocks_.end()) {
+            mem_.Free(*it);
+            known_blocks_.erase(it);
         }
-        known_block_ = 0;
         return true;
     }
 

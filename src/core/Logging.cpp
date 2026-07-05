@@ -39,8 +39,9 @@ void Logger::Dispatch(LogLevel lv, std::string_view msg,
                  static_cast<int>(msg.size()), msg.data());
     std::fflush(stderr);
 
-    if (callback_)
-        callback_(lv, msg);
+    auto cb = callback_.load(std::memory_order_acquire);
+    if (cb)
+        cb(lv, msg);
 }
 
 void Logger::Trace(std::string_view msg, std::source_location loc) { Dispatch(LogLevel::Trace, msg, loc); }

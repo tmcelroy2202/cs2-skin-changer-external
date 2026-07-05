@@ -22,8 +22,8 @@ public:
     /// Unique panel identifier.
     [[nodiscard]] virtual std::string_view GetId() const noexcept = 0;
 
-    /// Human-readable title.
-    [[nodiscard]] std::string_view GetTitle() const noexcept { return title_; }
+    /// Human-readable title (null-terminated).
+    [[nodiscard]] const char* GetTitle() const noexcept { return title_.c_str(); }
 
     [[nodiscard]] bool* OpenPtr() noexcept { return &open_; }
 

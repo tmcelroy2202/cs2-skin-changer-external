@@ -85,8 +85,8 @@ inline std::vector<u64> GetWeapons(ProcessMemory& mem, u64 local_player) {
     auto weapon_services = mem.ReadSafe<u64>(local_player + Offsets::m_pWeaponServices);
     if (!weapon_services || !*weapon_services) return {};
 
-    // Pattern A  (most common):  m_nSize at +0x00,  m_pElements at +0x08
-    auto weapons = ReadWeaponVector(mem, *weapon_services, 0x00, 0x08);
+    // Pattern A (C_NetworkUtlVectorBase): m_pElements at +0x00, m_nSize at +0x08
+    auto weapons = ReadWeaponVector(mem, *weapon_services, 0x08, 0x00);
     if (!weapons.empty()) return weapons;
 
     // Pattern B (CUtlMemory-based): m_pMemory at +0x00, m_nAllocation at +0x08, m_Size at +0x10
@@ -117,6 +117,7 @@ inline u64 GetHudArms(ProcessMemory& mem) {
 }
 
 /// Get the HUD weapon corresponding to a weapon entity by walking scene nodes.
+/// The weapon view model and arms are siblings (both children of a common parent).
 inline u64 GetHudWeapon(ProcessMemory& mem, u64 weapon) {
     u64 arms_base = GetHudArms(mem);
     if (!arms_base) return 0;
@@ -124,16 +125,50 @@ inline u64 GetHudWeapon(ProcessMemory& mem, u64 weapon) {
     auto arms_node = mem.ReadSafe<u64>(arms_base + Offsets::m_pGameSceneNode);
     if (!arms_node || !*arms_node) return 0;
 
+    // Walk up to the parent node, then iterate its children (siblings of arms)
+    auto parent = mem.ReadSafe<u64>(*arms_node + Offsets::m_pParent);
+    if (!parent || !*parent) {
+        // Fallback: walk children of arms itself (original behavior)
+        u32 iter = 0;
+        auto child_opt = mem.ReadSafe<u64>(*arms_node + Offsets::m_pChild);
+        if (!child_opt || !*child_opt) return 0;
+        for (u64 child = *child_opt;
+             child && iter < 256;
+             ++iter) {
+            auto owner_handle = mem.ReadSafe<u32>(child + Offsets::m_pOwner);
+            if (!owner_handle || !*owner_handle) {
+                auto next = mem.ReadSafe<u64>(child + Offsets::m_pNextSibling);
+                child = next ? *next : 0;
+                continue;
+            }
+            u64 owner_entity = GetEntityByHandle(mem, *owner_handle);
+            if (owner_entity == weapon)
+                return child;
+            auto next = mem.ReadSafe<u64>(child + Offsets::m_pNextSibling);
+            child = next ? *next : 0;
+        }
+        return 0;
+    }
+
+    // Walk children of the parent node (these are siblings of arms, including weapon VMs)
     u32 iter = 0;
-    for (u64 view_model = mem.Read<u64>(*arms_node + Offsets::m_pChild);
-         view_model && iter < 256;
-         view_model = mem.Read<u64>(view_model + Offsets::m_pNextSibling), ++iter) {
+    auto start_opt = mem.ReadSafe<u64>(*parent + Offsets::m_pChild);
+    if (!start_opt || !*start_opt) return 0;
+    for (u64 child = *start_opt;
+         child && iter < 256;
+         ++iter) {
         // m_pOwner in CGameSceneNode is a CEntityHandle (u32), not a pointer
-        auto owner_handle = mem.ReadSafe<u32>(view_model + Offsets::m_pOwner);
-        if (!owner_handle || !*owner_handle) continue;
+        auto owner_handle = mem.ReadSafe<u32>(child + Offsets::m_pOwner);
+        if (!owner_handle || !*owner_handle) {
+            auto next = mem.ReadSafe<u64>(child + Offsets::m_pNextSibling);
+            child = next ? *next : 0;
+            continue;
+        }
         u64 owner_entity = GetEntityByHandle(mem, *owner_handle);
         if (owner_entity == weapon)
-            return view_model;
+            return child;
+        auto next = mem.ReadSafe<u64>(child + Offsets::m_pNextSibling);
+        child = next ? *next : 0;
     }
 
     return 0;

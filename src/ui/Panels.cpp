@@ -4,7 +4,7 @@
 #include <algorithm>
 
 void PanelManager::Register(Panel* panel) noexcept {
-    if (!panel || Find(panel->GetId().data())) return;
+    if (!panel || Find(panel->GetId())) return;
     panels_.push_back(panel);
 }
 
@@ -19,7 +19,7 @@ void PanelManager::DrawAll() noexcept {
         if (!panel || !panel->IsOpen()) continue;
         if (!panel->IsVisible()) continue;
 
-        if (ImGui::Begin(panel->GetTitle().data(), panel->OpenPtr(),
+        if (ImGui::Begin(panel->GetTitle(), panel->OpenPtr(),
                          ImGuiWindowFlags_None)) {
             panel->Draw();
         }

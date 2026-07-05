@@ -625,11 +625,16 @@ public:
         SetTeamKnife(knife_def, paint, false);
     }
 
-    void SetTeamKnife(WeaponsEnum knife_def, i32 paint, bool ct_team) noexcept {
+    void SetTeamKnife(WeaponsEnum knife_def, i32 paint, bool ct_team,
+                      f32 wear = 0.01f, i32 pattern = 0) noexcept {
         auto& kd = ct_team ? ct_knife_def_ : t_knife_def_;
         auto& kp = ct_team ? ct_knife_paint_ : t_knife_paint_;
+        auto& kw = ct_team ? ct_knife_wear_ : t_knife_wear_;
+        auto& ks = ct_team ? ct_knife_pattern_ : t_knife_pattern_;
         kd = knife_def;
         kp = paint;
+        kw = wear;
+        ks = pattern;
         force_update_ = true;
     }
 
@@ -638,6 +643,12 @@ public:
     }
     i32 GetKnifePaint(bool ct_team = false) const noexcept {
         return ct_team ? ct_knife_paint_ : t_knife_paint_;
+    }
+    f32 GetKnifeWear(bool ct_team = false) const noexcept {
+        return ct_team ? ct_knife_wear_ : t_knife_wear_;
+    }
+    i32 GetKnifePattern(bool ct_team = false) const noexcept {
+        return ct_team ? ct_knife_pattern_ : t_knife_pattern_;
     }
 
     bool IsKnifeDef(i32 def) const noexcept {
@@ -653,6 +664,24 @@ public:
     bool NeedsUpdate() const noexcept { return force_update_; }
     void ClearUpdate() noexcept { force_update_ = false; }
 
+    /// Remove all applied skins and reset to defaults.
+    void ResetAll() noexcept {
+        active_skins.clear();
+        ct_glove_paint_ = 0;
+        t_glove_paint_ = 0;
+        ct_glove_def_ = GlovesEnum{};
+        t_glove_def_ = GlovesEnum{};
+        ct_knife_def_ = WeaponsEnum{};
+        t_knife_def_ = WeaponsEnum{};
+        ct_knife_paint_ = 0;
+        t_knife_paint_ = 0;
+        ct_knife_wear_ = 0.01f;
+        t_knife_wear_ = 0.01f;
+        ct_knife_pattern_ = 0;
+        t_knife_pattern_ = 0;
+        force_update_ = true;
+    }
+
 private:
     bool force_update_ = false;
     i32  ct_glove_paint_  = 0;
@@ -663,4 +692,8 @@ private:
     WeaponsEnum t_knife_def_    = WeaponsEnum{};
     i32         ct_knife_paint_ = 0;
     i32         t_knife_paint_  = 0;
+    f32         ct_knife_wear_  = 0.01f;
+    f32         t_knife_wear_   = 0.01f;
+    i32         ct_knife_pattern_ = 0;
+    i32         t_knife_pattern_  = 0;
 };

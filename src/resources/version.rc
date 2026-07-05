@@ -1,8 +1,8 @@
 #include <windows.h>
 
 VS_VERSION_INFO VERSIONINFO
-FILEVERSION     1,7,3,0
-PRODUCTVERSION  1,7,3,0
+FILEVERSION     1,8,1,0
+PRODUCTVERSION  1,8,1,0
 FILEFLAGSMASK   0x3fL
 FILEFLAGS       0
 FILEOS          VOS_NT_WINDOWS32
@@ -14,13 +14,13 @@ BEGIN
         BLOCK "040904B0"
         BEGIN
             VALUE "CompanyName",      "mrch4n725"
-            VALUE "FileDescription",  "VeneeR — CS2 skin changer overlay"
-            VALUE "FileVersion",      "1.7.3.0"
+            VALUE "FileDescription",  "VeneeR CS2 Skin Changer"
+            VALUE "FileVersion",      "1.8.1.0"
             VALUE "InternalName",     "VeneeR"
             VALUE "LegalCopyright",   "Copyright (C) 2026 mrch4n725"
-            VALUE "OriginalFilename", "VeneeR.exe"
+            VALUE "OriginalFilename", "CS2SkinChanger.dll"
             VALUE "ProductName",      "VeneeR"
-            VALUE "ProductVersion",   "1.7.3.0"
+            VALUE "ProductVersion",   "1.8.1.0"
         END
     END
     BLOCK "VarFileInfo"

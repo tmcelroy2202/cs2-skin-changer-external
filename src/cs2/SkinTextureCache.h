@@ -119,6 +119,8 @@ public:
         names_.clear();
         pending_.clear();
         downloading_.clear();
+        download_state_->stopped = true;
+        download_state_ = std::make_shared<DownloadState>();
     }
 
     bool IsLoaded(i32 paint_id) const {
@@ -142,6 +144,7 @@ private:
     struct DownloadState {
         std::mutex mutex;
         std::vector<i32> completed;
+        std::atomic<bool> stopped{false};
     };
     std::shared_ptr<DownloadState> download_state_ = std::make_shared<DownloadState>();
 
@@ -351,8 +354,10 @@ private:
                                 + wname_str + "_" + paint_internal + "_light_large.256x256.png";
                 Offsets::DownloadUrl(url.c_str(), path);
                 if (std::filesystem::exists(path) && std::filesystem::file_size(path) > 1000) {
-                    std::lock_guard lock(state->mutex);
-                    state->completed.push_back(paint_id);
+                    if (!state->stopped) {
+                        std::lock_guard lock(state->mutex);
+                        state->completed.push_back(paint_id);
+                    }
                     return;
                 }
                 std::filesystem::remove(path);
@@ -389,8 +394,10 @@ private:
                                                 + hash + "/256x196.jpg";
                                 Offsets::DownloadUrl(url.c_str(), path);
                                 if (std::filesystem::exists(path) && std::filesystem::file_size(path) > 1000) {
-                                    std::lock_guard lock(state->mutex);
-                                    state->completed.push_back(paint_id);
+                                    if (!state->stopped) {
+                                        std::lock_guard lock(state->mutex);
+                                        state->completed.push_back(paint_id);
+                                    }
                                 }
                             }
                         }
@@ -420,7 +427,7 @@ private:
         // WIC requires COM on this thread. Safe to call even if already init'd
         // (returns S_FALSE, needs matching CoUninitialize).
         HRESULT coInit = CoInitializeEx(nullptr, COINIT_MULTITHREADED);
-        auto comCleanup = [coInit] { if (SUCCEEDED(coInit)) CoUninitialize(); };
+        auto comCleanup = [coInit] { if (coInit == S_OK || coInit == S_FALSE) CoUninitialize(); };
 
         IWICImagingFactory* factory = nullptr;
         HRESULT hr = CoCreateInstance(CLSID_WICImagingFactory, nullptr,
@@ -447,8 +454,8 @@ private:
         UINT width = 0, height = 0;
         converter->GetSize(&width, &height);
 
-        std::vector<u8> pixels(width * height * 4);
-        hr = converter->CopyPixels(nullptr, width * 4, (UINT)pixels.size(), pixels.data());
+        std::vector<u8> pixels(static_cast<size_t>(width) * height * 4);
+        hr = converter->CopyPixels(nullptr, width * 4, static_cast<UINT>(pixels.size()), pixels.data());
 
         converter->Release();
         frame->Release();

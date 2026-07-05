@@ -27,14 +27,6 @@ struct Palette {
     inline static const ImVec4 SideActive  = ImVec4(0.10f, 0.70f, 0.80f, 0.12f);
 };
 
-const char* SideLabel(int i) {
-    static const char* labels[] = {
-        "Pistols", "Rifles", "SMGs", "Snipers",
-        "Heavy", "Knives", "Gloves", "Music"
-    };
-    return labels[i];
-}
-
 const char* WearLabel(float w) {
     if (w < 0.07f) return "Factory New";
     if (w < 0.15f) return "Minimal Wear";
@@ -176,6 +168,19 @@ void SkinChangerPanel::Draw() noexcept {
             cat_weapons_ = WeaponsForCategory(sides[i].first);
         }
 
+        // Show count badge for non-Music categories
+        if (sides[i].first != Category::Music) {
+            auto weapons = WeaponsForCategory(sides[i].first);
+            if (!weapons.empty()) {
+                ImVec2 sp = ImGui::GetItemRectMin();
+                char cnt[8];
+                std::snprintf(cnt, sizeof(cnt), "%zu", weapons.size());
+                ImVec2 textSize = ImGui::CalcTextSize(cnt);
+                ImVec2 badgePos(sp.x + sidebar_w - textSize.x - 8, sp.y + (32 - textSize.y) / 2);
+                ImGui::GetWindowDrawList()->AddText(badgePos, ImColor(Palette::TextDim), cnt);
+            }
+        }
+
         ImGui::PopStyleColor();
     }
 
@@ -258,7 +263,7 @@ void SkinChangerPanel::DrawHeader() noexcept {
     ImGui::SetCursorScreenPos(ImVec2(p.x + 12, p.y + 7));
     ImGui::TextColored(Palette::Accent, "VeneeR");
     ImGui::SameLine(0, 4);
-    ImGui::TextColored(Palette::TextDim, "v1.7.3");
+    ImGui::TextColored(Palette::TextDim, "v1.8.1");
 
     if (!equipped_weapon_.empty()) {
         ImGui::SameLine(0, 18);
@@ -266,6 +271,18 @@ void SkinChangerPanel::DrawHeader() noexcept {
         ImGui::SameLine(0, 6);
         ImGui::TextColored(Palette::TextGood, "%s", equipped_weapon_.c_str());
     }
+
+    ImGui::SameLine(0, 18);
+    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.35f, 0.15f, 0.15f, 1.0f));
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.45f, 0.2f, 0.2f, 1.0f));
+    if (ImGui::SmallButton("Reset All")) {
+        mgr_.ResetAll();
+        changer_.SetMusicKit(0);
+        SaveAndSync();
+    }
+    if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal))
+        ImGui::SetTooltip("Remove all applied skins and reset to defaults");
+    ImGui::PopStyleColor(2);
 
     ImGui::SetCursorScreenPos(ImVec2(p.x, p.y + 36));
 }
@@ -319,8 +336,11 @@ void SkinChangerPanel::DrawSkinsContent() noexcept {
         if (ContainsIgnoreCase(s.name, skin_filter_))
             filtered_skins.push_back(s);
     }
-    selected_skin_idx_ = std::clamp<i32>(selected_skin_idx_, 0,
-        static_cast<i32>(filtered_skins.size()) - 1);
+    if (!filtered_skins.empty())
+        selected_skin_idx_ = std::clamp<i32>(selected_skin_idx_, 0,
+            static_cast<i32>(filtered_skins.size()) - 1);
+    else
+        selected_skin_idx_ = 0;
 
     // Sync selection highlight with the actually-applied skin
     SkinInfo_t applied{};
@@ -328,8 +348,8 @@ void SkinChangerPanel::DrawSkinsContent() noexcept {
         i32 kp = mgr_.GetKnifePaint(ct_selected_);
         if (kp > 0) {
             applied.Paint = kp;
-            applied.Wear = 0.01f;
-            applied.Pattern = 0;
+            applied.Wear = mgr_.GetKnifeWear(ct_selected_);
+            applied.Pattern = mgr_.GetKnifePattern(ct_selected_);
             applied.StatTrak = -1;
             applied.weaponType = weapon;
         }
@@ -425,10 +445,35 @@ void SkinChangerPanel::DrawSkinsContent() noexcept {
     ImGui::PushStyleColor(ImGuiCol_ButtonHovered, Palette::AccentDim);
     if (ImGui::Button("Apply Skin", ImVec2(120, 28))) {
         if (is_knife)
-            mgr_.SetTeamKnife(weapon, skin.Paint, ct_selected_);
+            mgr_.SetTeamKnife(weapon, skin.Paint, ct_selected_, skin.Wear, skin.Pattern);
         else
             mgr_.SetSkin(skin);
         SaveAndSync();
+    }
+    ImGui::PopStyleColor(2);
+
+    ImGui::SameLine(0, 8);
+    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.4f, 0.2f, 0.2f, 1.0f));
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.5f, 0.25f, 0.25f, 1.0f));
+    if (ImGui::Button("Remove", ImVec2(70, 28))) {
+        if (is_knife) {
+            mgr_.SetTeamKnife(weapon, 0, ct_selected_, 0.01f, 0);
+        } else {
+            SkinInfo_t vanilla{};
+            vanilla.weaponType = weapon;
+            vanilla.name = "Vanilla";
+            mgr_.SetSkin(vanilla);
+        }
+        SaveAndSync();
+    }
+    ImGui::PopStyleColor(2);
+
+    ImGui::SameLine(0, 8);
+    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.25f, 0.35f, 0.45f, 1.0f));
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.3f, 0.4f, 0.5f, 1.0f));
+    if (ImGui::Button("Random", ImVec2(70, 28))) {
+        std::uniform_real_distribution<float> dist(0.0f, 0.28f);
+        skin.Wear = dist(changer_.Rng());
     }
     ImGui::PopStyleColor(2);
 
@@ -506,7 +551,7 @@ void SkinChangerPanel::DrawSkinCard(i32 idx, const SkinInfo_t& skin, bool select
             ImColor(0, 0, 0, 80), ImColor(0, 0, 0, 80));
     }
 
-    if (tex_cache_ && !tex_cache_->IsLoaded(skin.Paint) && skin.weaponType != WeaponsEnum{})
+    if (tex_cache_ && !tex_cache_->IsLoaded(skin.Paint))
         tex_cache_->Request(skin.Paint, skin.weaponType);
 
     // Paint ID badge

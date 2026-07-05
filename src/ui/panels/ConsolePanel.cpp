@@ -49,9 +49,14 @@ void ConsolePanel::Draw() noexcept {
     ImGui::BeginChild("##console_output", ImVec2(0, 0), true,
                       ImGuiWindowFlags_HorizontalScrollbar);
 
+    // Snapshot messages under lock, then render without holding the lock
     {
-        std::lock_guard lock(messages_mutex_);
-        for (auto& msg : messages_) {
+        std::vector<LogMessage> snapshot;
+        {
+            std::lock_guard lock(messages_mutex_);
+            snapshot.assign(messages_.begin(), messages_.end());
+        }
+        for (auto& msg : snapshot) {
             if (!filter_.empty()) {
                 auto text_lower = msg.text;
                 std::ranges::transform(text_lower, text_lower.begin(),

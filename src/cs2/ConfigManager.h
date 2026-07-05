@@ -53,14 +53,18 @@ inline void SaveConfig(SkinManager& mgr, u16 music_kit_id) {
     {
         i32 kdef = static_cast<i32>(mgr.GetKnifeDef(true));
         i32 kpnt = mgr.GetKnifePaint(true);
+        f32 kwear = mgr.GetKnifeWear(true);
+        i32 kpattern = mgr.GetKnifePattern(true);
         if (kpnt > 0)
-            f << "knife_ct = " << kdef << ", " << kpnt << "\n";
+            f << "knife_ct = " << kdef << ", " << kpnt << ", " << kwear << ", " << kpattern << "\n";
     }
     {
         i32 kdef = static_cast<i32>(mgr.GetKnifeDef(false));
         i32 kpnt = mgr.GetKnifePaint(false);
+        f32 kwear = mgr.GetKnifeWear(false);
+        i32 kpattern = mgr.GetKnifePattern(false);
         if (kpnt > 0)
-            f << "knife = " << kdef << ", " << kpnt << "\n";
+            f << "knife = " << kdef << ", " << kpnt << ", " << kwear << ", " << kpattern << "\n";
     }
 
     // Gloves — CT and T
@@ -84,6 +88,9 @@ inline void SaveConfig(SkinManager& mgr, u16 music_kit_id) {
 }
 
 inline void LoadConfig(SkinManager& mgr, u16& music_kit_id) {
+    mgr.ResetAll();
+    music_kit_id = 0;
+
     auto path = ConfigPath();
     std::ifstream f(path);
     if (!f) return;
@@ -104,14 +111,29 @@ inline void LoadConfig(SkinManager& mgr, u16& music_kit_id) {
         if (key == "knife") {
             int kdef, kpnt;
             char comma;
+            float kwear = 0.01f;
+            int kpattern = 0;
             if (ss >> kdef >> comma >> kpnt) {
-                mgr.SetTeamKnife(static_cast<WeaponsEnum>(kdef), kpnt, false);
+                // Optional wear and pattern (backward-compatible)
+                char comma2;
+                if (ss >> comma2 >> kwear) {
+                    char comma3;
+                    if (ss >> comma3 >> kpattern) { /* ok */ }
+                }
+                mgr.SetTeamKnife(static_cast<WeaponsEnum>(kdef), kpnt, false, kwear, kpattern);
             }
         } else if (key == "knife_ct") {
             int kdef, kpnt;
             char comma;
+            float kwear = 0.01f;
+            int kpattern = 0;
             if (ss >> kdef >> comma >> kpnt) {
-                mgr.SetTeamKnife(static_cast<WeaponsEnum>(kdef), kpnt, true);
+                char comma2;
+                if (ss >> comma2 >> kwear) {
+                    char comma3;
+                    if (ss >> comma3 >> kpattern) { /* ok */ }
+                }
+                mgr.SetTeamKnife(static_cast<WeaponsEnum>(kdef), kpnt, true, kwear, kpattern);
             }
         } else if (key == "glove") {
             int gdef, gpnt;
