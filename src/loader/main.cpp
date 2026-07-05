@@ -24,6 +24,7 @@
 #include "cs2/EntitySystem.h"
 #include "ui/Framework.h"
 #include "ui/Panels.h"
+#include "ui/overlay/OverlayWindow.h"
 #include "ui/panels/SkinChangerPanel.h"
 #include "ui/panels/DebugPanel.h"
 #include "ui/panels/ConsolePanel.h"
@@ -45,6 +46,7 @@ struct App {
     ConsolePanel*        console_panel{};
 
     std::atomic<bool>    initialised{false};
+    std::atomic<bool>    should_exit{false};
     DWORD                cs2_pid{};
 };
 
@@ -98,6 +100,8 @@ void RenderUI(App& app) {
                 else
                     LOG_WARN("Offsets update failed");
             }
+            ImGui::Separator();
+            if (ImGui::MenuItem("Exit")) { app.should_exit = true; }
             ImGui::EndMenu();
         }
         ImGui::EndMainMenuBar();
@@ -223,6 +227,10 @@ int main() {
 
         // Check if CS2 is still running
         if (!app.cs2.IsAlive())
+            break;
+
+        // Check exit flag (from UI menu) or if overlay window was closed
+        if (app.should_exit || !overlay::State().running)
             break;
 
         // Cap at ~60 FPS
