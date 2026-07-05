@@ -142,7 +142,12 @@ public:
         handle_ = s_Api.OpenProcess(
             PROCESS_VM_READ | PROCESS_VM_WRITE | PROCESS_VM_OPERATION | PROCESS_QUERY_INFORMATION,
             FALSE, pid);
-        return handle_ != nullptr;
+        if (!handle_) return false;
+
+        client_ = GetModuleBase(L"client.dll");
+        engine_ = GetModuleBase(L"engine2.dll");
+
+        return client_ != 0;
     }
 
     bool IsAlive() const noexcept {

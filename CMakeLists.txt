@@ -47,6 +47,6 @@ if(MSVC)
 else()
     target_compile_options(CS2SkinChanger PRIVATE -Wall -Wextra -DNDEBUG)
     target_link_options(CS2SkinChanger PRIVATE
-        -static-libgcc -static-libstdc++ -static -lpthread -mconsole -s)
+        -static-libgcc -static-libstdc++ -static -lpthread -mwindows -s)
     target_link_libraries(CS2SkinChanger PRIVATE user32 kernel32)
 endif()

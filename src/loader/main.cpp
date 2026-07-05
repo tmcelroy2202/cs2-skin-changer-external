@@ -2,7 +2,6 @@
  *
  * External skin changer for CS2. Creates its own transparent overlay window,
  * renders Dear ImGui UI, and reads/writes CS2 memory via RPM/WPM.
- * No DLL injection, no MinHook, no process manipulation beyond OpenProcess.
  * ──────────────────────────────────────────────────────────────────────────── */
 
 #ifndef NOMINMAX
@@ -28,7 +27,6 @@
 #include "ui/panels/SkinChangerPanel.h"
 #include "ui/panels/DebugPanel.h"
 #include "ui/panels/ConsolePanel.h"
-#include "loader/Console.h"
 
 using namespace std::chrono_literals;
 
@@ -55,7 +53,6 @@ App& State() {
     return a;
 }
 
-// ── Find CS2 process ─────────────────────────────────────────────────────
 DWORD FindCS2() {
     HANDLE snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
     if (snapshot == INVALID_HANDLE_VALUE) return 0;
@@ -76,7 +73,6 @@ DWORD FindCS2() {
     return 0;
 }
 
-// ── Render UI ────────────────────────────────────────────────────────────
 void RenderUI(App& app) {
     if (!ui::IsVisible()) return;
 
@@ -100,7 +96,7 @@ void RenderUI(App& app) {
                 if (Offsets::UpdateFromRemote())
                     LOG_INFO("Offsets updated successfully from cs2-dumper");
                 else
-                    LOG_WARN("Offsets update failed — check internet");
+                    LOG_WARN("Offsets update failed");
             }
             ImGui::EndMenu();
         }
@@ -127,16 +123,13 @@ void RenderUI(App& app) {
         app.skin_panel->Draw();
 }
 
-// ── Init skin changer ────────────────────────────────────────────────────
 bool InitSkinChanger(App& app) {
     LOG_INFO("VeneeR — external overlay mode (v1.8.2)");
 
     SetBasePath(std::filesystem::current_path());
 
-    // Auto-update offsets from cs2-dumper (best-effort)
     Offsets::UpdateFromRemote();
 
-    // Load offsets from cache or defaults
     auto off_path = Offsets::DataFilePath();
     if (Offsets::LoadFromFile(off_path)) {
         LOG_INFO("Offsets loaded from {}", off_path.string().c_str());
@@ -169,15 +162,10 @@ bool InitSkinChanger(App& app) {
 
 } // anonymous namespace
 
-// ── Entry point ──────────────────────────────────────────────────────────
 int main() {
-    con::Init();
-    con::Banner();
-
     auto& app = State();
 
     // Find CS2
-    con::Info("Looking for CS2...");
     for (int i = 0; i < 120; ++i) {
         app.cs2_pid = FindCS2();
         if (app.cs2_pid) break;
@@ -185,60 +173,35 @@ int main() {
     }
 
     if (!app.cs2_pid) {
-        con::Error("CS2 not found. Make sure cs2.exe is running.");
-        con::WaitForExit();
+        MessageBoxA(nullptr,
+            "CS2 not found. Launch Counter-Strike 2 and try again.",
+            "VeneeR", MB_ICONERROR);
         return 1;
     }
-
-    con::Success(("CS2 found (PID: " + std::to_string(app.cs2_pid) + ")").c_str());
 
     // Open CS2 process for external memory access
     if (!app.cs2.Open(app.cs2_pid)) {
-        con::Error("Failed to open CS2 process. Run as Administrator.");
-        con::WaitForExit();
+        MessageBoxA(nullptr,
+            "Failed to open CS2 process.\n\n"
+            "Make sure you run this tool as Administrator.",
+            "VeneeR", MB_ICONERROR);
         return 1;
     }
-
-    con::Success("Process opened successfully");
 
     // Init UI as standalone overlay
     if (!ui::Init({.overlay_mode = true})) {
-        con::Error("Failed to create overlay. Is a compatible GPU present?");
-        con::WaitForExit();
+        MessageBoxA(nullptr,
+            "Failed to create overlay.\n\n"
+            "Is a DirectX 11 compatible GPU present?",
+            "VeneeR", MB_ICONERROR);
         return 1;
     }
-
-    con::Success("Overlay created — press Insert to toggle");
 
     // Init skin changer
     InitSkinChanger(app);
 
-    con::Success("VeneeR v1.8.2 is ready!");
-    con::Info("Press Insert in-game to open the overlay.");
-    con::Info("Press Shift+Esc in the overlay to exit the tool.");
-
     // ── Main loop ────────────────────────────────────────────────────────
-    bool running = true;
-
-    while (running) {
-        // Windows message loop
-        MSG msg;
-        while (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE)) {
-            if (msg.message == WM_QUIT) { running = false; break; }
-            TranslateMessage(&msg);
-            DispatchMessage(&msg);
-        }
-
-        if (!running) break;
-
-        // Check if CS2 is still running
-        DWORD exit_code = 0;
-        if (!GetExitCodeProcess(app.cs2.NativeHandle(), &exit_code) ||
-            exit_code != STILL_ACTIVE) {
-            con::Warning("CS2 has exited. Closing...");
-            break;
-        }
-
+    while (true) {
         // Tick skin changer (RPM/WPM external writes)
         app.skin_changer->Tick();
 
@@ -253,12 +216,16 @@ int main() {
             }
         }
 
-        // Render UI
+        // Render UI (handles Insert key + message pumping internally)
         ui::NewFrame();
         RenderUI(app);
         ui::Render();
 
-        // Cap at ~60 FPS to keep CPU usage low
+        // Check if CS2 is still running
+        if (!app.cs2.IsAlive())
+            break;
+
+        // Cap at ~60 FPS
         std::this_thread::sleep_for(16ms);
     }
 
@@ -272,6 +239,5 @@ int main() {
     delete app.skin_tex_cache;
     app.cs2.Close();
 
-    con::Success("VeneeR has been shut down cleanly.");
     return 0;
 }
