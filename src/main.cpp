@@ -35,6 +35,8 @@
 
 namespace {
 
+HMODULE g_module{};
+
 struct App {
     PanelManager        panels;
 
@@ -94,7 +96,7 @@ void RenderUI(App& app) {
                      ImGuiWindowFlags_NoSavedSettings |
                      ImGuiWindowFlags_NoFocusOnAppearing |
                      ImGuiWindowFlags_NoNav)) {
-        ImGui::Text("VeneeR  v1.8.1");
+        ImGui::Text("VeneeR  v1.8.2");
         ImGui::TextColored(ImVec4(0,1,0,1), "Active");
     }
     ImGui::End();
@@ -233,9 +235,14 @@ void* FindPresentFunction() {
 
 // ── Init thread ───────────────────────────────────────────────────────────────
 DWORD WINAPI InitThread(LPVOID) noexcept {
+    // Set base path outside DllMain (std::filesystem is unsafe under loader lock)
+    char dll_path[MAX_PATH]{};
+    GetModuleFileNameA(g_module, dll_path, MAX_PATH);
+    SetBasePath(dll_path);
+
     auto& app = State();
 
-    LOG_INFO("VeneeR — DLL injection mode (v1.8.1)");
+    LOG_INFO("VeneeR — DLL injection mode (v1.8.2)");
 
     // Anti-debugging check
     if (antidebug::DetectDebugger()) {
@@ -337,10 +344,7 @@ void ShutdownDLL() noexcept {
 BOOL APIENTRY DllMain(HMODULE module, DWORD reason, LPVOID reserved) {
     if (reason == DLL_PROCESS_ATTACH) {
         DisableThreadLibraryCalls(module);
-        // Store DLL directory for config/cache paths
-        char dll_path[MAX_PATH]{};
-        GetModuleFileNameA(module, dll_path, MAX_PATH);
-        SetBasePath(dll_path);
+        g_module = module;
         HANDLE thread = CreateThread(nullptr, 0, InitThread, nullptr, 0, nullptr);
         if (thread) CloseHandle(thread);
     } else if (reason == DLL_PROCESS_DETACH) {
