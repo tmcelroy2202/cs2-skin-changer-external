@@ -218,7 +218,6 @@ int main() {
     con::Info("Press Shift+Esc in the overlay to exit the tool.");
 
     // ── Main loop ────────────────────────────────────────────────────────
-    static bool prev_insert = false;
     bool running = true;
 
     while (running) {
@@ -239,12 +238,6 @@ int main() {
             con::Warning("CS2 has exited. Closing...");
             break;
         }
-
-        // Poll Insert key (edge-triggered)
-        bool cur_insert = (GetAsyncKeyState(VK_INSERT) & 0x8000) != 0;
-        if (cur_insert && !prev_insert)
-            ui::ToggleVisibility();
-        prev_insert = cur_insert;
 
         // Tick skin changer (RPM/WPM external writes)
         app.skin_changer->Tick();
