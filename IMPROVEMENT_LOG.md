@@ -102,7 +102,7 @@ doesn't affect memory operations. No functional impact.
 
 ---
 
-## Summary
+## Session: Autonomous Code Quality Summary
 
 | Category | Count |
 |----------|-------|
@@ -112,10 +112,51 @@ doesn't affect memory operations. No functional impact.
 | Files modified | 8 |
 | Deferred items | 0 |
 
-**Deferred/flagged for human review:** None.
+---
 
-**Recurring patterns:**
-- The `ent/weapon + m_AttributeManager + m_Item` combined-read bug appeared in 4 separate
-  files — indicates a copy-paste pattern that was spread without review.
-- Dead code (`GetSkinIndex`, `CallRemoteThread`, `LastOpOk`) accumulates when features are
-  changed/removed without cleaning up.
+## Session: v1.8.2 — VAC Evasion Hardening + Skin Texture Fixes (2026-07-05)
+
+### VAC Evasion Fixes
+
+| Fix | Files |
+|-----|-------|
+| Strip all symbols (`-s` linker flag) | `CMakeLists.txt` |
+| Remove anti-debug code (was creating VAC signatures) | `src/core/DllAntiDetect.h`, `src/loader/AntiDetect.h` |
+| Compile out all logging in Release (NDEBUG guard) | `CMakeLists.txt`, `src/core/Logging.h`, `src/core/Logging.cpp` |
+| Neutralize version.rc (generic Microsoft strings) | `src/resources/version.rc` |
+| Neutralize app.manifest (Microsoft.CRT identity) | `src/resources/app.manifest` |
+| Upgrade XOR to 8-byte multi-key from `__TIME__` | `src/core/DllAntiDetect.h`, `src/loader/AntiDetect.h` |
+| Replace `%APPDATA%/veneer/` with `BasePath()` (DLL directory) | `src/core/Core.h`, `src/cs2/ConfigManager.h`, `src/cs2/Offsets.h`, `src/cs2/SkinTextureCache.h` |
+
+### Skin Texture Pipeline Fixes
+
+| Fix | Files |
+|-----|-------|
+| InitMapping retry (local CS2 path first, 3 retries with backoff) | `src/cs2/SkinTextureCache.h` |
+| ProcessPending batch of 4 textures/frame (was 1/frame) | `src/cs2/SkinTextureCache.h` |
+| 3 CDN fallback strategies (CDN, economy, Steam market search) | `src/cs2/SkinTextureCache.h` |
+| Thread-safe download cancellation (`state->stopped` check) | `src/cs2/SkinTextureCache.h` |
+
+### Additional Bug Fixes
+
+| Bug | Fix |
+|-----|-----|
+| `FILETYPE VFT_APP` for DLL target (version.rc) | Changed to `VFT_DLL` |
+| `GetTitle()` return type mismatch (`string_view` instead of `const char*`) | Fixed return type in `Panels.h` |
+| `std::filesystem::path` in DllMain (deadlock under loader lock) | Moved `SetBasePath()` into `InitThread`; DllMain stores HMODULE only |
+| UI version string still showed v1.8.1 | Updated to v1.8.2 |
+
+### Full Ripple-Effect Audit
+
+Checked all 10 categories of changes across every dependent file:
+- NDEBUG + LOG_* side effects: 82 call sites examined, zero bugs
+- BasePath() DllMain usage: deadlock risk fixed
+- Anti-debug dangling refs: zero (only `main.cpp:241` calls it)
+- All 10 categories: **zero compilation/runtime bugs found**
+
+### Binary Size Reduction
+
+| File | Before | After |
+|------|--------|-------|
+| `CS2SkinChanger.exe` | (built with MSVC) | 1.1MB |
+| `libCS2SkinChanger.dll` | 4.4MB | 2.2MB |

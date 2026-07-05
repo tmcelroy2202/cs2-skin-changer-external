@@ -192,6 +192,13 @@ HRESULT STDMETHODCALLTYPE PresentHook(
             }
         }
 
+        // Poll Insert key directly — CS2 uses raw input so WM_KEYUP never fires
+        static bool prev_insert = false;
+        bool cur_insert = (GetAsyncKeyState(VK_INSERT) & 0x8000) != 0;
+        if (cur_insert && !prev_insert)
+            ui::ToggleVisibility();
+        prev_insert = cur_insert;
+
         ui::NewFrame();
         RenderUI(app);
         ui::Render();
