@@ -7,8 +7,9 @@ out/
 .cache/
 .idea/
 .vs/
-third_party/
+third_party/*
 !third_party/MinHook/
+!third_party/imgui/
 CMakeFiles/
 CMakeCache.txt
 cmake_install.cmake
