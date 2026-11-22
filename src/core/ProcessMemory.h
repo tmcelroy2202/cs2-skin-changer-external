@@ -6,8 +6,8 @@
 #ifndef NOMINMAX
 #define NOMINMAX
 #endif
-#include <Windows.h>
-#include <TlHelp32.h>
+#include <windows.h>
+#include <tlhelp32.h>
 #include <stdexcept>
 #include <optional>
 #include <cstring>

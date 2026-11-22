@@ -1,7 +1,7 @@
 #include "HexViewWidget.h"
 #include "imgui.h"
 #include <cctype>
-#include <Windows.h>
+#include <windows.h>
 
 void ui::DrawHexView(const HexViewWidgetConfig& cfg) noexcept {
     if (!cfg.base_address) {
